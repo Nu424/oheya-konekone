@@ -1,15 +1,15 @@
-import { CameraControls } from '@react-three/drei'
+import { CameraControls, Html } from '@react-three/drei'
 import { Canvas, useFrame, useThree } from '@react-three/fiber'
 import CameraControlsImpl from 'camera-controls'
-import { Suspense, useEffect, useRef } from 'react'
+import { Suspense, useEffect, useLayoutEffect, useMemo, useRef } from 'react'
 import * as THREE from 'three'
 import type { Room } from '../model/schema'
 import { useDoc, useUi, type ViewMode } from '../store/useStore'
 import { Effects } from './Effects'
-import { ItemObject } from './ItemObject'
 import { Lighting } from './Lighting'
 import { RoomMesh } from './RoomMesh'
-import { getAsset } from '../assets/registry'
+import { EditLayer } from './EditLayer'
+import { registerScreenToFloor } from '../editor/commands'
 
 const S = 0.001
 
@@ -27,6 +27,44 @@ function FrameProbe() {
     if (p.frames > 30) p.ready = true
   })
   return null
+}
+
+/** Lets DOM drag-and-drop convert a screen point to a floor point. */
+function FloorPicker() {
+  const { camera, gl } = useThree()
+  useEffect(() => {
+    const ray = new THREE.Raycaster()
+    const plane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0)
+    const v = new THREE.Vector3()
+    registerScreenToFloor((cx, cy) => {
+      const r = gl.domElement.getBoundingClientRect()
+      ray.setFromCamera(new THREE.Vector2(((cx - r.left) / r.width) * 2 - 1, -((cy - r.top) / r.height) * 2 + 1), camera)
+      const p = ray.ray.intersectPlane(plane, v)
+      return p ? { x: p.x / S, z: p.z / S } : null
+    })
+    return () => registerScreenToFloor(null)
+  }, [camera, gl])
+  return null
+}
+
+/** Room dimensions drawn outside the walls in the plan view. */
+function PlanDims({ room }: { room: Room }) {
+  const W = room.width * S
+  const D = room.depth * S
+  const off = (room.wallThickness + 260) * S
+  return (
+    <>
+      <Html position={[W / 2, 0.01, -off]} center zIndexRange={[5, 0]} style={{ pointerEvents: 'none' }}>
+        <div className="plan-dim">{room.width.toLocaleString()}</div>
+      </Html>
+      <Html position={[-off, 0.01, D / 2]} center zIndexRange={[5, 0]} style={{ pointerEvents: 'none' }}>
+        <div className="plan-dim v">{room.depth.toLocaleString()}</div>
+      </Html>
+      <Html position={[W / 2, 0.01, D + off]} center zIndexRange={[5, 0]} style={{ pointerEvents: 'none' }}>
+        <div className="plan-dim plan-south">南</div>
+      </Html>
+    </>
+  )
 }
 
 function cameraPose(room: Room, view: ViewMode, azimuthDeg = 35) {
@@ -50,22 +88,57 @@ function cameraPose(room: Room, view: ViewMode, azimuthDeg = 35) {
 }
 
 function CameraRig({ room }: { room: Room }) {
+  const view = useUi((s) => s.view)
+  const ortho = view === 'top'
+  const set = useThree((s) => s.set)
+  const size = useThree((s) => s.size)
+  // Two cameras; the plan view uses a true orthographic projection.
+  const cams = useMemo(() => {
+    const persp = new THREE.PerspectiveCamera(36, 1, 0.05, 80)
+    persp.position.set(6, 6, 8)
+    const orth = new THREE.OrthographicCamera(-1, 1, 1, -1, 0.1, 60)
+    orth.position.set(0, 20, 0)
+    return { persp, orth }
+  }, [])
+  const cam = ortho ? cams.orth : cams.persp
+  useLayoutEffect(() => {
+    set({ camera: cam })
+  }, [cam, set])
+  return <Rig key={ortho ? 'o' : 'p'} room={room} camera={cam} size={size} />
+}
+
+function Rig({ room, camera, size }: { room: Room; camera: THREE.Camera; size: { width: number; height: number } }) {
   const ref = useRef<CameraControlsImpl>(null)
   const view = useUi((s) => s.view)
-  const first = useRef(true)
-  const size = useThree((s) => s.size)
   const panelOpen = useUi((s) => s.panel !== null)
+  const ortho = view === 'top'
+  const animate = useRef(false)
+  // Keep the orthographic frustum in pixels so zoom = pixels per metre.
+  useLayoutEffect(() => {
+    if (camera instanceof THREE.OrthographicCamera) {
+      camera.left = -size.width / 2
+      camera.right = size.width / 2
+      camera.top = size.height / 2
+      camera.bottom = -size.height / 2
+      camera.updateProjectionMatrix()
+    } else if (camera instanceof THREE.PerspectiveCamera) {
+      camera.aspect = size.width / size.height
+      camera.updateProjectionMatrix()
+    }
+  }, [camera, size.width, size.height])
 
   useEffect(() => {
     const c = ref.current
     if (!c) return
     const { pos, target } = cameraPose(room, view)
-    c.setLookAt(pos.x, pos.y, pos.z, target.x, target.y, target.z, !first.current)
-    first.current = false
-    if (view === 'top') {
+    c.setLookAt(pos.x, pos.y, pos.z, target.x, target.y, target.z, animate.current)
+    animate.current = true
+    if (ortho) {
       c.minPolarAngle = 0
       c.maxPolarAngle = 0.0001
       c.mouseButtons.left = CameraControlsImpl.ACTION.TRUCK
+      c.mouseButtons.wheel = CameraControlsImpl.ACTION.ZOOM
+      c.touches.one = CameraControlsImpl.ACTION.TOUCH_TRUCK
     } else {
       c.minPolarAngle = 0.05
       c.maxPolarAngle = THREE.MathUtils.degToRad(86)
@@ -75,25 +148,34 @@ function CameraRig({ room }: { room: Room }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [view, room.width, room.depth])
 
-  // Shift the framing so the room is centred in the area not covered by the side panel.
+  // Fit the plan to the screen (orthographic zoom) and keep the room clear of the side panel.
   useEffect(() => {
     const c = ref.current
     if (!c) return
     const panelPx = panelOpen && size.width > 760 ? 342 : 0
+    if (ortho) {
+      const m = 1.2 // metres of margin around the room
+      const zoom = Math.min((size.width - panelPx - 80) / (room.width * S + m), (size.height - 160) / (room.depth * S + m))
+      c.zoomTo(zoom, animate.current)
+      c.setFocalOffset(-panelPx / 2 / zoom, 0, 0, false)
+      return
+    }
     const cam = c.camera as THREE.PerspectiveCamera
-    const dist = c.distance
-    const visibleW = 2 * dist * Math.tan(THREE.MathUtils.degToRad(cam.fov / 2)) * cam.aspect
+    const visibleW = 2 * c.distance * Math.tan(THREE.MathUtils.degToRad(cam.fov / 2)) * cam.aspect
     c.setFocalOffset((-panelPx / 2 / size.width) * visibleW, 0, 0, true)
-  }, [size.width, size.height, panelOpen, view, room.width, room.depth])
+  }, [size.width, size.height, panelOpen, view, ortho, room.width, room.depth])
 
   return (
     <CameraControls
       ref={ref}
+      camera={camera as THREE.PerspectiveCamera}
       makeDefault
       smoothTime={0.35}
       draggingSmoothTime={0.12}
       minDistance={0.8}
       maxDistance={18}
+      minZoom={20}
+      maxZoom={600}
       dollySpeed={0.6}
       truckSpeed={1.5}
     />
@@ -102,7 +184,6 @@ function CameraRig({ room }: { room: Room }) {
 
 export function Viewport() {
   const room = useDoc((s) => s.layout.room)
-  const items = useDoc((s) => s.layout.items)
   const select = useUi((s) => s.select)
   const view = useUi((s) => s.view)
   // The ceiling is cut away in every view except walking around inside the room.
@@ -114,28 +195,19 @@ export function Viewport() {
       shadows={{ type: THREE.PCFShadowMap }}
       dpr={[1, 2]}
       gl={{ antialias: false, powerPreference: 'high-performance', stencil: false, preserveDrawingBuffer: true }}
-      camera={{ fov: 36, near: 0.05, far: 80, position: [6, 6, 8] }}
       onPointerMissed={() => select(null)}
     >
       <color attach="background" args={['#efe6da']} />
       <Suspense fallback={null}>
         <Lighting room={room} />
         <RoomMesh room={room} plan={view === 'top'} />
-        {items.map((it) => (getAsset(it.type)?.hideWithCeiling && cutaway ? null :
-          <ItemObject
-            key={it.id}
-            item={it}
-            ceiling={room.height}
-            onPointerDown={(e) => {
-              e.stopPropagation()
-              select({ kind: 'item', id: it.id })
-            }}
-          />
-        ))}
+        <EditLayer cutaway={cutaway} />
         <Effects />
       </Suspense>
       <CameraRig room={room} />
+      {view === 'top' && <PlanDims room={room} />}
       <FrameProbe />
+      <FloorPicker />
     </Canvas>
   )
 }

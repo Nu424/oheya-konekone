@@ -25,6 +25,20 @@ for (const a of actions) {
   else if (kind === 'click') await page.click(arg)
   else if (kind === 'wait') await page.waitForTimeout(+arg)
   else if (kind === 'type') await page.keyboard.type(arg)
+  else if (kind === 'mouse') {
+    const [x, y] = arg.split(',').map(Number)
+    await page.mouse.click(x, y)
+  } else if (kind === 'drag') {
+    const [x1, y1, x2, y2] = arg.split(',').map(Number)
+    await page.mouse.move(x1, y1)
+    await page.mouse.down()
+    for (let i = 1; i <= 8; i++) {
+      await page.mouse.move(x1 + ((x2 - x1) * i) / 8, y1 + ((y2 - y1) * i) / 8)
+      await page.waitForTimeout(400)
+    }
+    await page.waitForTimeout(1500)
+    if (!process.env.HOLD) await page.mouse.up()
+  }
 }
 await page.screenshot({ path: out })
 await browser.close()

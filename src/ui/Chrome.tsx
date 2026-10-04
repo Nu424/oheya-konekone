@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { useStore } from 'zustand'
 import { downloadText, parseLayoutText, serializeLayout } from '../model/io'
 import { redo, undo, useDoc, useUi } from '../store/useStore'
+import { itemCommands } from '../three/EditLayer'
 import { Segmented } from './controls'
 import { Icon } from './icons'
 
@@ -221,10 +222,29 @@ export function useShortcuts() {
       } else if (mod && e.key.toLowerCase() === 'o') {
         e.preventDefault()
         openLayoutFile()
+      } else if (mod && e.key.toLowerCase() === 'd' && !typing) {
+        e.preventDefault()
+        if (ui.selection?.kind === 'item') itemCommands.duplicate(ui.selection.id)
       } else if (!typing && !mod && !ui.jsonOpen) {
+        const sel = ui.selection?.kind === 'item' ? ui.selection.id : null
         if (e.key === '1') ui.setView('orbit')
         if (e.key === '2') ui.setView('top')
         if (e.key.toLowerCase() === 'j') ui.setJsonOpen(true)
+        if (e.key === 'Escape') ui.select(null)
+        if (sel) {
+          if (e.key === 'Delete' || e.key === 'Backspace') {
+            e.preventDefault()
+            itemCommands.remove(sel)
+          }
+          if (e.key.toLowerCase() === 'r') itemCommands.rotate(sel, e.shiftKey ? 15 : 90)
+          if (e.key.toLowerCase() === 'l') itemCommands.toggleLock(sel)
+          const step = e.shiftKey ? 100 : 10
+          const arrows: Record<string, [number, number]> = { ArrowLeft: [-step, 0], ArrowRight: [step, 0], ArrowUp: [0, -step], ArrowDown: [0, step] }
+          if (arrows[e.key]) {
+            e.preventDefault()
+            itemCommands.nudge(sel, ...arrows[e.key])
+          }
+        }
       }
     }
     window.addEventListener('keydown', onKey)

@@ -25,6 +25,7 @@ interface Actions {
   updateItem(id: string, patch: Partial<Item>): void
   updateItemParams(id: string, patch: Record<string, unknown>): void
   removeItem(id: string): void
+  duplicateItem(id: string): string | null
   setMeta(patch: Partial<Layout['meta']>): void
 }
 
@@ -40,6 +41,8 @@ function loadInitial(): Layout {
   }
   return defaultLayout()
 }
+
+let forceRecord = false
 
 const OPENING_SCHEMAS = { door: DoorOpening, window: WindowOpening, closet: ClosetOpening }
 
@@ -115,6 +118,20 @@ export const useDoc = create<DocState & Actions>()(
       removeItem: (id) =>
         set(({ layout }) => ({ layout: { ...layout, items: layout.items.filter((i) => i.id !== id) } })),
 
+      duplicateItem: (id) => {
+        const src = get().layout.items.find((i) => i.id === id)
+        if (!src) return null
+        const nid = uid(src.type)
+        const { room } = get().layout
+        const [x, y, z] = src.position
+        // Offset diagonally, staying inside the room.
+        const nx = Math.min(room.width - 100, x + 300)
+        const nz = Math.min(room.depth - 100, z + 300)
+        const copy = { ...src, id: nid, position: [nx, y, nz] as [number, number, number], locked: false }
+        set(({ layout }) => ({ layout: { ...layout, items: [...layout.items, copy] } }))
+        return nid
+      },
+
       setMeta: (patch) => set(({ layout }) => ({ layout: { ...layout, meta: { ...layout.meta, ...patch } } })),
     }),
     {
@@ -126,7 +143,8 @@ export const useDoc = create<DocState & Actions>()(
         let timer: ReturnType<typeof setTimeout> | undefined
         let pending = false
         return (state) => {
-          if (!pending) {
+          if (!pending || forceRecord) {
+            forceRecord = false
             handleSet(state)
             pending = true
           }
@@ -152,17 +170,45 @@ useDoc.subscribe((s, prev) => {
   }, 300)
 })
 
+/**
+ * Gestures (dragging an item) update the layout continuously; record them as one undo step.
+ */
+let gestureSnapshot: Layout | null = null
+export function beginGesture() {
+  if (gestureSnapshot) return
+  gestureSnapshot = useDoc.getState().layout
+  useDoc.temporal.getState().pause()
+}
+export function endGesture() {
+  if (!gestureSnapshot) return
+  const t = useDoc.temporal.getState()
+  const final = useDoc.getState().layout
+  if (final !== gestureSnapshot) {
+    useDoc.setState({ layout: gestureSnapshot })
+    t.resume()
+    forceRecord = true
+    useDoc.setState({ layout: final })
+  } else t.resume()
+  gestureSnapshot = null
+}
+
 export const undo = () => useDoc.temporal.getState().undo()
 export const redo = () => useDoc.temporal.getState().redo()
 
 interface UiState {
   view: ViewMode
   selection: Selection
+  /** Item currently being dragged (for guides / camera lock). */
+  dragging: string | null
+  /** Hold Alt to disable snapping; this toggles it persistently. */
+  snap: boolean
   panel: 'room' | 'catalog' | null
   jsonOpen: boolean
   toast: { id: number; text: string; tone?: 'info' | 'error' } | null
   setView(v: ViewMode): void
   select(s: Selection): void
+  setDragging(id: string | null): void
+  setSnap(v: boolean): void
   setPanel(p: UiState['panel']): void
   setJsonOpen(v: boolean): void
   notify(text: string, tone?: 'info' | 'error'): void
@@ -171,11 +217,15 @@ interface UiState {
 export const useUi = create<UiState>()((set) => ({
   view: 'orbit',
   selection: null,
+  dragging: null,
+  snap: true,
   panel: 'room',
   jsonOpen: false,
   toast: null,
   setView: (view) => set({ view }),
   select: (selection) => set({ selection }),
+  setDragging: (dragging) => set({ dragging }),
+  setSnap: (snap) => set({ snap }),
   setPanel: (panel) => set({ panel }),
   setJsonOpen: (jsonOpen) => set({ jsonOpen }),
   notify: (text, tone = 'info') => set({ toast: { id: Date.now(), text, tone } }),

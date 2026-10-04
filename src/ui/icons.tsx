@@ -103,5 +103,20 @@ export const Icon = {
       <path d="M12 10v4M12 17v.5" />
     </>,
   ),
+  rotate: make(<path d="M20 12a8 8 0 1 1-2.4-5.7M20 4v4.5h-4.5" />),
+  lock: make(
+    <>
+      <rect x="5" y="11" width="14" height="10" rx="2.5" />
+      <path d="M8 11V8a4 4 0 0 1 8 0v3" />
+    </>,
+  ),
+  search: make(
+    <>
+      <circle cx="11" cy="11" r="6.5" />
+      <path d="m20 20-4.2-4.2" />
+    </>,
+  ),
+  plus: make(<path d="M12 5v14M5 12h14" />),
+  magnet: make(<path d="M6 3v8a6 6 0 0 0 12 0V3h-4v8a2 2 0 0 1-4 0V3H6ZM6 7h4M14 7h4" />),
   sofa: make(<path d="M5 11V8a3 3 0 0 1 3-3h8a3 3 0 0 1 3 3v3M3 13a2 2 0 0 1 4 0v2h10v-2a2 2 0 0 1 4 0v4a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1v-4ZM6 18v2M18 18v2" />),
 }
