@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useUi } from './store/useStore'
 import { Viewport } from './three/Viewport'
-import { DropZone, FlowPanel, Hud, Toast, TopBar, useShortcuts } from './ui/Chrome'
+import { DropZone, FlowPanel, Hud, PhotoBar, Toast, TopBar, useShortcuts } from './ui/Chrome'
 import { AiDialog, JsonDialog, TemplateDialog } from './ui/dialogs'
 import { RoomPanel } from './ui/RoomPanel'
 import { Catalog, DRAG_MIME } from './ui/Catalog'
@@ -16,9 +16,11 @@ export default function App() {
   const [newOpen, setNewOpen] = useState(false)
   const [aiOpen, setAiOpen] = useState(false)
   const hasSelection = useUi((s) => s.selection !== null)
+  const view = useUi((s) => s.view)
+  const photo = useUi((s) => s.photo)
 
   return (
-    <div className="app">
+    <div className={`app${photo ? ' photo' : ''}`}>
       <div
         className="viewport-wrap"
         onDragOver={(e) => {
@@ -57,10 +59,21 @@ export default function App() {
       <FlowPanel />
       <Hud />
       <div className={`hint glass${hasSelection ? ' hidden' : ''}`}>
-        <kbd>ドラッグ</kbd> 回転 ・ <kbd>右ドラッグ</kbd> 移動 ・ <kbd>ホイール</kbd> ズーム
-        <br />
-        <kbd>1</kbd>/<kbd>2</kbd> 視点 ・ <kbd>J</kbd> JSON ・ <kbd>Ctrl+Z</kbd> 元に戻す
+        {view === 'walk' ? (
+          <>
+            <kbd>ドラッグ</kbd> 見回す ・ <kbd>WASD</kbd> 歩く ・ <kbd>床をクリック</kbd> そこへ移動
+            <br />
+            <kbd>Esc</kbd> 3Dビューにもどる
+          </>
+        ) : (
+          <>
+            <kbd>ドラッグ</kbd> 回転 ・ <kbd>右ドラッグ</kbd> 移動 ・ <kbd>ホイール</kbd> ズーム
+            <br />
+            <kbd>1</kbd>/<kbd>2</kbd>/<kbd>3</kbd> 視点 ・ <kbd>F</kbd> 動線 ・ <kbd>J</kbd> JSON
+          </>
+        )}
       </div>
+      <PhotoBar />
       <Toast />
       <DropZone />
       {jsonOpen && <JsonDialog />}

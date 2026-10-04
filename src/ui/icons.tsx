@@ -125,5 +125,17 @@ export const Icon = {
     </>,
   ),
   moon: make(<path d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5Z" />),
+  camera: make(
+    <>
+      <path d="M4 8a2 2 0 0 1 2-2h2l1.5-2h5L16 6h2a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V8Z" />
+      <circle cx="12" cy="13" r="3.5" />
+    </>,
+  ),
+  panel: make(
+    <>
+      <rect x="3.5" y="4.5" width="17" height="15" rx="2.5" />
+      <path d="M9.5 4.5v15M5.8 8.5h1.6M5.8 11.5h1.6" />
+    </>,
+  ),
   sofa: make(<path d="M5 11V8a3 3 0 0 1 3-3h8a3 3 0 0 1 3 3v3M3 13a2 2 0 0 1 4 0v2h10v-2a2 2 0 0 1 4 0v4a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1v-4ZM6 18v2M18 18v2" />),
 }

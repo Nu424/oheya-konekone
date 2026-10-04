@@ -85,7 +85,18 @@ export function itemFootprint(type: string, params: Record<string, unknown>): Fo
   return fp
 }
 
-export function ItemObject({ item, ceiling, onPointerDown }: { item: Item; ceiling?: number; onPointerDown?: (e: { stopPropagation(): void }) => void }) {
+export function ItemObject({
+  item,
+  ceiling,
+  onPointerDown,
+  innerRef,
+}: {
+  item: Item
+  ceiling?: number
+  onPointerDown?: (e: { stopPropagation(): void }) => void
+  /** Wrapper around the model at the item's origin (for pop-in scaling). */
+  innerRef?: React.Ref<THREE.Group>
+}) {
   const obj = useMemo(() => buildItemObject(item.type, item.params), [item.type, item.params])
   useEffect(
     () => () => {
@@ -103,7 +114,9 @@ export function ItemObject({ item, ceiling, onPointerDown }: { item: Item; ceili
       userData={{ itemId: item.id }}
       onPointerDown={onPointerDown}
     >
-      <primitive object={obj} />
+      <group ref={innerRef}>
+        <primitive object={obj} />
+      </group>
     </group>
   )
 }

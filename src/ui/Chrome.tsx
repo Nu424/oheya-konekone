@@ -4,6 +4,7 @@ import { downloadText, parseLayoutText, serializeLayout } from '../model/io'
 import { redo, undo, useDoc, useUi } from '../store/useStore'
 import { itemCommands } from '../three/EditLayer'
 import { getFlow } from '../editor/flow'
+import { PHOTO_SAMPLES } from '../three/PhotoMode'
 import { Segmented } from './controls'
 import { Icon } from './icons'
 
@@ -49,6 +50,7 @@ export function TopBar({ onNew, onAi }: { onNew: () => void; onAi: () => void })
   const setJsonOpen = useUi((s) => s.setJsonOpen)
   const notify = useUi((s) => s.notify)
   const [menu, setMenu] = useState(false)
+  const panelOpen = useUi((s) => s.panel !== null)
   const menuRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -73,6 +75,9 @@ export function TopBar({ onNew, onAi }: { onNew: () => void; onAi: () => void })
         </div>
       </div>
       <div className="toolbar glass">
+        <button className={`icon-btn panel-btn${panelOpen ? ' on' : ''}`} onClick={() => useUi.getState().setPanel(panelOpen ? null : 'room')} title="パネルの表示・非表示">
+          <Icon.panel />
+        </button>
         <input className="title-input" value={name} onChange={(e) => setMeta({ name: e.target.value })} aria-label="おへやの名前" />
         <span className="sep" />
         <button className="icon-btn" disabled={!canUndo} onClick={undo} title="元に戻す (Ctrl+Z)">
@@ -167,13 +172,17 @@ export function Hud() {
       <button className={`icon-btn flow-btn${flow ? ' on' : ''}`} onClick={() => setFlow(!flow)} title="動線チェック (F)">
         <Icon.walk /> <span className="label">動線</span>
       </button>
+      <button className="icon-btn" onClick={() => useUi.getState().setPhoto(true)} title="撮影モード（パストレーシングで写真みたいに）(P)">
+        <Icon.camera /> <span className="label">撮影</span>
+      </button>
       <span className="sep" />
       <Segmented
-        value={view === 'walk' ? 'orbit' : view}
+        value={view}
         onChange={setView}
         options={[
-          { value: 'orbit', label: <><Icon.cube /> 3D</>, title: '3Dビュー (1)' },
-          { value: 'top', label: <><Icon.top /> 真上</>, title: '真上から (2)' },
+          { value: 'orbit', label: <><Icon.cube /> <span className="label">3D</span></>, title: '3Dビュー (1)' },
+          { value: 'top', label: <><Icon.top /> <span className="label">真上</span></>, title: '真上から (2)' },
+          { value: 'walk', label: <><Icon.walk /> <span className="label">歩く</span></>, title: '部屋の中を歩く (3)' },
         ]}
       />
     </div>
@@ -262,9 +271,15 @@ export function useShortcuts() {
         const sel = ui.selection?.kind === 'item' ? ui.selection.id : null
         if (e.key === '1') ui.setView('orbit')
         if (e.key === '2') ui.setView('top')
+        if (e.key === '3') ui.setView('walk')
         if (e.key.toLowerCase() === 'j') ui.setJsonOpen(true)
         if (e.key.toLowerCase() === 'f') ui.setFlow(!ui.flow)
-        if (e.key === 'Escape') ui.select(null)
+        if (e.key.toLowerCase() === 'p') ui.setPhoto(!ui.photo)
+        if (e.key === 'Escape') {
+          if (ui.photo) ui.setPhoto(false)
+          else if (ui.selection) ui.select(null)
+          else if (ui.view === 'walk') ui.setView('orbit')
+        }
         if (sel) {
           if (e.key === 'Delete' || e.key === 'Backspace') {
             e.preventDefault()
@@ -274,7 +289,7 @@ export function useShortcuts() {
           if (e.key.toLowerCase() === 'l') itemCommands.toggleLock(sel)
           const step = e.shiftKey ? 100 : 10
           const arrows: Record<string, [number, number]> = { ArrowLeft: [-step, 0], ArrowRight: [step, 0], ArrowUp: [0, -step], ArrowDown: [0, step] }
-          if (arrows[e.key]) {
+          if (arrows[e.key] && ui.view !== 'walk') {
             e.preventDefault()
             itemCommands.nudge(sel, ...arrows[e.key])
           }
@@ -319,6 +334,50 @@ export function FlowPanel() {
           ))}
         </ul>
       )}
+    </div>
+  )
+}
+
+export function PhotoBar() {
+  const photo = useUi((s) => s.photo)
+  const samples = useUi((s) => s.photoSamples)
+  const name = useDoc((s) => s.layout.meta.name)
+  if (!photo) return null
+  const pct = Math.min(1, samples / PHOTO_SAMPLES)
+  const save = () => {
+    const canvas = document.querySelector('.viewport canvas') as HTMLCanvasElement | null
+    if (!canvas) return
+    const a = document.createElement('a')
+    const d = new Date()
+    a.download = `${name || 'oheya'}-${d.getFullYear()}${String(d.getMonth() + 1).padStart(2, '0')}${String(d.getDate()).padStart(2, '0')}.png`
+    a.href = canvas.toDataURL('image/png')
+    a.click()
+    useUi.getState().notify('写真を保存したよ')
+  }
+  return (
+    <div className="photo-bar glass">
+      <Icon.camera />
+      <div className="photo-progress">
+        <div className="photo-label">
+          {pct < 1 ? (
+            <>
+              現像中… <b>{samples}</b> / {PHOTO_SAMPLES}
+            </>
+          ) : (
+            <b>できあがり！</b>
+          )}
+          <span className="field-hint">ドラッグで構図を変えられるよ（やり直しになる）</span>
+        </div>
+        <div className="photo-track">
+          <div style={{ width: `${pct * 100}%` }} />
+        </div>
+      </div>
+      <button className="icon-btn primary" onClick={save}>
+        <Icon.download /> 保存
+      </button>
+      <button className="icon-btn" onClick={() => useUi.getState().setPhoto(false)}>
+        <Icon.x /> やめる
+      </button>
     </div>
   )
 }

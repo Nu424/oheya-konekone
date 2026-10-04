@@ -1,5 +1,5 @@
 import { Html, Line } from '@react-three/drei'
-import { useThree, type ThreeEvent } from '@react-three/fiber'
+import { useFrame, useThree, type ThreeEvent } from '@react-three/fiber'
 import type CameraControlsImpl from 'camera-controls'
 import { useMemo, useRef } from 'react'
 import * as THREE from 'three'
@@ -26,15 +26,38 @@ interface DragState {
   moved: boolean
 }
 
+/** Items added after the first load pop in with a little bounce. */
+function usePop() {
+  const ref = useRef<THREE.Group>(null)
+  const start = useRef(window.__oheya?.ready ? performance.now() : -1)
+  const invalidate = useThree((s) => s.invalidate)
+  useFrame(() => {
+    const g = ref.current
+    if (!g || start.current < 0) return
+    const t = Math.min(1, (performance.now() - start.current) / 450)
+    // Damped spring: overshoots a little, settles at 1.
+    const k = 1 - Math.exp(-6 * t) * Math.cos(9 * t)
+    g.scale.setScalar(0.55 + 0.45 * k)
+    if (t >= 1) {
+      g.scale.setScalar(1)
+      start.current = -1
+    }
+    invalidate()
+  })
+  return ref
+}
+
 function EditableItem({ item, ceiling }: { item: Item; ceiling: number }) {
   const controls = useThree((s) => s.controls) as unknown as CameraControlsImpl | null
   const drag = useRef<DragState | null>(null)
   const hit = useMemo(() => new THREE.Vector3(), [])
+  const pop = usePop()
 
   const onDown = (e: ThreeEvent<PointerEvent>) => {
     if (e.button !== 0) return
     e.stopPropagation()
     const ui = useUi.getState()
+    if (ui.photo) return
     ui.select({ kind: 'item', id: item.id })
     if (item.locked || ui.view === 'walk') return
     const p = e.ray.intersectPlane(FLOOR, hit)
@@ -109,7 +132,7 @@ function EditableItem({ item, ceiling }: { item: Item; ceiling: number }) {
         if (!drag.current) document.body.style.cursor = ''
       }}
     >
-      <ItemObject item={item} ceiling={ceiling} />
+      <ItemObject item={item} ceiling={ceiling} innerRef={pop} />
     </group>
   )
 }

@@ -86,7 +86,7 @@ interface WallBuild {
 
 const STUB = 90
 
-function buildWall(room: Room, f: WallFrame, wallMats: THREE.Material[], capMat: THREE.Material): WallBuild {
+function buildWall(room: Room, f: WallFrame, wallMat: THREE.Material, capMat: THREE.Material): WallBuild {
   const t = room.wallThickness
   const H = room.height
   const full = new THREE.Group()
@@ -101,8 +101,14 @@ function buildWall(room: Room, f: WallFrame, wallMats: THREE.Material[], capMat:
   let cursor = start
   const solid = (u0: number, u1: number, v0: number, v1: number) => {
     if (u1 - u0 < 0.5 || v1 - v0 < 0.5) return
-    full.add(wallBox(f, u0, u1, v0, v1, 0, t, wallMats))
-    if (v0 < STUB) stub.add(wallBox(f, u0, u1, v0, Math.min(v1, STUB), 0, t, wallMats))
+    full.add(wallBox(f, u0, u1, v0, v1, 0, t, wallMat))
+    // The cut face on top gets a darker "poché" cap. Separate meshes (not material arrays) keep the
+    // path tracer happy: it maps one material per merged mesh.
+    if (v1 >= room.height - 0.5) full.add(wallBox(f, u0, u1, v1, v1 + 1, 0, t, capMat))
+    if (v0 < STUB) {
+      stub.add(wallBox(f, u0, u1, v0, Math.min(v1, STUB), 0, t, wallMat))
+      stub.add(wallBox(f, u0, u1, Math.min(v1, STUB), Math.min(v1, STUB) + 1, 0, t, capMat))
+    }
   }
 
   for (const o of openings) {
@@ -121,11 +127,6 @@ function buildWall(room: Room, f: WallFrame, wallMats: THREE.Material[], capMat:
   }
   solid(cursor, end, 0, H)
 
-  // Cap faces get the poché colour (index 2 is +Y on BoxGeometry).
-  for (const g of [full, stub])
-    g.traverse((m) => {
-      if (m instanceof THREE.Mesh && Array.isArray(m.material)) m.material = m.material.map((mm, i) => (i === 2 ? capMat : mm))
-    })
 
   // Baseboard (skip doors, closets and floor-level windows).
   const bb = room.baseboard
@@ -279,9 +280,9 @@ function buildCloset(g: THREE.Group, f: WallFrame, o: Closet, t: number, room: R
     [u1, u1 + t, 0, room.height, t, back], // side
   ]
   for (const [a, b, c, d, e, h] of enc) {
-    const m = wallBox(f, a, b, c, d, e, h, [wallMat, wallMat, capMat, wallMat, wallMat, wallMat])
+    const m = wallBox(f, a, b, c, d, e, h, wallMat)
     m.userData.closetShell = true
-    g.add(m)
+    g.add(m, wallBox(f, a, b, d, d + 1, e, h, capMat))
   }
   g.add(wallBox(f, u0, u1, -1, 0, t, back, innerMat)) // floor
   g.add(wallBox(f, u0, u1, H, H + 18, t, back, innerMat)) // shelf / head
@@ -357,7 +358,8 @@ export function buildRoom(room: Room): RoomBuild {
 
   // Slab under everything for a diorama look.
   const slab = new THREE.Mesh(new THREE.BoxGeometry(W + t * 2 + 40, 160, D + t * 2 + 40), mat('matte', '#d9cfc2', { roughness: 0.95 }))
-  slab.position.set(W / 2, -80.5, D / 2)
+  // Keep the slab top clearly below the floor: coplanar faces z-fight in the path tracer.
+  slab.position.set(W / 2, -86, D / 2)
   slab.receiveShadow = true
   root.add(slab)
 
@@ -366,16 +368,17 @@ export function buildRoom(room: Room): RoomBuild {
   const wallMat = new THREE.MeshStandardMaterial({ color: room.wall.color, roughness: 0.92, bumpMap: wp, bumpScale: 0.35 })
   wp.repeat.set(3, 3)
   const capMat = mat('matte', '#6f6a64', { roughness: 0.9 })
-  const wallMats = Array.from({ length: 6 }, () => wallMat)
-  const walls = wallFrames(room).map((f) => buildWall(room, f, wallMats, capMat))
+  const walls = wallFrames(room).map((f) => buildWall(room, f, wallMat, capMat))
   for (const w of walls) root.add(w.full, w.stub)
 
   // Columns
   for (const c of room.columns) {
-    const col = new THREE.Mesh(new THREE.BoxGeometry(c.width, H, c.depth), [wallMat, wallMat, capMat, wallMat, wallMat, wallMat])
+    const col = new THREE.Mesh(new THREE.BoxGeometry(c.width, H, c.depth), wallMat)
     col.position.set(c.x, H / 2, c.z)
     col.castShadow = col.receiveShadow = true
-    root.add(col)
+    const cap = new THREE.Mesh(new THREE.BoxGeometry(c.width, 1, c.depth), capMat)
+    cap.position.set(c.x, H + 0.5, c.z)
+    root.add(col, cap)
   }
 
   // Ceiling (one-sided, facing down). Hidden visually in the dollhouse view but still blocks the sun.

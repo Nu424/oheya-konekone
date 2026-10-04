@@ -3,7 +3,7 @@ import { temporal } from 'zundo'
 import { clampOpening, uid } from '../model/geometry'
 import { parseLayout } from '../model/io'
 import type { Item, Layout, Opening, OpeningType, Room } from '../model/schema'
-import { defaultLayout } from '../model/templates'
+import { defaultLayout, TEMPLATES } from '../model/templates'
 import { DoorOpening, WindowOpening, ClosetOpening } from '../model/schema'
 
 const STORAGE_KEY = 'oheya-konekone:layout:v1'
@@ -30,6 +30,10 @@ interface Actions {
 }
 
 function loadInitial(): Layout {
+  // ?template=<id> opens a template (handy for sharing and testing).
+  const tpl = typeof location !== 'undefined' ? new URLSearchParams(location.search).get('template') : null
+  const t = tpl ? TEMPLATES.find((x) => x.id === tpl) : undefined
+  if (t) return t.layout()
   try {
     const raw = localStorage.getItem(STORAGE_KEY)
     if (raw) {
@@ -206,6 +210,9 @@ interface UiState {
   hour: number
   /** Circulation check overlay. */
   flow: boolean
+  /** Path-traced photo mode and its progress. */
+  photo: boolean
+  photoSamples: number
   panel: 'room' | 'catalog' | null
   jsonOpen: boolean
   toast: { id: number; text: string; tone?: 'info' | 'error' } | null
@@ -215,6 +222,8 @@ interface UiState {
   setSnap(v: boolean): void
   setHour(h: number): void
   setFlow(v: boolean): void
+  setPhoto(v: boolean): void
+  setPhotoSamples(n: number): void
   setPanel(p: UiState['panel']): void
   setJsonOpen(v: boolean): void
   notify(text: string, tone?: 'info' | 'error'): void
@@ -227,7 +236,10 @@ export const useUi = create<UiState>()((set) => ({
   snap: true,
   hour: 14,
   flow: false,
-  panel: 'room',
+  photo: false,
+  photoSamples: 0,
+  // Start with the panel closed on phones so the room is visible.
+  panel: typeof window !== 'undefined' && window.innerWidth < 760 ? null : 'room',
   jsonOpen: false,
   toast: null,
   setView: (view) => set({ view }),
@@ -236,6 +248,8 @@ export const useUi = create<UiState>()((set) => ({
   setSnap: (snap) => set({ snap }),
   setHour: (hour) => set({ hour }),
   setFlow: (flow) => set({ flow }),
+  setPhoto: (photo) => set(photo ? { photo, selection: null, flow: false, photoSamples: 0 } : { photo }),
+  setPhotoSamples: (photoSamples) => set({ photoSamples }),
   setPanel: (panel) => set({ panel }),
   setJsonOpen: (jsonOpen) => set({ jsonOpen }),
   notify: (text, tone = 'info') => set({ toast: { id: Date.now(), text, tone } }),

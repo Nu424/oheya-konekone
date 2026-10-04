@@ -12,6 +12,7 @@ import { Lighting, type Lamp } from './Lighting'
 import { RoomMesh } from './RoomMesh'
 import { EditLayer } from './EditLayer'
 import { FlowOverlay } from './FlowOverlay'
+import { PhotoMode } from './PhotoMode'
 import { registerScreenToFloor } from '../editor/commands'
 
 const S = 0.001
@@ -24,10 +25,23 @@ declare global {
 
 /** Counts rendered frames so automated screenshots know when the scene has settled. */
 function FrameProbe() {
+  const invalidate = useThree((s) => s.invalidate)
+  useEffect(() => {
+    // With on-demand rendering, keep frames coming for a moment so shadows / AO settle.
+    let n = 0
+    const id = setInterval(() => {
+      invalidate()
+      if (++n > 20) {
+        clearInterval(id)
+        const p = (window.__oheya ??= { frames: 0, ready: false })
+        p.ready = true
+      }
+    }, 100)
+    return () => clearInterval(id)
+  }, [invalidate])
   useFrame(() => {
     const p = (window.__oheya ??= { frames: 0, ready: false })
     p.frames++
-    if (p.frames > 30) p.ready = true
   })
   return null
 }
@@ -86,7 +100,7 @@ function PlanDims({ room }: { room: Room }) {
   )
 }
 
-function cameraPose(room: Room, view: ViewMode, azimuthDeg = 35) {
+function cameraPose(room: Room, view: ViewMode, aspect = 1.6, azimuthDeg = 35) {
   const W = room.width * S
   const D = room.depth * S
   const H = room.height * S
@@ -97,7 +111,8 @@ function cameraPose(room: Room, view: ViewMode, azimuthDeg = 35) {
   }
   const az = THREE.MathUtils.degToRad(azimuthDeg)
   const polar = THREE.MathUtils.degToRad(52)
-  const dist = size * 2.0 + 2.2
+  // Portrait screens need to back off so the whole room fits horizontally.
+  const dist = (size * 2.0 + 2.2) * Math.max(1, Math.pow(1.25 / aspect, 0.85))
   const pos = new THREE.Vector3(
     target.x + dist * Math.sin(polar) * Math.sin(az),
     target.y + dist * Math.cos(polar),
@@ -123,13 +138,105 @@ function CameraRig({ room }: { room: Room }) {
   useLayoutEffect(() => {
     set({ camera: cam })
   }, [cam, set])
-  return <Rig key={ortho ? 'o' : 'p'} room={room} camera={cam} size={size} />
+  return view === 'walk' ? <WalkRig room={room} camera={cams.persp} /> : <Rig key={ortho ? 'o' : 'p'} room={room} camera={cam} size={size} />
+}
+
+const EYE = 1.5
+
+/** First-person walk mode: drag to look around, WASD / arrows to walk, click the floor to go there. */
+function WalkRig({ room, camera }: { room: Room; camera: THREE.PerspectiveCamera }) {
+  const ref = useRef<CameraControlsImpl>(null)
+  const keys = useRef(new Set<string>())
+  const invalidate = useThree((s) => s.invalidate)
+  const W = room.width * S
+  const D = room.depth * S
+
+  useEffect(() => {
+    const c = ref.current
+    if (!c) return
+    // Start just inside the first door (or the south side), looking at the room centre.
+    const door = room.openings.find((o) => o.type === 'door')
+    let x = W / 2
+    let z = D - 0.6
+    if (door) {
+      const mid = (door.offset + door.width / 2) * S
+      const inset = 0.7
+      ;[x, z] = door.wall === 'north' ? [mid, inset] : door.wall === 'south' ? [mid, D - inset] : door.wall === 'west' ? [inset, mid] : [W - inset, mid]
+    }
+    const dir = new THREE.Vector3(W / 2 - x, 0, D / 2 - z).normalize()
+    c.setLookAt(x, EYE, z, x + dir.x * 0.01, EYE - 0.002, z + dir.z * 0.01, false)
+    c.minDistance = c.maxDistance = 0.01
+    c.minPolarAngle = THREE.MathUtils.degToRad(20)
+    c.maxPolarAngle = THREE.MathUtils.degToRad(160)
+    c.azimuthRotateSpeed = -0.35
+    c.polarRotateSpeed = -0.35
+    c.mouseButtons.left = CameraControlsImpl.ACTION.ROTATE
+    c.mouseButtons.right = CameraControlsImpl.ACTION.NONE
+    c.mouseButtons.wheel = CameraControlsImpl.ACTION.NONE
+    c.touches.one = CameraControlsImpl.ACTION.TOUCH_ROTATE
+    c.touches.two = CameraControlsImpl.ACTION.NONE
+    c.setBoundary(new THREE.Box3(new THREE.Vector3(0.25, EYE - 0.01, 0.25), new THREE.Vector3(W - 0.25, EYE + 0.01, D - 0.25)))
+    camera.fov = 62
+    camera.updateProjectionMatrix()
+    return () => {
+      camera.fov = 36
+      camera.updateProjectionMatrix()
+    }
+  }, [room, W, D, camera, room.openings])
+
+  useEffect(() => {
+    const down = (e: KeyboardEvent) => {
+      const t = e.target as HTMLElement
+      if (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA') return
+      keys.current.add(e.key.toLowerCase())
+      invalidate()
+    }
+    const up = (e: KeyboardEvent) => keys.current.delete(e.key.toLowerCase())
+    window.addEventListener('keydown', down)
+    window.addEventListener('keyup', up)
+    return () => {
+      window.removeEventListener('keydown', down)
+      window.removeEventListener('keyup', up)
+    }
+  }, [invalidate])
+
+  useFrame((_, dt) => {
+    const c = ref.current
+    if (!c || keys.current.size === 0) return
+    invalidate()
+    const k = keys.current
+    const v = 1.6 * Math.min(dt, 0.05)
+    const f = (k.has('w') || k.has('arrowup') ? 1 : 0) - (k.has('s') || k.has('arrowdown') ? 1 : 0)
+    const r = (k.has('d') || k.has('arrowright') ? 1 : 0) - (k.has('a') || k.has('arrowleft') ? 1 : 0)
+    if (f) c.forward(f * v, false)
+    if (r) c.truck(r * v, 0, false)
+  })
+
+  return (
+    <>
+      <CameraControls ref={ref} camera={camera} makeDefault smoothTime={0.25} draggingSmoothTime={0.08} />
+      {/* Click anywhere on the floor to walk there. */}
+      <mesh
+        rotation-x={-Math.PI / 2}
+        position={[W / 2, 0.002, D / 2]}
+        onClick={(e) => {
+          if (e.delta > 4) return
+          e.stopPropagation()
+          ref.current?.moveTo(e.point.x, EYE, e.point.z, true)
+        }}
+      >
+        <planeGeometry args={[W, D]} />
+        <meshBasicMaterial visible={false} />
+      </mesh>
+    </>
+  )
 }
 
 function Rig({ room, camera, size }: { room: Room; camera: THREE.Camera; size: { width: number; height: number } }) {
   const ref = useRef<CameraControlsImpl>(null)
   const view = useUi((s) => s.view)
-  const panelOpen = useUi((s) => s.panel !== null)
+  // Photo mode hides the side panel, so frame the room in the middle of the screen.
+  const panelOpen = useUi((s) => s.panel !== null && !s.photo)
   const ortho = view === 'top'
   const animate = useRef(false)
   // Keep the orthographic frustum in pixels so zoom = pixels per metre.
@@ -149,7 +256,7 @@ function Rig({ room, camera, size }: { room: Room; camera: THREE.Camera; size: {
   useEffect(() => {
     const c = ref.current
     if (!c) return
-    const { pos, target } = cameraPose(room, view)
+    const { pos, target } = cameraPose(room, view, size.width / size.height)
     c.setLookAt(pos.x, pos.y, pos.z, target.x, target.y, target.z, animate.current)
     animate.current = true
     if (ortho) {
@@ -207,6 +314,7 @@ export function Viewport() {
   const view = useUi((s) => s.view)
   const hour = useUi((s) => s.hour)
   const flow = useUi((s) => s.flow)
+  const photo = useUi((s) => s.photo)
   const items = useDoc((s) => s.layout.items)
   const lamps = useMemo(() => collectLamps(items, room), [items, room])
   // The ceiling is cut away in every view except walking around inside the room.
@@ -215,6 +323,7 @@ export function Viewport() {
   return (
     <Canvas
       className="viewport"
+      frameloop="demand"
       shadows={{ type: THREE.PCFShadowMap }}
       dpr={[1, 2]}
       gl={{ antialias: false, powerPreference: 'high-performance', stencil: false, preserveDrawingBuffer: true }}
@@ -225,7 +334,7 @@ export function Viewport() {
         <RoomMesh room={room} plan={view === 'top'} />
         <EditLayer cutaway={cutaway} />
         {flow && <FlowOverlay />}
-        <Effects />
+        {photo ? <PhotoMode /> : <Effects />}
       </Suspense>
       <CameraRig room={room} />
       {view === 'top' && <PlanDims room={room} />}

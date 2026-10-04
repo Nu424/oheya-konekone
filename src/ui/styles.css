@@ -532,12 +532,27 @@ input[type='range']:active::-webkit-slider-thumb { transform: scale(1.2); }
 .rel { position: relative; }
 
 @media (max-width: 760px) {
-  .side { top: auto; height: 46vh; width: auto; right: 12px; bottom: 76px; }
-  .side.hidden { transform: translateY(60vh); }
-  .title-input, .brand-name small, .hint, .icon-btn .label { display: none; }
+  .topbar { left: 8px; right: 8px; top: 8px; gap: 6px; padding: 0; }
+  .brand { padding: 0 8px; height: 48px; }
+  .brand-name { display: none; }
+  .toolbar { height: 48px; padding: 0 4px; gap: 0; }
+  .icon-btn { min-width: 34px; height: 34px; padding: 0 6px; }
+  .side { top: auto; height: 50vh; width: auto; left: 8px; right: 8px; bottom: 72px; }
+  .side.hidden { transform: translateY(70vh); }
+  .title-input, .hint, .icon-btn .label, .seg .label { display: none; }
+  .hud { left: 8px; right: 8px; bottom: 8px; transform: none; justify-content: space-between; gap: 2px; padding: 4px; }
+  .hud .seg button { padding: 8px 10px; }
+  .clock { padding: 0 2px 0 6px; gap: 4px; }
+  .clock input { width: 64px; }
+  .clock-label { min-width: 34px; font-size: 11px; }
+  .hud .sep { margin: 0 1px; }
+  .flow-panel, .flow-panel.beside { top: 64px; right: 8px; left: 8px; width: auto; }
   .json-wrap { grid-template-columns: 1fr; height: auto; }
   .json-editor { height: 40vh; }
+  .photo-bar { bottom: 8px; }
+  .photo-label .field-hint { display: none; }
 }
+.panel-btn.on { color: var(--accent-ink); }
 
 /* ---------- in-scene item UI ---------- */
 .item-toolbar {
@@ -775,3 +790,35 @@ input[type='range']:focus-visible::-webkit-slider-thumb { box-shadow: 0 0 0 4px 
 .flow-issues li svg { width: 15px; height: 15px; flex: none; margin-top: 2px; }
 .flow-issues li.warn svg { color: var(--err); }
 .flow-issues li.info svg { color: var(--warn); }
+
+/* ---------- photo mode ---------- */
+.app.photo .topbar,
+.app.photo .side,
+.app.photo .hud,
+.app.photo .hint,
+.app.photo .inspector,
+.app.photo .flow-panel { opacity: 0; pointer-events: none; transform: translateY(-8px); transition: opacity 0.3s, transform 0.3s; }
+.photo-bar {
+  position: absolute;
+  left: 50%;
+  bottom: 18px;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 12px 10px 16px;
+  z-index: 20;
+  width: min(560px, calc(100vw - 24px));
+  animation: pop 0.3s cubic-bezier(0.2, 0.9, 0.3, 1.25);
+}
+.photo-bar > svg { width: 24px; height: 24px; color: var(--accent); flex: none; }
+.photo-progress { flex: 1; min-width: 0; }
+.photo-label { display: flex; align-items: baseline; gap: 10px; font-size: 13px; white-space: nowrap; overflow: hidden; }
+.photo-label b { font-weight: 900; }
+.photo-track { height: 6px; border-radius: 6px; background: var(--line); margin-top: 6px; overflow: hidden; }
+.photo-track div { height: 100%; background: linear-gradient(90deg, #f3b49a, var(--accent)); border-radius: 6px; transition: width 0.25s; }
+
+@media (max-width: 760px) {
+  .hud .seg { flex-wrap: nowrap; }
+  .hud .clock input { width: 64px; }
+}
