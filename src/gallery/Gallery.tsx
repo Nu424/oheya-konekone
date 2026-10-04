@@ -1,4 +1,4 @@
-import { CameraControls, Html } from '@react-three/drei'
+import { CameraControls } from '@react-three/drei'
 import { Canvas, useFrame } from '@react-three/fiber'
 import { useEffect, useMemo } from 'react'
 import * as THREE from 'three'
@@ -26,7 +26,8 @@ function extremes(specs: ParamSpecs, which: 'min' | 'max') {
   return out
 }
 
-function cellsFor(type: string | null): Cell[] {
+function cellsFor(type: string | null, types: string[] | null): Cell[] {
+  if (types) return types.flatMap((t) => (getAsset(t) ? [{ label: getAsset(t)!.label, type: t, params: {} }] : []))
   if (!type) return assetList.map((a) => ({ label: a.label, type: a.type, params: {} }))
   const a = getAsset(type)
   if (!a) return []
@@ -47,6 +48,44 @@ function cellsFor(type: string | null): Cell[] {
   return cells
 }
 
+const labelCache = new Map<string, THREE.Texture>()
+function labelTexture(text: string) {
+  let t = labelCache.get(text)
+  if (t) return t
+  const c = document.createElement('canvas')
+  const ctx = c.getContext('2d')!
+  const font = '700 40px "Zen Maru Gothic", sans-serif'
+  ctx.font = font
+  const w = Math.ceil(ctx.measureText(text).width) + 48
+  c.width = w
+  c.height = 64
+  ctx.font = font
+  ctx.fillStyle = '#fffbf6'
+  ctx.beginPath()
+  ctx.roundRect(0, 0, w, 64, 20)
+  ctx.fill()
+  ctx.fillStyle = '#3b2f28'
+  ctx.textBaseline = 'middle'
+  ctx.fillText(text, 24, 34)
+  t = new THREE.CanvasTexture(c)
+  t.colorSpace = THREE.SRGBColorSpace
+  labelCache.set(text, t)
+  return t
+}
+
+function Label({ text, position, size }: { text: string; position: [number, number, number]; size: number }) {
+  const tex = labelTexture(text)
+  const img = tex.image as HTMLCanvasElement
+  const h = size
+  const w = (img.width / img.height) * h
+  return (
+    <mesh position={position} rotation-x={-Math.PI / 2}>
+      <planeGeometry args={[w, h]} />
+      <meshBasicMaterial map={tex} transparent toneMapped={false} />
+    </mesh>
+  )
+}
+
 function Env() {
   const { gl, scene } = useThree()
   useEffect(() => {
@@ -54,6 +93,15 @@ function Env() {
     scene.environment = pm.fromScene(new RoomEnvironment(), 0.04).texture
     scene.environmentIntensity = 0.5
   }, [gl, scene])
+  return null
+}
+
+/** Point the default CameraControls once they exist. */
+function AimCamera({ pos, ty }: { pos: [number, number, number]; ty: number }) {
+  const controls = useThree((s) => s.controls) as unknown as { setLookAt?: (...a: unknown[]) => void } | null
+  useEffect(() => {
+    controls?.setLookAt?.(...pos, 0, ty, 0, false)
+  }, [controls, pos, ty])
   return null
 }
 
@@ -69,30 +117,46 @@ function Probe() {
 export default function Gallery() {
   const q = new URLSearchParams(location.search)
   const type = q.get('type')
-  const cells = useMemo(() => cellsFor(type), [type])
+  const only = q.get('only')
+  const cells = useMemo(() => {
+    const all = cellsFor(type, q.get('types')?.split(',') ?? null)
+    return only !== null ? all.filter((_, i) => String(i) === only || all[i].label === only) : all
+  }, [type, only])
   const objs = useMemo(
     () =>
       cells.map((c) => {
         const o = buildItemObject(c.type, c.params)
         const box = o ? new THREE.Box3().setFromObject(o) : new THREE.Box3()
-        return { c, o, box }
+        return { c, o, box: o ? (o.userData.footprint.box as THREE.Box3).clone().applyMatrix4(new THREE.Matrix4().makeScale(0.001, 0.001, 0.001)) : box }
       }),
     [cells],
   )
   const spacing = Math.max(1.6, ...objs.map(({ box }) => Math.max(box.max.x - box.min.x, box.max.z - box.min.z) + 0.6))
-  const cols = Math.ceil(Math.sqrt(objs.length * 1.6))
+  const maxH = Math.max(0.3, ...objs.map(({ box }) => box.max.y - box.min.y))
+  const cols = Math.max(1, Math.min(objs.length, Math.ceil(Math.sqrt(objs.length * 1.6))))
   const rows = Math.ceil(objs.length / cols)
   const W = cols * spacing
   const D = rows * spacing
 
+  // 3/4 view from the front-right, framed to the grid (which is centred on the origin).
+  const cam = (() => {
+    const size = Math.max(W, D * 1.2)
+    const dist = only !== null ? size * 1.35 + 0.4 : size * 1.3 + 0.5
+    const el = THREE.MathUtils.degToRad(only !== null ? 32 : 48)
+    const az = THREE.MathUtils.degToRad(only !== null ? 28 : 8)
+    const ty = only !== null ? maxH * 0.4 : 0.1
+    const pos: [number, number, number] = [dist * Math.cos(el) * Math.sin(az), ty + dist * Math.sin(el), dist * Math.cos(el) * Math.cos(az)]
+    return { pos, ty }
+  })()
+
   return (
     <div style={{ position: 'fixed', inset: 0 }}>
-      <Canvas shadows={{ type: THREE.PCFShadowMap }} dpr={1} gl={{ antialias: false, preserveDrawingBuffer: true }} camera={{ fov: 30, position: [W * 0.5, Math.max(W, D) * 0.9 + 2, D + Math.max(W, D) * 0.7 + 2] }}>
+      <Canvas shadows={{ type: THREE.PCFShadowMap }} dpr={1} gl={{ antialias: false, preserveDrawingBuffer: true }} camera={{ fov: 30, position: cam.pos }}>
         <color attach="background" args={['#efe6da']} />
         <Env />
         <hemisphereLight args={['#ffffff', '#b39a80', 0.4]} />
         <directionalLight
-          position={[W / 2 + 4, 8, D / 2 + 6]}
+          position={[4, 8, 6]}
           intensity={2.5}
           castShadow
           shadow-mapSize={[4096, 4096]}
@@ -103,34 +167,26 @@ export default function Gallery() {
           shadow-bias={-0.0002}
           shadow-radius={3}
           onUpdate={(l) => {
-            l.target.position.set(W / 2, 0, D / 2)
+            l.target.position.set(0, 0, 0)
             l.target.updateMatrixWorld()
           }}
         />
-        <mesh rotation-x={-Math.PI / 2} position={[W / 2, 0, D / 2]} receiveShadow>
+        <mesh rotation-x={-Math.PI / 2} position={[0, 0, 0]} receiveShadow>
           <planeGeometry args={[W + 4, D + 4]} />
           <meshStandardMaterial color="#e2d6c6" roughness={0.9} />
         </mesh>
-        {objs.map(({ c, o }, i) => {
+        {objs.map(({ c, o, box }, i) => {
           const x = (i % cols) * spacing + spacing / 2
           const z = Math.floor(i / cols) * spacing + spacing / 2
           return (
-            <group key={i} position={[x, 0, z]}>
+            <group key={i} position={[x - W / 2, Math.max(0, -box.min.y), z - D / 2]}>
               {o && <primitive object={o} />}
-              <Html position={[0, 0, spacing / 2 - 0.15]} center style={{ pointerEvents: 'none' }}>
-                <div style={{ background: '#fffbf6', borderRadius: 8, padding: '2px 8px', fontSize: 12, fontWeight: 700, whiteSpace: 'nowrap', boxShadow: '0 2px 6px rgba(0,0,0,.15)', fontFamily: 'sans-serif' }}>
-                  {c.label}
-                </div>
-              </Html>
+              <Label text={c.label} position={[0, 0.005, Math.min(spacing / 2 - 0.12, box.max.z + 0.22)]} size={Math.max(0.12, spacing * 0.07)} />
             </group>
           )
         })}
-        <CameraControls
-          makeDefault
-          ref={(c) => {
-            c?.setTarget(W / 2, 0.3, D / 2, false)
-          }}
-        />
+        <CameraControls makeDefault />
+        <AimCamera pos={cam.pos} ty={cam.ty} />
         <Effects quality="medium" />
         <Probe />
       </Canvas>

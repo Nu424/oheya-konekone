@@ -16,7 +16,14 @@ export const CATEGORY_LABELS: Record<Category, string> = {
   light: '照明',
 }
 
-/** Where an item naturally lives. Affects default elevation and snapping. */
+/**
+ * Where an item naturally lives.
+ * - floor: stands on the floor (position y is usually 0)
+ * - wall: hung on a wall at `elevation` (aircon, curtain rail)
+ * - onTop: sits on other furniture at `elevation` (monitor, TV)
+ * - ceiling: hangs from the ceiling. Built with its origin at the ceiling and extending downward;
+ *   the renderer ignores position y and attaches it to the ceiling.
+ */
 export type Placement = 'floor' | 'wall' | 'ceiling' | 'onTop'
 
 export interface AssetDef<S extends ParamSpecs = ParamSpecs> {
@@ -26,6 +33,12 @@ export interface AssetDef<S extends ParamSpecs = ParamSpecs> {
   /** Short description for the catalog and the AI prompt. */
   description: string
   placement: Placement
+  /** Default height (mm) of the item's bottom when added, for wall / onTop items. */
+  elevation?: number
+  /** Hide while the ceiling is cut away (flush ceiling fixtures would otherwise float). */
+  hideWithCeiling?: boolean
+  /** Whether to draw a soft contact shadow under the item (default true for floor items). */
+  contactShadow?: boolean
   params: S
   presets?: { name: string; params: Partial<ParamValues<S>> }[]
   /**

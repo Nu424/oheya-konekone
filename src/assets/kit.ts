@@ -155,3 +155,72 @@ export function group(...children: (THREE.Object3D | null | undefined | false)[]
 }
 
 export const deg = (d: number) => (d * Math.PI) / 180
+
+/**
+ * Loft through rounded-rectangle rings (cloth drapes, kotatsu futon, lamp shades).
+ * `ring(t)` returns half-width, half-depth, corner radius and y for t in 0..1.
+ */
+export function loft(
+  ring: (t: number) => { hw: number; hd: number; r: number; y: number; wave?: number },
+  material: THREE.Material,
+  o: { rings?: number; perSide?: number; cornerSegs?: number } = {},
+) {
+  const rings = o.rings ?? 16
+  const cs = o.cornerSegs ?? 6
+  const ps = o.perSide ?? 6
+  const verts: number[] = []
+  const uvs: number[] = []
+  let ringLen = 0
+  for (let i = 0; i <= rings; i++) {
+    const t = i / rings
+    const { hw, hd, r, y, wave = 0 } = ring(t)
+    const pts: [number, number][] = []
+    const rr = Math.min(r, hw - 0.5, hd - 0.5)
+    const corners: [number, number, number][] = [
+      [hw - rr, hd - rr, 0],
+      [-hw + rr, hd - rr, Math.PI / 2],
+      [-hw + rr, -hd + rr, Math.PI],
+      [hw - rr, -hd + rr, (Math.PI * 3) / 2],
+    ]
+    for (const [cx, cz, a0] of corners) {
+      for (let k = 0; k <= cs; k++) {
+        const a = a0 + (k / cs) * (Math.PI / 2)
+        pts.push([cx + Math.cos(a) * rr, cz + Math.sin(a) * rr])
+      }
+      // straight side to next corner
+      const next = corners[(corners.indexOf(corners.find((c) => c[2] === a0)!) + 1) % 4]
+      const ea = a0 + Math.PI / 2
+      const sx = cx + Math.cos(ea) * rr
+      const sz = cz + Math.sin(ea) * rr
+      const na = next[2]
+      const nx = next[0] + Math.cos(na) * rr
+      const nz = next[1] + Math.sin(na) * rr
+      for (let k = 1; k < ps; k++) pts.push([sx + ((nx - sx) * k) / ps, sz + ((nz - sz) * k) / ps])
+    }
+    ringLen = pts.length
+    pts.forEach(([x, z], k) => {
+      const ang = Math.atan2(z, x)
+      const wv = wave ? 1 + wave * Math.sin(ang * 14) : 1
+      verts.push(x * wv, y, z * wv)
+      uvs.push((k / pts.length) * (hw + hd) * 0.004, t * 2)
+    })
+  }
+  const idx: number[] = []
+  for (let i = 0; i < rings; i++)
+    for (let k = 0; k < ringLen; k++) {
+      const a = i * ringLen + k
+      const b = i * ringLen + ((k + 1) % ringLen)
+      const c = (i + 1) * ringLen + k
+      const d = (i + 1) * ringLen + ((k + 1) % ringLen)
+      idx.push(a, c, b, b, c, d)
+    }
+  const geo = new THREE.BufferGeometry()
+  geo.setAttribute('position', new THREE.Float32BufferAttribute(verts, 3))
+  geo.setAttribute('uv', new THREE.Float32BufferAttribute(uvs, 2))
+  geo.setIndex(idx)
+  geo.computeVertexNormals()
+  const mesh = new THREE.Mesh(geo, material)
+  mesh.castShadow = true
+  mesh.receiveShadow = true
+  return mesh
+}

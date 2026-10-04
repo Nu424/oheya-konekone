@@ -9,6 +9,7 @@ import { Effects } from './Effects'
 import { ItemObject } from './ItemObject'
 import { Lighting } from './Lighting'
 import { RoomMesh } from './RoomMesh'
+import { getAsset } from '../assets/registry'
 
 const S = 0.001
 
@@ -104,6 +105,8 @@ export function Viewport() {
   const items = useDoc((s) => s.layout.items)
   const select = useUi((s) => s.select)
   const view = useUi((s) => s.view)
+  // The ceiling is cut away in every view except walking around inside the room.
+  const cutaway = view !== 'walk'
 
   return (
     <Canvas
@@ -118,10 +121,11 @@ export function Viewport() {
       <Suspense fallback={null}>
         <Lighting room={room} />
         <RoomMesh room={room} plan={view === 'top'} />
-        {items.map((it) => (
+        {items.map((it) => (getAsset(it.type)?.hideWithCeiling && cutaway ? null :
           <ItemObject
             key={it.id}
             item={it}
+            ceiling={room.height}
             onPointerDown={(e) => {
               e.stopPropagation()
               select({ kind: 'item', id: it.id })

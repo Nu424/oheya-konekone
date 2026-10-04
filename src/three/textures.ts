@@ -102,14 +102,18 @@ function cached(key: string, make: () => THREE.Texture) {
  */
 export function woodGrain() {
   return cached('woodGrain', () => {
-    const warp = fbm(11, 4, 4)
-    const fine = fbm(12, 64, 2)
-    const knots = fbm(13, 3, 3)
+    // Fibres run along U. Stretch noise along U so it reads as long straight grain,
+    // with gently drifting growth lines and a few darker streaks.
+    const warp = fbm(11, 2, 3)
+    const fibres = fbm(12, 4, 4)
+    const fine = fbm(13, 8, 3)
     const c = grayCanvas(1024, (u, v) => {
-      const w = warp(u, v * 0.25)
-      const rings = Math.sin((v * 34 + w * 6 + knots(u, v) * 2.5) * Math.PI * 2)
-      const streak = Math.pow(Math.abs(rings), 6)
-      return 0.95 - streak * 0.13 - fine(u * 0.15, v) * 0.1 + w * 0.06
+      const w = warp(u, v) * 1.2
+      const lines = Math.sin((v * 22 + w) * Math.PI * 2)
+      const growth = Math.pow(0.5 + 0.5 * lines, 3) // thin dark late-wood lines
+      const streak = fibres(u * 0.25, v * 2)
+      const pores = fine(u * 0.5, v * 4)
+      return 0.97 - growth * 0.07 - (streak - 0.5) * 0.12 - (pores - 0.5) * 0.06
     })
     return toTexture(c, true)
   })
@@ -431,6 +435,26 @@ export function skyView() {
     }
     const t = new THREE.CanvasTexture(c)
     t.colorSpace = THREE.SRGBColorSpace
+    return t
+  })
+}
+
+/** Rounded-rectangle soft shadow (alpha in the green channel), stretched to any footprint. */
+export function contactShadowTexture() {
+  return cached('contactShadow', () => {
+    const size = 128
+    const c = canvas(size)
+    const ctx = c.getContext('2d')!
+    ctx.fillStyle = '#000'
+    ctx.fillRect(0, 0, size, size)
+    ctx.filter = 'blur(14px)'
+    ctx.fillStyle = '#fff'
+    const inset = 30
+    ctx.beginPath()
+    ctx.roundRect(inset, inset, size - inset * 2, size - inset * 2, 16)
+    ctx.fill()
+    const t = new THREE.CanvasTexture(c)
+    t.colorSpace = THREE.NoColorSpace
     return t
   })
 }
