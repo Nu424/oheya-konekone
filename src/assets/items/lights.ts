@@ -146,7 +146,11 @@ export const floorLamp = defineAsset({
     }
     return g
   },
-  lights: ({ height }) => [{ position: [0, height - 200, 0], color: '#ffd9a8', intensity: 0.8, distance: 4000 }],
+  lights: ({ style, height }) => [
+    style === 'arc'
+      ? { position: [0, height * 0.92 - 150, Math.min(1400, height * 0.8) - 400], color: '#ffd9a8', intensity: 0.8, distance: 4000 }
+      : { position: [0, height - 200, 0], color: '#ffd9a8', intensity: 0.8, distance: 4000 },
+  ],
 })
 
 export const deskLamp = defineAsset({

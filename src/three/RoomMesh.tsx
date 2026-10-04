@@ -12,6 +12,13 @@ type Door = z.infer<typeof DoorOpening>
 type Win = z.infer<typeof WindowOpening>
 type Closet = z.infer<typeof ClosetOpening>
 
+let skyMat: THREE.MeshBasicMaterial | undefined
+/** Shared material for the view outside windows; Lighting tints it by time of day. */
+export function skyMaterial() {
+  skyMat ??= new THREE.MeshBasicMaterial({ map: skyView(), color: new THREE.Color(1.15, 1.15, 1.15) })
+  return skyMat
+}
+
 /** Material used for parts hidden by the dollhouse cutaway: invisible, but still casts shadows. */
 const GHOST = new THREE.MeshBasicMaterial({ colorWrite: false, depthWrite: false })
 
@@ -193,7 +200,7 @@ function buildWindow(g: THREE.Group, f: WallFrame, o: Win, t: number) {
   // The view outside: an unlit sky panel behind the glass, visible from inside only.
   const view = new THREE.Mesh(
     new THREE.PlaneGeometry(o.width, o.height),
-    new THREE.MeshBasicMaterial({ map: skyView(), color: new THREE.Color(1.15, 1.15, 1.15) }),
+    skyMaterial(),
   )
   place(g, f, view, (u0 + u1) / 2, (v0 + v1) / 2, t + 40)
   view.castShadow = false

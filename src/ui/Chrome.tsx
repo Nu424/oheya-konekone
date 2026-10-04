@@ -3,6 +3,7 @@ import { useStore } from 'zustand'
 import { downloadText, parseLayoutText, serializeLayout } from '../model/io'
 import { redo, undo, useDoc, useUi } from '../store/useStore'
 import { itemCommands } from '../three/EditLayer'
+import { getFlow } from '../editor/flow'
 import { Segmented } from './controls'
 import { Icon } from './icons'
 
@@ -40,7 +41,7 @@ export function loadLayoutText(text: string, source = 'JSON') {
   }
 }
 
-export function TopBar({ onNew }: { onNew: () => void }) {
+export function TopBar({ onNew, onAi }: { onNew: () => void; onAi: () => void }) {
   const name = useDoc((s) => s.layout.meta.name)
   const setMeta = useDoc((s) => s.setMeta)
   const canUndo = useStore(useDoc.temporal, (s) => s.pastStates.length > 0)
@@ -83,6 +84,9 @@ export function TopBar({ onNew }: { onNew: () => void }) {
       </div>
       <span className="spacer" />
       <div className="toolbar glass">
+        <button className="icon-btn ai-btn" onClick={onAi} title="AIにレイアウトを考えてもらう">
+          <Icon.sparkle /> <span className="label">AIに頼む</span>
+        </button>
         <button className="icon-btn" onClick={() => setJsonOpen(true)} title="JSONで編集 (J)">
           <Icon.code /> <span className="label">JSON</span>
         </button>
@@ -130,11 +134,40 @@ export function TopBar({ onNew }: { onNew: () => void }) {
   )
 }
 
+function fmtHour(h: number) {
+  const hh = Math.floor(h)
+  const mm = Math.round((h - hh) * 60)
+  return `${hh}:${String(mm).padStart(2, '0')}`
+}
+
 export function Hud() {
   const view = useUi((s) => s.view)
   const setView = useUi((s) => s.setView)
+  const hour = useUi((s) => s.hour)
+  const setHour = useUi((s) => s.setHour)
+  const night = hour < 6.5 || hour > 17.5
+  const flow = useUi((s) => s.flow)
+  const setFlow = useUi((s) => s.setFlow)
   return (
     <div className="hud glass">
+      <label className="clock" title="時間帯（夜は照明が点くよ）">
+        {night ? <Icon.moon /> : <Icon.sun />}
+        <input
+          type="range"
+          min={5}
+          max={23.5}
+          step={0.25}
+          value={hour}
+          style={{ ['--pct' as string]: `${((hour - 5) / 18.5) * 100}%` }}
+          onChange={(e) => setHour(Number(e.target.value))}
+        />
+        <span className="clock-label">{fmtHour(hour)}</span>
+      </label>
+      <span className="sep" />
+      <button className={`icon-btn flow-btn${flow ? ' on' : ''}`} onClick={() => setFlow(!flow)} title="動線チェック (F)">
+        <Icon.walk /> <span className="label">動線</span>
+      </button>
+      <span className="sep" />
       <Segmented
         value={view === 'walk' ? 'orbit' : view}
         onChange={setView}
@@ -230,6 +263,7 @@ export function useShortcuts() {
         if (e.key === '1') ui.setView('orbit')
         if (e.key === '2') ui.setView('top')
         if (e.key.toLowerCase() === 'j') ui.setJsonOpen(true)
+        if (e.key.toLowerCase() === 'f') ui.setFlow(!ui.flow)
         if (e.key === 'Escape') ui.select(null)
         if (sel) {
           if (e.key === 'Delete' || e.key === 'Backspace') {
@@ -250,4 +284,41 @@ export function useShortcuts() {
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
   }, [])
+}
+
+export function FlowPanel() {
+  const flow = useUi((s) => s.flow)
+  const layout = useDoc((s) => s.layout)
+  const beside = useUi((s) => s.selection?.kind === 'item')
+  if (!flow) return null
+  const f = getFlow(layout)
+  const warn = f.issues.filter((i) => i.level === 'warn').length
+  return (
+    <div className={`flow-panel glass${beside ? ' beside' : ''}`}>
+      <div className="flow-head">
+        <Icon.walk />
+        <b>動線チェック</b>
+        <span className={`flow-badge ${warn ? 'bad' : f.issues.length ? 'meh' : 'good'}`}>{warn ? `${warn}件の注意` : f.issues.length ? 'ほぼOK' : 'バッチリ！'}</span>
+        <button className="icon-btn" onClick={() => useUi.getState().setFlow(false)} aria-label="閉じる">
+          <Icon.x />
+        </button>
+      </div>
+      <div className="flow-legend">
+        <span><i style={{ background: 'rgb(150,220,165)' }} />ゆったり通れる</span>
+        <span><i style={{ background: 'rgb(255,210,110)' }} />60cm未満</span>
+        <span><i style={{ background: 'rgb(255,150,140)' }} />たどり着けない</span>
+        <span><i style={{ background: 'rgb(242,180,154)' }} />ドアの開く範囲</span>
+      </div>
+      {f.issues.length > 0 && (
+        <ul className="flow-issues">
+          {f.issues.map((i, k) => (
+            <li key={k} className={i.level} onClick={() => i.itemId && useUi.getState().select({ kind: 'item', id: i.itemId })}>
+              {i.level === 'warn' ? <Icon.alert /> : <Icon.check />}
+              {i.message}
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  )
 }

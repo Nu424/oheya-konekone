@@ -1,6 +1,6 @@
 import * as THREE from 'three'
 import { mat, SWATCHES } from '../../three/materials'
-import { rng } from '../../three/textures'
+import { HEADLESS, rng } from '../../three/textures'
 import { boxOn, cyl, deg, extrude, group, lathe, rbox, roundedRect, tube } from '../kit'
 import { p } from '../params'
 import { defineAsset } from '../types'
@@ -13,6 +13,7 @@ function rugTexture(pattern: string, color: string, accent: string, round: boole
   const key = `${pattern}|${color}|${accent}|${round}`
   let t = rugTextures.get(key)
   if (t) return t
+  if (HEADLESS) return new THREE.Texture()
   const s = 512
   const c = document.createElement('canvas')
   c.width = c.height = s
@@ -363,6 +364,7 @@ let mirrorMat: THREE.Material | undefined
 /** Fake reflection: a soft gradient of wall and floor tones plus real env reflections on top. */
 function mirrorMaterial() {
   if (mirrorMat) return mirrorMat
+  if (HEADLESS) return new THREE.MeshStandardMaterial()
   const c = document.createElement('canvas')
   c.width = 64
   c.height = 256

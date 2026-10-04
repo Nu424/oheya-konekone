@@ -2,6 +2,9 @@ import { useEffect, useMemo, useState, type ReactNode } from 'react'
 import { downloadText, layoutJsonSchema, parseLayoutText, serializeLayout, type ParseResult } from '../model/io'
 import type { Layout } from '../model/schema'
 import { TEMPLATES } from '../model/templates'
+import { buildPrompt } from '../ai/prompt'
+import { assetList } from '../assets/registry'
+import { itemFootprint } from '../three/ItemObject'
 import { useDoc, useUi } from '../store/useStore'
 import { FloorPlan } from './FloorPlan'
 import { Icon } from './icons'
@@ -31,7 +34,7 @@ export function Modal({ title, sub, onClose, children, foot, width }: { title: R
   )
 }
 
-function summarizeDiff(a: Layout, b: Layout): string[] {
+export function summarizeDiff(a: Layout, b: Layout): string[] {
   const out: string[] = []
   const ra = a.room
   const rb = b.room
@@ -211,6 +214,153 @@ export function TemplateDialog({ onClose }: { onClose: () => void }) {
             <span>{t.description}</span>
           </button>
         ))}
+      </div>
+    </Modal>
+  )
+}
+
+const IDEAS = [
+  '在宅ワークがはかどる部屋にしたい。デスクまわりを充実させて',
+  '友だちを3人くらい呼んでくつろげる部屋',
+  'ミニマルで、できるだけ広く見せたい',
+  '本と観葉植物に囲まれた、カフェみたいな部屋',
+  'ベッドとソファの両方を置きたい。通路はしっかり確保して',
+  '冬はこたつでぬくぬくしたい。和モダンな雰囲気で',
+]
+
+function measuredSizes() {
+  const out: Record<string, string> = {}
+  for (const a of assetList) {
+    const fp = itemFootprint(a.type, {})
+    if (fp) out[a.type] = `${Math.round(fp.w)}×${Math.round(fp.d)}×${Math.round(fp.h)}`
+  }
+  return out
+}
+
+export function AiDialog({ onClose }: { onClose: () => void }) {
+  const layout = useDoc((s) => s.layout)
+  const setLayout = useDoc((s) => s.setLayout)
+  const notify = useUi((s) => s.notify)
+  const [request, setRequest] = useState('')
+  const [keepRoom, setKeepRoom] = useState(true)
+  const [reply, setReply] = useState('')
+  const [copied, setCopied] = useState(false)
+  const result = useMemo(() => (reply.trim() ? parseLayoutText(reply) : null), [reply])
+  const diff = result?.ok ? summarizeDiff(layout, result.layout) : []
+
+  const copyPrompt = async () => {
+    const text = buildPrompt(layout, { request, keepRoom, sizes: measuredSizes() })
+    await navigator.clipboard.writeText(text)
+    setCopied(true)
+    notify(`プロンプトをコピーしたよ（${text.length.toLocaleString()}文字）`)
+  }
+
+  return (
+    <Modal
+      title={
+        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
+          <Icon.sparkle width={22} /> AIに頼む
+        </span>
+      }
+      sub="ChatGPTやClaudeなどにレイアウトを考えてもらおう。プロンプトをコピーして渡して、返ってきたJSONを貼り付けるだけ"
+      onClose={onClose}
+      width={980}
+      foot={
+        <>
+          <span className="field-hint">反映したあとも Ctrl+Z でもとに戻せるよ</span>
+          <span className="spacer" />
+          <button
+            className="icon-btn primary"
+            disabled={!result?.ok}
+            onClick={() => {
+              if (!result?.ok) return
+              setLayout(result.layout)
+              notify('AIのレイアウトを反映したよ！')
+              onClose()
+            }}
+          >
+            <Icon.check /> 反映する
+          </button>
+        </>
+      }
+    >
+      <div className="ai-grid">
+        <section className="ai-step">
+          <div className="ai-num">1</div>
+          <h3>どんな部屋にしたい？</h3>
+          <textarea className="ai-text" placeholder="例: 在宅ワークがはかどる部屋にしたい" value={request} onChange={(e) => setRequest(e.target.value)} rows={4} />
+          <div className="ai-ideas">
+            {IDEAS.map((i) => (
+              <button key={i} onClick={() => setRequest(i)}>
+                {i}
+              </button>
+            ))}
+          </div>
+          <label className="ai-check">
+            <input type="checkbox" checked={keepRoom} onChange={(e) => setKeepRoom(e.target.checked)} /> 部屋の広さやドア・窓は変えない
+          </label>
+          <button className="icon-btn primary ai-copy" onClick={copyPrompt}>
+            {copied ? <Icon.check /> : <Icon.copy />} プロンプトをコピー
+          </button>
+          <div className="field-hint">ルール・使える家具の一覧・いまの部屋のJSONがまとめて入るよ。</div>
+        </section>
+        <section className="ai-step">
+          <div className="ai-num">2</div>
+          <h3>AIの返事を貼り付け</h3>
+          <textarea
+            className="json-editor ai-reply"
+            spellCheck={false}
+            placeholder="AIの返事をまるごと貼り付けてOK（```json の部分を自動で取り出すよ）"
+            value={reply}
+            onChange={(e) => setReply(e.target.value)}
+          />
+          {result?.ok && (
+            <div className="status ok">
+              <Icon.check width={18} /> 読み込めるよ！
+            </div>
+          )}
+          {result && !result.ok && (
+            <div className="status bad">
+              <Icon.alert width={18} /> {result.errors.length}件の問題（AIに伝えて直してもらおう）
+            </div>
+          )}
+          {diff.length > 0 && (
+            <div className="diff">
+              {diff.map((d) => (
+                <div key={d}>・{d}</div>
+              ))}
+            </div>
+          )}
+          {result && (
+            <ul className="issues">
+              {!result.ok &&
+                result.errors.slice(0, 8).map((e, i) => (
+                  <li key={`e${i}`}>
+                    <code>{e.path}</code>
+                    {e.message}
+                  </li>
+                ))}
+              {result.warnings.slice(0, 5).map((e, i) => (
+                <li key={`w${i}`} className="warn">
+                  <code>⚠ {e.path}</code>
+                  {e.message}
+                </li>
+              ))}
+            </ul>
+          )}
+          {result && !result.ok && (
+            <button
+              className="icon-btn"
+              onClick={() =>
+                navigator.clipboard
+                  .writeText(`いただいたJSONを読み込んだら、次のエラーが出ました。直した完全なJSONをもう一度ください。\n${result.errors.map((e) => `- ${e.path}: ${e.message}`).join('\n')}`)
+                  .then(() => notify('エラー内容をコピーしたよ。AIに貼り付けてね'))
+              }
+            >
+              <Icon.copy /> エラーをAIに伝える文をコピー
+            </button>
+          )}
+        </section>
       </div>
     </Modal>
   )

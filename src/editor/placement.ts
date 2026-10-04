@@ -26,7 +26,7 @@ export function isPassive(type: string) {
 }
 
 /** Seats that are meant to be tucked under tables and desks. */
-const SEATS = new Set(['officeChair', 'diningChair', 'floorChair'])
+export const SEATS = new Set(['officeChair', 'diningChair', 'floorChair'])
 const TABLES = new Set(['desk', 'diningTable', 'lowTable', 'kotatsu'])
 function tucks(a: string, b: string) {
   return (SEATS.has(a) && TABLES.has(b)) || (SEATS.has(b) && TABLES.has(a))

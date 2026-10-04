@@ -1,5 +1,6 @@
 import * as THREE from 'three'
 import { mat } from '../../three/materials'
+import { HEADLESS } from '../../three/textures'
 import { boxOn, cyl, deg, group, rbox } from '../kit'
 import { p } from '../params'
 import { defineAsset } from '../types'
@@ -10,6 +11,7 @@ let screenMat: THREE.Material | undefined
 function screen(w: number, h: number, on: boolean) {
   if (!on) return new THREE.Mesh(new THREE.PlaneGeometry(w, h), mat('screen', '#0c0d10'))
   if (screenMat) return new THREE.Mesh(new THREE.PlaneGeometry(w, h), screenMat)
+  if (HEADLESS) return new THREE.Mesh(new THREE.PlaneGeometry(w, h), mat('screen', '#0c0d10'))
   const c = document.createElement('canvas')
   c.width = 256
   c.height = 144

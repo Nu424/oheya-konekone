@@ -1,8 +1,8 @@
 import { useState } from 'react'
 import { useUi } from './store/useStore'
 import { Viewport } from './three/Viewport'
-import { DropZone, Hud, Toast, TopBar, useShortcuts } from './ui/Chrome'
-import { JsonDialog, TemplateDialog } from './ui/dialogs'
+import { DropZone, FlowPanel, Hud, Toast, TopBar, useShortcuts } from './ui/Chrome'
+import { AiDialog, JsonDialog, TemplateDialog } from './ui/dialogs'
 import { RoomPanel } from './ui/RoomPanel'
 import { Catalog, DRAG_MIME } from './ui/Catalog'
 import { Inspector } from './ui/Inspector'
@@ -14,6 +14,7 @@ export default function App() {
   const setPanel = useUi((s) => s.setPanel)
   const jsonOpen = useUi((s) => s.jsonOpen)
   const [newOpen, setNewOpen] = useState(false)
+  const [aiOpen, setAiOpen] = useState(false)
   const hasSelection = useUi((s) => s.selection !== null)
 
   return (
@@ -37,7 +38,7 @@ export default function App() {
       >
         <Viewport />
       </div>
-      <TopBar onNew={() => setNewOpen(true)} />
+      <TopBar onNew={() => setNewOpen(true)} onAi={() => setAiOpen(true)} />
       <aside className={`side glass${panel ? '' : ' hidden'}`}>
         <div className="side-tabs">
           <button className={`side-tab${panel === 'room' ? ' active' : ''}`} onClick={() => setPanel('room')}>
@@ -53,6 +54,7 @@ export default function App() {
         </div>
       </aside>
       <Inspector />
+      <FlowPanel />
       <Hud />
       <div className={`hint glass${hasSelection ? ' hidden' : ''}`}>
         <kbd>ドラッグ</kbd> 回転 ・ <kbd>右ドラッグ</kbd> 移動 ・ <kbd>ホイール</kbd> ズーム
@@ -63,6 +65,7 @@ export default function App() {
       <DropZone />
       {jsonOpen && <JsonDialog />}
       {newOpen && <TemplateDialog onClose={() => setNewOpen(false)} />}
+      {aiOpen && <AiDialog onClose={() => setAiOpen(false)} />}
     </div>
   )
 }

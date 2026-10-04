@@ -86,8 +86,12 @@ function grayCanvas(size: number, f: (u: number, v: number) => number) {
   return c
 }
 
+/** True outside the browser (tests, CLI scripts): textures become empty placeholders. */
+export const HEADLESS = typeof document === 'undefined'
+
 const cache = new Map<string, THREE.Texture>()
 function cached(key: string, make: () => THREE.Texture) {
+  if (HEADLESS) return new THREE.Texture()
   let t = cache.get(key)
   if (!t) {
     t = make()
@@ -375,6 +379,7 @@ function tatamiFloor(color: string, seed: number): FloorTextures {
 }
 
 export function floorTextures(material: string, color?: string): FloorTextures {
+  if (HEADLESS) return { map: new THREE.Texture(), roughnessMap: new THREE.Texture(), size: 1000, roughness: 0.6 }
   const col = color ?? FLOOR_PRESETS[material]?.color ?? '#b8875a'
   const key = `floor:${material}:${col}`
   const hit = floorCache.get(key)

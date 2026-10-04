@@ -3,12 +3,15 @@ import { Canvas, useFrame, useThree } from '@react-three/fiber'
 import CameraControlsImpl from 'camera-controls'
 import { Suspense, useEffect, useLayoutEffect, useMemo, useRef } from 'react'
 import * as THREE from 'three'
-import type { Room } from '../model/schema'
+import type { Item, Room } from '../model/schema'
+import { getAsset, resolveItemParams } from '../assets/registry'
+import { rotateXZ } from '../editor/space'
 import { useDoc, useUi, type ViewMode } from '../store/useStore'
 import { Effects } from './Effects'
-import { Lighting } from './Lighting'
+import { Lighting, type Lamp } from './Lighting'
 import { RoomMesh } from './RoomMesh'
 import { EditLayer } from './EditLayer'
+import { FlowOverlay } from './FlowOverlay'
 import { registerScreenToFloor } from '../editor/commands'
 
 const S = 0.001
@@ -45,6 +48,22 @@ function FloorPicker() {
     return () => registerScreenToFloor(null)
   }, [camera, gl])
   return null
+}
+
+/** World positions of the light sources of lamp items. */
+function collectLamps(items: Item[], room: Room): Lamp[] {
+  const out: Lamp[] = []
+  for (const it of items) {
+    const a = getAsset(it.type)
+    if (!a?.lights) continue
+    const p = resolveItemParams(it.type, it.params)
+    for (const l of a.lights(p as never)) {
+      const [ox, oz] = rotateXZ(l.position[0], l.position[2], it.rotation)
+      const baseY = a.placement === 'ceiling' ? room.height : it.position[1]
+      out.push({ position: [it.position[0] + ox, baseY + l.position[1], it.position[2] + oz], color: l.color, intensity: l.intensity, distance: l.distance })
+    }
+  }
+  return out
 }
 
 /** Room dimensions drawn outside the walls in the plan view. */
@@ -186,6 +205,10 @@ export function Viewport() {
   const room = useDoc((s) => s.layout.room)
   const select = useUi((s) => s.select)
   const view = useUi((s) => s.view)
+  const hour = useUi((s) => s.hour)
+  const flow = useUi((s) => s.flow)
+  const items = useDoc((s) => s.layout.items)
+  const lamps = useMemo(() => collectLamps(items, room), [items, room])
   // The ceiling is cut away in every view except walking around inside the room.
   const cutaway = view !== 'walk'
 
@@ -197,11 +220,11 @@ export function Viewport() {
       gl={{ antialias: false, powerPreference: 'high-performance', stencil: false, preserveDrawingBuffer: true }}
       onPointerMissed={() => select(null)}
     >
-      <color attach="background" args={['#efe6da']} />
       <Suspense fallback={null}>
-        <Lighting room={room} />
+        <Lighting room={room} hour={hour} lamps={lamps} />
         <RoomMesh room={room} plan={view === 'top'} />
         <EditLayer cutaway={cutaway} />
+        {flow && <FlowOverlay />}
         <Effects />
       </Suspense>
       <CameraRig room={room} />

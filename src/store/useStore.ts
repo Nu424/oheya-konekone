@@ -202,6 +202,10 @@ interface UiState {
   dragging: string | null
   /** Hold Alt to disable snapping; this toggles it persistently. */
   snap: boolean
+  /** Time of day (hours) for lighting. */
+  hour: number
+  /** Circulation check overlay. */
+  flow: boolean
   panel: 'room' | 'catalog' | null
   jsonOpen: boolean
   toast: { id: number; text: string; tone?: 'info' | 'error' } | null
@@ -209,6 +213,8 @@ interface UiState {
   select(s: Selection): void
   setDragging(id: string | null): void
   setSnap(v: boolean): void
+  setHour(h: number): void
+  setFlow(v: boolean): void
   setPanel(p: UiState['panel']): void
   setJsonOpen(v: boolean): void
   notify(text: string, tone?: 'info' | 'error'): void
@@ -219,6 +225,8 @@ export const useUi = create<UiState>()((set) => ({
   selection: null,
   dragging: null,
   snap: true,
+  hour: 14,
+  flow: false,
   panel: 'room',
   jsonOpen: false,
   toast: null,
@@ -226,6 +234,8 @@ export const useUi = create<UiState>()((set) => ({
   select: (selection) => set({ selection }),
   setDragging: (dragging) => set({ dragging }),
   setSnap: (snap) => set({ snap }),
+  setHour: (hour) => set({ hour }),
+  setFlow: (flow) => set({ flow }),
   setPanel: (panel) => set({ panel }),
   setJsonOpen: (jsonOpen) => set({ jsonOpen }),
   notify: (text, tone = 'info') => set({ toast: { id: Date.now(), text, tone } }),
