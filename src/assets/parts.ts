@@ -1,6 +1,6 @@
 import * as THREE from 'three'
 import { mat } from '../three/materials'
-import { boxOn, cyl, deg, group, panel, panelOn, tube } from './kit'
+import { boxOn, cyl, deg, group, lathe, panel, panelOn, tube } from './kit'
 
 /**
  * Furniture parts shared by asset builders: handles, doors, drawers, feet and casters.
@@ -233,4 +233,57 @@ export function atCorners(w: number, d: number, inset: number, make: (i: number)
 /** A round steel tube between two points (frames, rails). */
 export function rod(a: [number, number, number], b: [number, number, number], r: number, material: THREE.Material) {
   return tube([a, b], r, material, { segments: 2 })
+}
+
+/**
+ * A box made of walls with one open side: the cavity behind a door or under a lid (an oven, a
+ * drawer, a washer cabinet). Anything that opens should show a real hollow inside, never the
+ * solid block it was modelled as. Origin: bottom centre. `open` is the side left open.
+ * `inner` lines the inside faces (a light enamel in an oven, raw board in a drawer).
+ */
+export function hollowBox(w: number, h: number, d: number, wall: number, material: THREE.Material, o: { open?: 'front' | 'top'; inner?: THREE.Material; edge?: number } = {}) {
+  const g = new THREE.Group()
+  const open = o.open ?? 'front'
+  const e = o.edge ?? 1.5
+  const t = wall
+  g.add(panelOn(w, t, d, material, 0, 0, 0, { edge: e })) // bottom
+  if (open !== 'top') g.add(panelOn(w, t, d, material, 0, h - t, 0, { edge: e })) // top
+  for (const s of [-1, 1]) g.add(panelOn(t, h, d, material, s * (w / 2 - t / 2), 0, 0, { edge: e })) // sides
+  g.add(panelOn(w, h, t, material, 0, 0, -d / 2 + t / 2, { edge: e })) // back
+  if (open !== 'front') g.add(panelOn(w, h, t, material, 0, 0, d / 2 - t / 2, { edge: e })) // front
+  if (o.inner) {
+    // A thin liner just inside every closed face.
+    const iw = w - t * 2
+    const ih = h - t * (open === 'top' ? 1 : 2)
+    const idp = d - t * (open === 'front' ? 1 : 2)
+    const cz = open === 'front' ? t / 2 : 0
+    const L = new THREE.Group()
+    L.add(boxOn(iw, 0.6, idp, o.inner, 0, t, cz))
+    if (open !== 'top') L.add(boxOn(iw, 0.6, idp, o.inner, 0, h - t - 0.6, cz))
+    for (const s of [-1, 1]) L.add(boxOn(0.6, ih, idp, o.inner, s * (iw / 2 - 0.3), t, cz))
+    L.add(boxOn(iw, ih, 0.6, o.inner, 0, t, -d / 2 + t + 0.3))
+    if (open !== 'front') L.add(boxOn(iw, ih, 0.6, o.inner, 0, t, d / 2 - t - 0.3))
+    L.traverse((m) => (m.castShadow = false))
+    g.add(L)
+  }
+  return g
+}
+
+/**
+ * A round tub with one open end (a washing drum, a rice pot, a bucket). Origin: centre of the
+ * closed bottom; the open end faces +Y. Rotate it (rotation.x = π/2) to open towards +Z.
+ */
+export function hollowCylinder(r: number, depth: number, wall: number, material: THREE.Material, o: { segments?: number; lip?: number } = {}) {
+  const lip = o.lip ?? 0
+  const pts: [number, number][] = [
+    [0, 0],
+    [r, 0],
+    [r, depth],
+    [r + lip, depth],
+    [r + lip, depth + Math.min(4, wall)],
+    [r - wall, depth + Math.min(4, wall)],
+    [r - wall, wall],
+    [0, wall],
+  ]
+  return lathe(pts, material, [0, 0, 0], { segments: o.segments ?? 48 })
 }

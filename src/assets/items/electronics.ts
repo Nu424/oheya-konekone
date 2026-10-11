@@ -1,8 +1,9 @@
 import * as THREE from 'three'
 import { mat } from '../../three/materials'
 import { screenMesh } from './computing'
-import { cyl, deg, group, merged, panel, panelOn, rbox } from '../kit'
+import { cyl, deg, extrude, group, lathe, merged, panel, panelOn, rbox } from '../kit'
 import { p } from '../params'
+import { hollowBox, hollowCylinder } from '../parts'
 import { defineAsset } from '../types'
 
 function screen(w: number, h: number, on: boolean) {
@@ -187,7 +188,25 @@ export const washer = defineAsset({
       const W = 565
       const H = 950
       const D = 560
-      g.add(panelOn(W, H - 12, D, body, 0, y0, 0, { edge: 18 }))
+      // Cabinet open at the top; a deck with a round opening over the tub (seen when the lid is up).
+      const cab = hollowBox(W, H - 32, D, 14, body, { open: 'top', edge: 14 })
+      cab.position.y = y0
+      g.add(cab)
+      const deck = new THREE.Shape()
+      deck.moveTo(-W / 2, -D / 2)
+      deck.lineTo(W / 2, -D / 2)
+      deck.lineTo(W / 2, D / 2)
+      deck.lineTo(-W / 2, D / 2)
+      deck.lineTo(-W / 2, -D / 2)
+      const hole = new THREE.Path()
+      hole.absarc(0, -50, 215, 0, Math.PI * 2, false)
+      deck.holes.push(hole)
+      g.add(extrude(deck, 20, body, [0, y0 + H - 22, 0], { rot: [Math.PI / 2, 0, 0], bevel: 3 }))
+      // Tub: stainless, with a pulsator at the bottom.
+      const tub = hollowCylinder(210, H - 260, 3, mat('stainless', '#c9ccd0'), { lip: 8 })
+      tub.position.set(0, y0 + 210, 50)
+      g.add(tub)
+      g.add(lathe([[0, 0], [150, 0], [120, 30], [40, 45], [0, 50]], mat('plastic', '#e9eaea', { roughness: 0.4 }), [0, y0 + 213, 50], { segments: 36 }))
       g.add(panelOn(W - 30, 3, 2, mat('matte', '#c8c9c7'), 0, y0 + 60, D / 2 + 0.5)) // kick seam
       // Top: control strip at the back, lid with a smoked window, hinged at the back.
       g.add(panelOn(W - 10, 60, 140, trim, 0, y0 + H - 12, -D / 2 + 75, { edge: 12 }))
@@ -204,18 +223,28 @@ export const washer = defineAsset({
       lid.position.set(0, y0 + H - 12, -D / 2 + 150)
       lid.rotation.x = open ? -deg(80) : 0
       g.add(lid)
-      if (open) {
-        g.add(cyl(230, 230, 4, mat('matte', '#2a2c2f'), [0, y0 + H - 14, 50], { segments: 40 }))
-        g.add(new THREE.Mesh(new THREE.TorusGeometry(232, 8, 8, 48), mat('stainless', '#c9ccd0')).translateY(y0 + H - 12).translateZ(50).rotateX(Math.PI / 2))
-      }
       return g
     }
     // Drum washer: a front panel slightly proud of the cabinet, a slanted control strip on top.
     const W = 600
     const H = 1008
     const D = 620
-    g.add(panelOn(W, H, D - 20, body, 0, y0, -10, { edge: 10 }))
-    g.add(panelOn(W - 6, H - 150, 14, body, 0, y0 + 20, D / 2 - 18, { edge: 6 }))
+    // Cabinet open at the front, closed by a front panel with a round opening into the drum.
+    const cab = hollowBox(W, H, D - 20, 14, body, { edge: 10 })
+    cab.position.set(0, y0, -10)
+    g.add(cab)
+    const frontH = H - 150
+    const dyLocal = (H - 150) * 0.52
+    const front = new THREE.Shape()
+    front.moveTo(-(W - 6) / 2, 0)
+    front.lineTo((W - 6) / 2, 0)
+    front.lineTo((W - 6) / 2, frontH)
+    front.lineTo(-(W - 6) / 2, frontH)
+    front.lineTo(-(W - 6) / 2, 0)
+    const port = new THREE.Path()
+    port.absarc(0, dyLocal, 172, 0, Math.PI * 2, false)
+    front.holes.push(port)
+    g.add(extrude(front, 14, body, [0, y0 + 20, D / 2 - 11], { bevel: 3 }))
     g.add(panelOn(W - 20, 4, 2, mat('matte', '#1d1a18'), 0, y0 + H - 132, D / 2 - 18.5)) // seam under the controls
     // Control strip: angled, with a display, a chrome dial and buttons.
     const strip = new THREE.Group()
@@ -247,13 +276,24 @@ export const washer = defineAsset({
     doorPivot.rotation.y = open ? -deg(100) : 0
     doorPivot.add(door)
     g.add(doorPivot)
-    // Gasket and the stainless drum with its holes.
+    // Gasket and the drum: a stainless tub opening towards the door, with holes and lifters.
     g.add(new THREE.Mesh(new THREE.TorusGeometry(175, 14, 10, 48), mat('rubber', '#3a3b3e')).translateY(dy).translateZ(D / 2 - 4))
-    g.add(cyl(165, 165, 4, mat('stainless', '#b9bcc0'), [0, dy, D / 2 - 140], { rot: [Math.PI / 2, 0, 0], segments: 48 }))
+    const drumDepth = 380
+    const drum = hollowCylinder(165, drumDepth, 3, mat('stainless', '#b9bcc0'), { segments: 56 })
+    drum.rotation.x = Math.PI / 2
+    drum.position.set(0, dy, D / 2 - 14 - drumDepth)
+    g.add(drum)
+    for (let k = 0; k < 3; k++) {
+      const a = (k / 3) * Math.PI * 2 + 0.3
+      const lifter = panel(30, 26, drumDepth - 40, mat('plastic', '#d9dcdf'), [0, 0, 0], { edge: 8 })
+      lifter.position.set(Math.cos(a) * 150, dy + Math.sin(a) * 150, D / 2 - 14 - drumDepth / 2)
+      lifter.rotation.z = a + Math.PI / 2
+      g.add(lifter)
+    }
     const holes: THREE.Mesh[] = []
     for (let r = 30; r < 160; r += 26) {
       const n = Math.round((2 * Math.PI * r) / 26)
-      for (let k = 0; k < n; k++) holes.push(cyl(3.5, 3.5, 1, mat('matte', '#1a1a1a'), [Math.cos((k / n) * Math.PI * 2) * r, dy + Math.sin((k / n) * Math.PI * 2) * r, D / 2 - 137], { rot: [Math.PI / 2, 0, 0], segments: 6 }))
+      for (let k = 0; k < n; k++) holes.push(cyl(3.5, 3.5, 1, mat('matte', '#1a1a1a'), [Math.cos((k / n) * Math.PI * 2) * r, dy + Math.sin((k / n) * Math.PI * 2) * r, D / 2 - 14 - drumDepth + 3.6], { rot: [Math.PI / 2, 0, 0], segments: 6 }))
     }
     g.add(merged(holes, mat('matte', '#1a1a1a'), { castShadow: false }))
     // Service flap at the bottom left.

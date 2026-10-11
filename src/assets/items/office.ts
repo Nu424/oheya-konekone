@@ -577,13 +577,16 @@ export const whiteboard = defineAsset({
     const g = group()
     const alu = frameColor === '#c9ccd0' ? mat('aluminum', frameColor) : mat('powder', frameColor)
     const footH = casters ? 70 : 20
-    const total = 1800
-    const centerY = Math.min(total - H / 2 - 60, 1150)
+    // The board's lower edge sits at a comfortable writing height; the posts stop just above its
+    // top edge (with a cap), so they never stick up past the board.
+    const centerY = 760 + H / 2
+    const total = centerY + H / 2 + 20
     // Two side stands: a foot bar along Z and an upright post.
     for (const s of [-1, 1]) {
       const x = s * (W / 2 + 40)
       g.add(panelOn(50, 35, 560, alu, x, footH, 0, { edge: 8 }))
       g.add(panelOn(40, total - footH - 35, 30, alu, x, footH + 35, 0, { edge: 4 }))
+      g.add(panelOn(46, 12, 36, mat('plastic', '#26262a'), x, total, 0, { edge: 4 })) // end cap
       for (const z of [-250, 250]) {
         if (casters) {
           const c = caster(footH, { turn: deg(s * 30 + z / 10), lock: z > 0 })

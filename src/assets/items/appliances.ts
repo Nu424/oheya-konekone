@@ -1,7 +1,8 @@
 import * as THREE from 'three'
 import { mat } from '../../three/materials'
-import { box, boxOn, cyl, deg, group, lathe, panel, panelOn, tube } from '../kit'
+import { box, cyl, deg, group, lathe, merged, panel, panelOn, tube } from '../kit'
 import { p } from '../params'
+import { hollowBox, hollowCylinder } from '../parts'
 import { defineAsset } from '../types'
 
 /** Small kitchen appliances that sit on racks, counters and shelves. */
@@ -30,11 +31,21 @@ export const microwave = defineAsset({
     const dark = mat('plastic', '#1b1c1f', { roughness: 0.3 })
     const g = group()
     for (const sx of [-1, 1]) for (const sz of [-1, 1]) g.add(cyl(10, 10, 8, mat('rubber', '#2a2a2a'), [sx * (W / 2 - 30), 4, sz * (D / 2 - 40)], { segments: 12 }))
-    g.add(panelOn(W, H - 8, D - 20, body, 0, 8, -10, { edge: 6 }))
     // Front: door with a dark window on the left, control panel on the right.
     const panelW = Math.min(120, W * 0.24)
     const doorW = W - panelW - 6
     const dx = -W / 2 + doorW / 2 + 3
+    // Body: an enamel-lined cavity behind the door (hollow, so an open door shows the inside) and a
+    // solid block behind the control panel.
+    const cavW = doorW + 6
+    const cav = hollowBox(cavW, H - 8, D - 20, 12, body, { inner: mat('matte', '#e8e6df'), edge: 6 })
+    cav.position.set(-W / 2 + cavW / 2, 8, -10)
+    g.add(cav)
+    g.add(panelOn(W - cavW, H - 8, D - 20, body, W / 2 - (W - cavW) / 2, 8, -10, { edge: 6 }))
+    // Turntable, its roller ring and the lamp.
+    g.add(cyl(doorW * 0.34, doorW * 0.34, 4, mat('glass', '#cfe2ea', { opacity: 0.5 }), [dx, 34, -10], { segments: 40 }))
+    g.add(cyl(doorW * 0.2, doorW * 0.2, 8, mat('plastic', '#5a5a5a'), [dx, 26, -10], { open: true, segments: 32 }))
+    g.add(panelOn(40, 3, 30, mat('emissive', '#fff3dc', { intensity: open > 0.05 ? 1.5 : 0.05 }), dx + doorW * 0.3, H - 24, -D / 2 + 60, { edge: 1 }))
     g.add(panelOn(panelW - 6, H - 22, 6, dark, W / 2 - panelW / 2 - 3, 15, D / 2 - 20 + 3, { edge: 2 }))
     g.add(box(panelW * 0.6, 22, 1, mat('screen', '#0c0f12'), [W / 2 - panelW / 2 - 3, H - 50, D / 2 - 10.5]))
     g.add(box(panelW * 0.5, 14, 1, mat('emissive', '#7fd6a8', { intensity: 0.8 }), [W / 2 - panelW / 2 - 3, H - 50, D / 2 - 9.8]))
@@ -58,11 +69,6 @@ export const microwave = defineAsset({
     }
     pivot.add(leaf)
     g.add(pivot)
-    if (open > 0.05) {
-      // The lit cavity and the turntable inside.
-      g.add(boxOn(doorW - 30, dh - 30, D - 70, mat('matte', '#e8e6df'), dx, 30, -10))
-      g.add(cyl(doorW * 0.32, doorW * 0.32, 4, mat('glass', '#cfe2ea', { opacity: 0.5 }), [dx, 36, -10], { segments: 32 }))
-    }
     return g
   },
 })
@@ -98,7 +104,10 @@ export const riceCooker = defineAsset({
         [0.5, 0.06],
         [0.5, 0.8],
         [0.46, 0.92],
-        [0, 0.92],
+        // A well for the inner pot, so the cooker is hollow when the lid opens.
+        [0.4, 0.92],
+        [0.4, 0.3],
+        [0, 0.3],
       ],
       body,
       [0, 0, 0],
@@ -132,7 +141,14 @@ export const riceCooker = defineAsset({
     lid.position.set(0, H * 0.92, -D / 2)
     lid.rotation.x = open ? -deg(80) : 0
     g.add(lid)
-    if (open) g.add(cyl(W * 0.38, W * 0.38, 2, mat('ceramic', '#f7f4ec'), [0, H * 0.86, 0], { segments: 32 }))
+    // Inner pot (dark non-stick inside, a lip on the rim) with rice in it.
+    const pot = hollowCylinder(W * 0.36, H * 0.6, 3, mat('metal', '#3a3b3e', { roughness: 0.45 }), { lip: 6 })
+    pot.position.y = H * 0.3
+    pot.scale.z = D / W
+    g.add(pot)
+    const rice = cyl(W * 0.355, W * 0.355, 4, mat('ceramic', '#f7f4ec', { roughness: 0.8 }), [0, H * 0.72, 0], { segments: 32 })
+    rice.scale.z = D / W
+    g.add(rice)
     return g
   },
 })
@@ -195,17 +211,38 @@ export const toaster = defineAsset({
   description: 'オーブントースター。レンジ台や棚、カウンターに置く。上にも物を置ける',
   placement: 'onTop',
   params: {
+    open: p.bool('扉を開ける', false),
     color: p.color('本体', '#f4f4f2', { swatches: WHITES }),
   },
   surfaces: () => [{ y: 220, minX: -150, maxX: 150, minZ: -110, maxZ: 110, label: '天面' }],
-  build({ color }) {
+  build({ open, color }) {
     const g = group()
     const body = mat('powder', color)
-    g.add(panelOn(360, 212, 280, body, 0, 8, 0, { edge: 5 }))
+    const W = 360
+    const D = 280
+    const chamberW = 270
+    // Chamber (hollow, enamelled, with a wire rack and heater rods) and the control column.
+    const ch = hollowBox(chamberW, 212, D, 10, body, { inner: mat('matte', '#3a3936'), edge: 5 })
+    ch.position.set(-W / 2 + chamberW / 2, 8, 0)
+    g.add(ch)
+    g.add(panelOn(W - chamberW, 212, D, body, W / 2 - (W - chamberW) / 2, 8, 0, { edge: 5 }))
+    const steel = mat('chrome', '#cfd2d5', { roughness: 0.2 })
+    const rack: THREE.Mesh[] = []
+    for (let x = -chamberW / 2 + 30; x < chamberW / 2 - 20; x += 18) rack.push(cyl(1.5, 1.5, D - 40, steel, [-W / 2 + chamberW / 2 + x, 80, 0], { rot: [Math.PI / 2, 0, 0], segments: 6 }))
+    g.add(merged(rack, steel, { castShadow: false }))
+    for (const y of [30, 190]) g.add(cyl(5, 5, chamberW - 30, mat('emissive', open ? '#ff8a3d' : '#5a4a40', { intensity: open ? 0.6 : 0.05 }), [-W / 2 + chamberW / 2, y, -40], { rot: [0, 0, Math.PI / 2], segments: 10 }))
     for (const sx of [-1, 1]) for (const sz of [-1, 1]) g.add(cyl(8, 8, 8, mat('rubber', '#2a2a2a'), [sx * 150, 4, sz * 110], { segments: 12 }))
-    g.add(panelOn(250, 150, 3, mat('glass', '#14171b', { opacity: 0.8 }), -40, 38, 141, { edge: 2 }))
-    g.add(panelOn(230, 12, 14, mat('stainless', '#c9ccd0'), -40, 176, 148, { edge: 5 }))
-    for (const y of [70, 130]) g.add(cyl(16, 16, 14, mat('plastic', '#2b2b2e'), [130, y, 146], { rot: [Math.PI / 2, 0, 0], segments: 20 }))
+    // Drop-down glass door with its handle.
+    const door = new THREE.Group()
+    door.add(panelOn(chamberW - 6, 190, 8, body, 0, 0, 4, { edge: 3 }))
+    door.add(panelOn(chamberW - 50, 140, 2, mat('glass', '#14171b', { opacity: 0.7 }), 0, 20, 8.5, { edge: 2 }))
+    door.add(panelOn(chamberW - 60, 12, 14, mat('stainless', '#c9ccd0'), 0, 165, 12, { edge: 5 }))
+    const pivot = new THREE.Group()
+    pivot.position.set(-W / 2 + chamberW / 2, 14, D / 2)
+    pivot.rotation.x = open ? deg(85) : 0
+    pivot.add(door)
+    g.add(pivot)
+    for (const y of [70, 130]) g.add(cyl(16, 16, 14, mat('plastic', '#2b2b2e'), [W / 2 - 45, y, D / 2 + 6], { rot: [Math.PI / 2, 0, 0], segments: 20 }))
     return g
   },
 })

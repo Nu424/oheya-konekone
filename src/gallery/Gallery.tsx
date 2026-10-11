@@ -12,6 +12,7 @@ import { useThree } from '@react-three/fiber'
 /**
  * Asset gallery for visual QA: `?gallery` shows every asset with its default parameters,
  * `?gallery&type=desk` shows one asset at min / default / max and each preset.
+ * `&p=<json>` shows one cell with those parameters (`&only=0` to frame it).
  * `&only=<index>` frames one cell up close; `&az=<deg>` turns the camera around it.
  * `?gallery&limits=min` (or `max`, optionally with `&types=`) shows every asset at the edge of what can be typed in
  * (`numberLimits`, past the slider range), to catch shapes that break there.
@@ -133,6 +134,15 @@ export default function Gallery() {
   const only = q.get('only')
   const cells = useMemo(() => {
     const lim = q.get('limits')
+    // `&p={"open":true}` shows one cell of `type` with exactly those parameters.
+    const custom = q.get('p')
+    if (type && custom) {
+      try {
+        return [{ label: 'カスタム', type, params: JSON.parse(custom) as Record<string, unknown> }]
+      } catch {
+        /* fall through to the normal cells */
+      }
+    }
     const all = cellsFor(type, q.get('types')?.split(',') ?? null, lim === 'min' || lim === 'max' ? lim : null)
     return only !== null ? all.filter((_, i) => String(i) === only || all[i].label === only) : all
   }, [type, only])
