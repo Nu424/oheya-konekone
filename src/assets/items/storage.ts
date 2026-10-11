@@ -1,230 +1,304 @@
 import * as THREE from 'three'
 import { mat, SWATCHES } from '../../three/materials'
 import { rng } from '../../three/textures'
-import { boxOn, cyl, deg, group, rbox } from '../kit'
+import { boxOn, cyl, deg, group, merged, panelOn, rbox } from '../kit'
 import { p } from '../params'
+import { adjuster, caster, HANDLE_LABELS, type HandleKind } from '../parts'
+import {
+  BASE_LABELS,
+  buildStorage,
+  FINISH_LABELS,
+  FRONT_LABELS,
+  SPAN_LABELS,
+  storageBody,
+  storageSurfaces,
+  type Base,
+  type Finish,
+  type FrontKind,
+  type Span,
+  type StorageSpec,
+} from '../storageKit'
 import { defineAsset, type Surface } from '../types'
 
-const BOOK_COLORS = ['#c96f53', '#e2b75f', '#5d7a8c', '#8c9f7a', '#efe6d6', '#3d4a5c', '#a24d4d', '#d9cbb4', '#6f5b8a', '#2f2f31', '#f2d3c0', '#4f7f73']
+/**
+ * Case furniture. Three catalog types share one builder (storageKit.ts):
+ * - shelf: open shelving (bookcases, colour boxes, microwave racks)
+ * - cabinet: doors and drawers (chests, lockers, sliding-door bookcases, cupboards)
+ * - metalRack: pole-and-shelf wire racks
+ * Contents are separate items placed on the shelf surfaces (books, file boxes, appliances).
+ */
 
-/** Fill a shelf (width w, height h, depth d, bottom-centre at x,y,z) with books. */
-export function books(w: number, h: number, d: number, x: number, y: number, z: number, seed: number, fill = 0.75) {
-  const g = new THREE.Group()
-  const r = rng(seed)
-  let cx = x - w / 2 + 10
-  const end = x - w / 2 + w * fill
-  while (cx < end) {
-    const bw = 18 + r() * 32
-    const bh = Math.min(h - 15, h * (0.62 + r() * 0.3))
-    const bd = Math.min(d - 20, 150 + r() * 80)
-    const col = BOOK_COLORS[Math.floor(r() * BOOK_COLORS.length)]
-    const b = boxOn(bw, bh, bd, mat('matte', col, { roughness: 0.7 }), cx + bw / 2, y, z + d / 2 - bd / 2 - 15)
-    g.add(b)
-    cx += bw + 1
-    // Occasionally a gap, a leaning book or a small stack
-    const roll = r()
-    if (roll < 0.08 && cx + 120 < end) {
-      const lean = boxOn(25, bh * 0.9, bd, mat('matte', BOOK_COLORS[Math.floor(r() * BOOK_COLORS.length)]), 0, 0, 0)
-      lean.position.set(cx + bh * 0.25, y + bh * 0.42, z + d / 2 - bd / 2 - 15)
-      lean.rotation.z = -deg(18)
-      g.add(lean)
-      cx += bh * 0.4
-    } else if (roll < 0.14) {
-      cx += 40 + r() * 80
-    }
-  }
-  return g
-}
+const BODY_SWATCHES = [...SWATCHES.wood.slice(0, 6), '#f4f4f2', '#e6e6e3', '#c4c6c8', '#4d5055', '#2a2b2e']
+const finishOptions = (only?: Finish[]) => Object.fromEntries(Object.entries(FINISH_LABELS).filter(([k]) => !only || only.includes(k as Finish))) as Record<Finish, string>
 
-function carcass(W: number, H: number, D: number, t: number, m: THREE.Material, back: boolean, backMat?: THREE.Material) {
-  const g = new THREE.Group()
-  g.add(boxOn(t, H, D, m, -W / 2 + t / 2, 0, 0, { grain: 'y' }))
-  g.add(boxOn(t, H, D, m, W / 2 - t / 2, 0, 0, { grain: 'y' }))
-  g.add(boxOn(W - t * 2, t, D, m, 0, H - t, 0, { grain: 'x' }))
-  g.add(boxOn(W - t * 2, t, D, m, 0, 0, 0, { grain: 'x' }))
-  if (back) g.add(boxOn(W - t * 2, H - t * 2, 6, backMat ?? m, 0, t, -D / 2 + 3))
-  return g
-}
-
-export const bookshelf = defineAsset({
-  type: 'bookshelf',
-  label: '本棚',
+export const shelf = defineAsset({
+  type: 'shelf',
+  label: 'オープン棚',
   category: 'storage',
-  description: 'オープンシェルフ・本棚。段数・サイズを変えられ、本を並べた状態も表示できる',
+  description: '扉のない棚（本棚・カラーボックス・レンジ台・見せる収納）。段数・列数・背板・脚を変えられる。各段に本や家電を載せられる',
   placement: 'floor',
-  // Index 0 is always the top board; the shelves follow from the bottom up (row by row, left to right).
-  surfaces: ({ width: W, height: H, depth: D, shelves, columns }) => {
-    const t = 18
-    const n = Math.round(shelves)
-    const cols = Math.round(columns)
-    const cellH = (H - t * 2 - t * (n - 1)) / n
-    const cellW = (W - t * 2 - t * (cols - 1)) / cols
-    const out: Surface[] = [{ y: H, minX: -W / 2, maxX: W / 2, minZ: -D / 2, maxZ: D / 2, label: '天板' }]
-    for (let i = 0; i < n; i++)
-      for (let c = 0; c < cols; c++) {
-        const x0 = -W / 2 + t + c * (cellW + t)
-        out.push({ y: t + i * (cellH + t), minX: x0, maxX: x0 + cellW, minZ: -D / 2 + 6, maxZ: D / 2, clearance: cellH, label: `${i + 1}段目` })
-      }
-    return out
-  },
   params: {
     width: p.mm('幅', 300, 1800, 800),
-    height: p.mm('高さ', 400, 2100, 1800),
-    depth: p.mm('奥行き', 200, 450, 300),
-    shelves: p.number({ label: '段数', min: 1, max: 8, step: 1, default: 5, group: '形' }),
-    columns: p.number({ label: '列数', min: 1, max: 4, step: 1, default: 1, group: '形' }),
+    height: p.mm('高さ', 300, 2100, 1800),
+    depth: p.mm('奥行き', 200, 600, 300),
+    rows: p.number({ label: '段数', min: 1, max: 8, step: 1, default: 5, group: '形' }),
+    cols: p.number({ label: '列数', min: 1, max: 5, step: 1, default: 1, group: '形' }),
     back: p.bool('背板', true),
-    books: p.bool('本を並べる', true),
-    color: p.color('本体', '#d2ad7c', { swatches: SWATCHES.wood }),
+    base: p.select('足もと', BASE_LABELS, 'plinth'),
+    finish: p.select('素材', finishOptions(['wood', 'melamine', 'steel']), 'wood', { group: '色・素材' }),
+    color: p.color('色', '#d2ad7c', { swatches: BODY_SWATCHES }),
   },
   presets: [
-    { name: '壁一面', params: { width: 1600, height: 2000, columns: 2, shelves: 6 } },
-    { name: 'ロー', params: { width: 1200, height: 800, shelves: 2, columns: 3, color: '#f1ece4' } },
-    { name: 'ブラック', params: { color: '#2b2b2b', back: false } },
+    { name: '本棚', params: {} },
+    { name: '壁一面の本棚', params: { width: 1600, height: 2000, rows: 6, cols: 2 } },
+    { name: 'カラーボックス（縦）', params: { width: 420, height: 880, depth: 295, rows: 3, cols: 1, base: 'none', finish: 'melamine', color: '#f4f4f2' } },
+    { name: 'カラーボックス（横）', params: { width: 1150, height: 420, depth: 295, rows: 1, cols: 3, base: 'none', finish: 'melamine', color: '#f4f4f2' } },
+    { name: 'レンジ台', params: { width: 600, height: 1200, depth: 450, rows: 3, cols: 1, back: false, base: 'casters', finish: 'melamine', color: '#f4f4f2' } },
+    { name: '見せる収納（ロー）', params: { width: 1200, height: 800, depth: 350, rows: 2, cols: 3, base: 'legs', color: '#8f5f3d' } },
+    { name: 'スチールシェルフ', params: { width: 900, height: 1800, depth: 400, rows: 5, finish: 'steel', color: '#e6e6e3', base: 'adjusters', back: false } },
   ],
-  build({ width: W, height: H, depth: D, shelves, columns, back, books: hasBooks, color }) {
-    const t = 18
-    const m = mat('wood', color)
-    const g = group(carcass(W, H, D, t, m, back))
-    const n = Math.round(shelves)
-    const cols = Math.round(columns)
-    const innerH = H - t * 2
-    const cellH = (innerH - t * (n - 1)) / n
-    const cellW = (W - t * 2 - t * (cols - 1)) / cols
-    for (let i = 1; i < n; i++) g.add(boxOn(W - t * 2, t, D - 10, m, 0, t + i * (cellH + t) - t, 5))
-    for (let c = 1; c < cols; c++) g.add(boxOn(t, innerH, D - 10, m, -W / 2 + t + c * (cellW + t) - t / 2, t, 5, { grain: 'y' }))
-    if (hasBooks) {
-      for (let i = 0; i < n; i++)
-        for (let c = 0; c < cols; c++) {
-          if (cellH < 140) continue
-          const x = -W / 2 + t + c * (cellW + t) + cellW / 2
-          const y = t + i * (cellH + t)
-          const seed = (i * 7 + c * 13 + Math.round(W)) | 0
-          if ((i + c) % 4 === 3) {
-            // Decorative box instead of books
-            g.add(rbox(Math.min(cellW * 0.5, 260), Math.min(cellH * 0.6, 200), D * 0.7, 8, mat('fabric', '#d9cbb4'), [x, y + Math.min(cellH * 0.6, 200) / 2, 0]))
-          } else g.add(books(cellW, cellH, D, x, y, 0, seed, 0.55 + ((seed % 5) / 5) * 0.4))
-        }
-    }
-    return g
-  },
+  surfaces: (prm) => storageSurfaces(shelfSpec(prm)),
+  build: (prm) => buildStorage(shelfSpec(prm)),
 })
 
-export const colorBox = defineAsset({
-  type: 'colorBox',
-  label: 'カラーボックス',
-  category: 'storage',
-  description: '定番のカラーボックス。縦置き・横置き、インナーボックスの有無',
-  placement: 'floor',
-  // Index 0 is always the top; then the cubes from the bottom (or the left) that have no inner box.
-  surfaces: ({ cubes, orientation, bins }) => {
-    const n = Math.round(cubes)
-    const t = 15
-    const cell = 330
-    const D = 290
-    const vertical = orientation === 'vertical'
-    const W = vertical ? cell + t * 2 : n * cell + (n + 1) * t
-    const H = vertical ? n * cell + (n + 1) * t : cell + t * 2
-    const out: Surface[] = [{ y: H, minX: -W / 2, maxX: W / 2, minZ: -D / 2, maxZ: D / 2, label: '天板' }]
-    for (let i = 0; i < n; i++) {
-      if (bins === 'all' || (bins === 'some' && i % 2 === 0)) continue
-      const x = vertical ? 0 : -W / 2 + t + i * (cell + t) + cell / 2
-      const y = vertical ? t + i * (cell + t) : t
-      out.push({ y, minX: x - cell / 2, maxX: x + cell / 2, minZ: -D / 2 + 6, maxZ: D / 2, clearance: cell, label: `${i + 1}マス目` })
-    }
-    return out
-  },
-  params: {
-    cubes: p.number({ label: '段数', min: 2, max: 4, step: 1, default: 3, group: '形' }),
-    orientation: p.select('向き', { vertical: '縦置き', horizontal: '横置き' }, 'vertical'),
-    bins: p.select('インナーボックス', { none: 'なし', some: 'いくつか', all: 'ぜんぶ' }, 'some'),
-    color: p.color('本体', '#f1ece4', { swatches: SWATCHES.wood }),
-    binColor: p.color('インナーボックス', '#b9b0a3', { swatches: SWATCHES.fabric }),
-  },
-  build({ cubes, orientation, bins, color, binColor }) {
-    const n = Math.round(cubes)
-    const t = 15
-    const cell = 330
-    const D = 290
-    const vertical = orientation === 'vertical'
-    const W = vertical ? cell + t * 2 : n * cell + (n + 1) * t
-    const H = vertical ? n * cell + (n + 1) * t : cell + t * 2
-    const m = mat('matte', color, { roughness: 0.55 })
-    const g = group(carcass(W, H, D, t, m, true))
-    for (let i = 1; i < n; i++) {
-      if (vertical) g.add(boxOn(W - t * 2, t, D - 6, m, 0, i * (cell + t), 3))
-      else g.add(boxOn(t, H - t * 2, D - 6, m, -W / 2 + i * (cell + t) + t / 2, t, 3))
-    }
-    const bm = mat('fabric', binColor)
-    for (let i = 0; i < n; i++) {
-      const has = bins === 'all' || (bins === 'some' && i % 2 === 0)
-      const x = vertical ? 0 : -W / 2 + t + i * (cell + t) + cell / 2
-      const y = vertical ? t + i * (cell + t) : t
-      if (has) {
-        g.add(rbox(cell - 16, cell - 20, D - 30, 10, bm, [x, y + (cell - 20) / 2 + 2, 8]))
-        g.add(boxOn(90, 24, 6, mat('matte', '#3b2f28'), x, y + cell - 90, D / 2 - 4)) // handle cut-out
-      } else if (i % 3 === 1) {
-        g.add(books(cell, cell, D, x, y, 0, i * 31 + n, 0.7))
-      }
-    }
-    return g
-  },
-})
+function shelfSpec(q: { width: number; height: number; depth: number; rows: number; cols: number; back: boolean; base: string; finish: string; color: string }): StorageSpec {
+  return {
+    W: q.width,
+    H: q.height,
+    D: q.depth,
+    finish: q.finish as Finish,
+    color: q.color,
+    cols: q.cols,
+    sections: [{ kind: 'open', rows: q.rows, weight: 1 }],
+    span: 'cell',
+    open: 0,
+    handle: 'none',
+    base: q.base as Base,
+    back: q.back,
+  }
+}
 
-export const chest = defineAsset({
-  type: 'chest',
-  label: 'チェスト',
+const frontOptions = (exclude: FrontKind[] = []) => Object.fromEntries(Object.entries(FRONT_LABELS).filter(([k]) => !exclude.includes(k as FrontKind))) as Record<FrontKind, string>
+
+export const cabinet = defineAsset({
+  type: 'cabinet',
+  label: '扉・引き出し付き収納',
   category: 'storage',
-  description: '引き出しの収納家具。段数と列数を変えられる',
+  description:
+    'チェスト・ロッカー・引き戸書庫・食器棚・キャビネットなど、扉や引き出しのある収納。下段と上段で扉の種類を選べる。扉を開けると中の棚に物を置ける',
   placement: 'floor',
   params: {
-    width: p.mm('幅', 350, 1400, 800),
-    height: p.mm('高さ', 400, 1300, 900),
-    depth: p.mm('奥行き', 300, 550, 420),
-    rows: p.number({ label: '段数', min: 2, max: 7, step: 1, default: 4, group: '形' }),
-    columns: p.number({ label: '列数', min: 1, max: 3, step: 1, default: 1, group: '形' }),
-    handle: p.select('取っ手', { bar: 'バー', knob: 'つまみ', groove: '溝' }, 'bar'),
-    material: p.select('素材', { wood: '木製', plastic: 'プラスチック（衣装ケース風）' }, 'wood'),
-    color: p.color('本体', '#d2ad7c', { swatches: SWATCHES.wood }),
+    width: p.mm('幅', 300, 1800, 800),
+    height: p.mm('高さ', 300, 2100, 900),
+    depth: p.mm('奥行き', 300, 650, 450),
+    cols: p.number({ label: '列数', min: 1, max: 4, step: 1, default: 1, group: '形' }),
+    lower: p.select('下段の扉', frontOptions(), 'drawers', { group: '形' }),
+    lowerRows: p.number({ label: '下段の段数', min: 1, max: 8, step: 1, default: 4, group: '形' }),
+    upperShare: p.number({ label: '上段の高さ', min: 0, max: 0.9, step: 0.05, default: 0, group: '形', hint: '0 なら上段なし（全部が下段）' }),
+    upper: p.select('上段の扉', frontOptions(), 'glassSliding', { group: '形' }),
+    upperRows: p.number({ label: '上段の段数', min: 1, max: 6, step: 1, default: 2, group: '形' }),
+    span: p.select('扉の分け方', SPAN_LABELS, 'cell', { group: '形' }),
+    open: p.number({ label: '開き具合', min: 0, max: 1, step: 0.05, default: 0, group: '形' }),
+    handle: p.select('取っ手', HANDLE_LABELS, 'bar', { group: '形' }),
+    base: p.select('足もと', BASE_LABELS, 'plinth'),
+    finish: p.select('素材', finishOptions(), 'wood', { group: '色・素材' }),
+    color: p.color('本体', '#d2ad7c', { swatches: BODY_SWATCHES }),
+    frontColor: p.color('扉・前板', '#d2ad7c', { swatches: BODY_SWATCHES }),
   },
   presets: [
-    { name: '衣装ケース', params: { width: 440, height: 1000, rows: 5, material: 'plastic', color: '#ffffff' } },
-    { name: '横長ロー', params: { width: 1200, height: 600, rows: 2, columns: 3 } },
+    { name: 'チェスト（4 段）', params: {} },
+    { name: '横長チェスト', params: { width: 1200, height: 700, cols: 3, lowerRows: 2, handle: 'knob' } },
+    { name: '衣装ケース', params: { width: 440, height: 1000, depth: 550, lowerRows: 5, finish: 'plastic', color: '#f4f4f2', frontColor: '#f4f4f2', handle: 'cup', base: 'casters' } },
+    { name: 'ロッカー（1 人用）', params: { width: 380, height: 1790, depth: 515, lower: 'hinged', lowerRows: 4, span: 'column', handle: 'lever', finish: 'steel', color: '#e6e6e3', frontColor: '#e6e6e3', base: 'adjusters' } },
+    { name: 'ロッカー（3 人用）', params: { width: 900, height: 1790, depth: 515, cols: 3, lower: 'hinged', lowerRows: 4, span: 'column', handle: 'lever', finish: 'steel', color: '#e6e6e3', frontColor: '#e6e6e3', base: 'adjusters' } },
+    { name: '引き戸書庫', params: { width: 880, height: 1050, depth: 400, lower: 'sliding', lowerRows: 2, finish: 'steel', color: '#e6e6e3', frontColor: '#e6e6e3', base: 'adjusters' } },
+    {
+      name: 'スチール書庫（上ガラス）',
+      params: { width: 880, height: 1790, depth: 400, lower: 'hinged', lowerRows: 2, upperShare: 0.55, upper: 'glassSliding', upperRows: 3, span: 'column', handle: 'lever', finish: 'steel', color: '#e6e6e3', frontColor: '#e6e6e3', base: 'adjusters' },
+    },
+    { name: '食器棚', params: { width: 900, height: 1800, depth: 450, lower: 'drawers', lowerRows: 2, upperShare: 0.6, upper: 'glass', upperRows: 3, span: 'row', color: '#f1ece4', frontColor: '#f1ece4', finish: 'melamine', handle: 'bar' } },
+    { name: 'キャビネット（開き戸）', params: { width: 800, height: 850, depth: 400, lower: 'hinged', lowerRows: 2, span: 'whole', handle: 'knob', base: 'legs', color: '#8f5f3d', frontColor: '#8f5f3d' } },
+    { name: 'サイドボード', params: { width: 1500, height: 700, depth: 420, cols: 3, lower: 'flap', lowerRows: 1, span: 'cell', handle: 'groove', base: 'legs', color: '#6b4a34', frontColor: '#6b4a34' } },
   ],
-  build({ width: W, height: H, depth: D, rows, columns, handle, material, color }) {
-    const plastic = material === 'plastic'
-    const m = plastic ? mat('plastic', color, { roughness: 0.3 }) : mat('wood', color)
-    const front = plastic ? mat('glass', '#f4f4f4', { opacity: 0.55, roughness: 0.4 }) : mat('wood', color)
+  surfaces: (prm) => storageSurfaces(cabinetSpec(prm)),
+  body: (prm) => storageBody(cabinetSpec(prm)),
+  build: (prm) => buildStorage(cabinetSpec(prm)),
+})
+
+function cabinetSpec(q: {
+  width: number
+  height: number
+  depth: number
+  cols: number
+  lower: string
+  lowerRows: number
+  upperShare: number
+  upper: string
+  upperRows: number
+  span: string
+  open: number
+  handle: string
+  base: string
+  finish: string
+  color: string
+  frontColor: string
+}): StorageSpec {
+  const sections = [{ kind: q.lower as FrontKind, rows: q.lowerRows, weight: 1 - q.upperShare }]
+  if (q.upperShare > 0.02) sections.push({ kind: q.upper as FrontKind, rows: q.upperRows, weight: q.upperShare })
+  return {
+    W: q.width,
+    H: q.height,
+    D: q.depth,
+    finish: q.finish as Finish,
+    color: q.color,
+    frontColor: q.frontColor,
+    cols: q.cols,
+    sections,
+    span: q.span as Span,
+    open: q.open,
+    handle: q.handle as HandleKind,
+    base: q.base as Base,
+    back: true,
+  }
+}
+
+export const tvStand = defineAsset({
+  type: 'tvStand',
+  label: 'テレビ台',
+  category: 'av',
+  description: 'テレビを置く低い台。テレビ（tv）を上に載せて使う。中の段にゲーム機などを置ける',
+  placement: 'floor',
+  params: {
+    width: p.mm('幅', 600, 2000, 1200),
+    height: p.mm('高さ', 250, 600, 400),
+    depth: p.mm('奥行き', 280, 500, 400),
+    style: p.select('スタイル', { open: 'オープン', drawers: '引き出し', doors: '扉付き', flap: 'フラップ扉' }, 'open'),
+    legs: p.bool('脚付き', true),
+    finish: p.select('素材', finishOptions(['wood', 'melamine']), 'wood', { group: '色・素材' }),
+    color: p.color('本体', '#8f5f3d', { swatches: BODY_SWATCHES }),
+  },
+  surfaces: (prm) => storageSurfaces(tvSpec(prm)),
+  body: (prm) => storageBody(tvSpec(prm)),
+  build: (prm) => buildStorage(tvSpec(prm)),
+})
+
+function tvSpec(q: { width: number; height: number; depth: number; style: string; legs: boolean; finish: string; color: string }): StorageSpec {
+  const kind: FrontKind = q.style === 'drawers' ? 'drawers' : q.style === 'doors' ? 'hinged' : q.style === 'flap' ? 'flap' : 'open'
+  return {
+    W: q.width,
+    H: q.height,
+    D: q.depth,
+    finish: q.finish as Finish,
+    color: q.color,
+    cols: Math.max(2, Math.round(q.width / 450)),
+    sections: [{ kind, rows: 1, weight: 1 }],
+    span: 'cell',
+    open: 0,
+    handle: q.style === 'flap' ? 'groove' : 'groove',
+    base: q.legs ? 'legs' : 'plinth',
+    back: true,
+  }
+}
+
+const RACK_FINISH = { chrome: 'クロムめっき', black: 'ブラック', white: 'ホワイト', gold: 'ゴールド' } as const
+
+function rackMetal(finish: string) {
+  return finish === 'chrome' ? mat('chrome', '#d9dcdf', { roughness: 0.14 }) : finish === 'gold' ? mat('chrome', '#c9a86a', { roughness: 0.22 }) : mat('powder', finish === 'black' ? '#262729' : '#f1f1ef')
+}
+
+type RackParams = { width: number; depth: number; height: number; shelves: number; shelfType: string; finish: string; feet: string; pole: string; boardColor: string }
+
+/** Height (top face) of every shelf, bottom first. */
+function rackLevels(q: RackParams) {
+  const n = Math.max(2, Math.round(q.shelves))
+  const foot = q.feet === 'casters' ? 75 : 30
+  const top = q.height - 40
+  const board = q.shelfType === 'wire' ? 0 : q.shelfType === 'glass' ? 6 : 9
+  return Array.from({ length: n }, (_, i) => foot + 25 + ((top - foot - 25) * i) / (n - 1) + board)
+}
+
+export const metalRack = defineAsset({
+  type: 'metalRack',
+  label: 'メタルラック',
+  category: 'storage',
+  description: 'ポールと棚板を組み合わせるスチールラック（ワイヤー棚・木目の棚板・ガラス）。キッチン・洗面所・押し入れなどに。各段に物を載せられる',
+  placement: 'floor',
+  params: {
+    width: p.mm('幅', 450, 1800, 910, { hint: '定番は 550 / 760 / 910 / 1220' }),
+    depth: p.mm('奥行き', 300, 650, 460, { hint: '定番は 350 / 460 / 610' }),
+    height: p.mm('高さ', 600, 2000, 1790),
+    shelves: p.number({ label: '棚の数', min: 2, max: 8, step: 1, default: 5, group: '形' }),
+    shelfType: p.select('棚板', { wire: 'ワイヤー', board: '木目の板をのせる', glass: 'ガラスをのせる' }, 'wire', { group: '形' }),
+    pole: p.select('ポール', { standard: '太い (25mm)', slim: '細い (19mm)' }, 'standard', { group: '形' }),
+    feet: p.select('足もと', { adjuster: 'アジャスター', casters: 'キャスター' }, 'adjuster', { group: '形' }),
+    finish: p.select('色', RACK_FINISH, 'chrome', { group: '色・素材' }),
+    boardColor: p.color('棚板の色', '#b8875a', { swatches: SWATCHES.wood }),
+  },
+  presets: [
+    { name: 'キッチンラック', params: { width: 760, depth: 460, height: 1790, shelves: 5, feet: 'casters' } },
+    { name: 'ブラック＋木目', params: { finish: 'black', shelfType: 'board', boardColor: '#8f5f3d' } },
+    { name: 'ロー（3 段）', params: { width: 910, height: 900, shelves: 3, pole: 'slim', finish: 'white', shelfType: 'board', boardColor: '#e4cfa8' } },
+    { name: 'すき間ラック', params: { width: 450, depth: 350, height: 1500, shelves: 5, pole: 'slim' } },
+  ],
+  surfaces: (q) => {
+    const lv = rackLevels(q)
+    const r = q.pole === 'slim' ? 9.5 : 12.5
+    const rect = { minX: -q.width / 2 + r, maxX: q.width / 2 - r, minZ: -q.depth / 2 + r, maxZ: q.depth / 2 - r }
+    const top: Surface = { y: lv[lv.length - 1], ...rect, label: '一番上の棚' }
+    return [top, ...lv.slice(0, -1).map((y, i) => ({ y, ...rect, clearance: lv[i + 1] - y - 30, label: `${i + 1}段目` }))]
+  },
+  build(q) {
     const g = group()
-    const t = 18
-    const base = plastic ? 30 : 60
-    g.add(boxOn(W, H - base, D, m, 0, base, 0))
-    if (!plastic) g.add(boxOn(W - 40, base, D - 40, mat('matte', '#3b2f28'), 0, 0, 0))
-    else for (const sx of [-1, 1]) for (const sz of [-1, 1]) g.add(cyl(18, 18, base, mat('rubber', '#cccccc'), [sx * (W / 2 - 40), base / 2, sz * (D / 2 - 40)]))
-    const r = Math.round(rows)
-    const c = Math.round(columns)
-    const fh = (H - base - t) / r
-    const fw = (W - t) / c
-    const hm = mat('metal', '#3a3b3e', { roughness: 0.35 })
-    // Dark backing so the gaps between drawer fronts read as seams.
-    if (!plastic) g.add(boxOn(W - t, H - base - t, 2, mat('matte', '#2b2420'), 0, base + t / 2, D / 2 + 1))
-    for (let i = 0; i < r; i++)
-      for (let j = 0; j < c; j++) {
-        const x = -W / 2 + t / 2 + fw * (j + 0.5)
-        const y = base + t / 2 + i * fh
-        g.add(boxOn(fw - 6, fh - 6, 16, front, x, y + 3, D / 2 + 4))
-        if (plastic) {
-          // Visible folded clothes behind the translucent front
-          g.add(boxOn(fw - 60, fh * 0.55, 20, mat('fabric', BOOK_COLORS[(i * 3 + j) % BOOK_COLORS.length]), x, y + 12, D / 2 - 20))
-          g.add(boxOn(Math.min(140, fw * 0.4), 18, 10, m, x, y + fh - 40, D / 2 + 16))
-          continue
-        }
-        if (handle === 'bar') g.add(boxOn(Math.min(160, fw * 0.4), 14, 16, hm, x, y + fh / 2 - 7, D / 2 + 18))
-        else if (handle === 'knob') {
-          const k = cyl(16, 16, 24, mat('wood', '#6b4a34'), [x, y + fh / 2, D / 2 + 22], { rot: [Math.PI / 2, 0, 0] })
-          g.add(k)
-        } else g.add(boxOn(fw - 40, 10, 6, mat('matte', '#3b2f28'), x, y + fh - 26, D / 2 + 10))
+    const metal = rackMetal(q.finish)
+    const r = q.pole === 'slim' ? 9.5 : 12.5
+    const W = q.width
+    const D = q.depth
+    const lv = rackLevels(q)
+    const footH = q.feet === 'casters' ? 75 : 30
+    const poleTop = q.height
+    const poles: THREE.Mesh[] = []
+    const wires: THREE.Mesh[] = []
+    const grooves: THREE.Mesh[] = []
+    const corners: [number, number][] = [
+      [-W / 2 + r, -D / 2 + r],
+      [W / 2 - r, -D / 2 + r],
+      [-W / 2 + r, D / 2 - r],
+      [W / 2 - r, D / 2 - r],
+    ]
+    corners.forEach(([x, z], i) => {
+      poles.push(cyl(r, r, poleTop - footH, metal, [x, footH + (poleTop - footH) / 2, z], { segments: 18 }))
+      // Grooves every inch along the pole, as on real rack poles.
+      for (let y = footH + 30; y < poleTop - 10; y += 25.4) grooves.push(new THREE.Mesh(new THREE.TorusGeometry(r, 0.9, 4, 14), metal).translateX(x).translateY(y).translateZ(z).rotateX(Math.PI / 2))
+      poles.push(cyl(r + 1, r + 1, 8, metal, [x, poleTop - 4, z], { segments: 18 })) // cap
+      if (q.feet === 'casters') {
+        const c = caster(footH, { turn: deg(i * 41), lock: i < 2 })
+        c.position.set(x, 0, z)
+        g.add(c)
+      } else {
+        poles.push(cyl(r * 0.9, r * 1.2, footH - 8, metal, [x, 8 + (footH - 8) / 2, z], { segments: 16 }))
+        const a = adjuster(8, r * 1.3)
+        a.position.set(x, 0, z)
+        g.add(a)
       }
+    })
+    const wireR = 2.2
+    for (const top of lv) {
+      const y = top - (q.shelfType === 'wire' ? 0 : q.shelfType === 'glass' ? 6 : 9)
+      // Frame: front and back rails (flat bars), side rails, conical sleeves on the poles.
+      for (const z of [-D / 2 + r, D / 2 - r]) wires.push(panelOn(W - r * 2, 22, 3, metal, 0, y - 22, z, { edge: 1 }))
+      for (const x of [-W / 2 + r, W / 2 - r]) wires.push(panelOn(3, 22, D - r * 2, metal, x, y - 22, 0, { edge: 1 }))
+      for (const [x, z] of corners) wires.push(cyl(r + 2, r + 5, 34, metal, [x, y - 12, z], { segments: 16 }))
+      // Wires front to back, and two trusses underneath.
+      const n = Math.max(6, Math.round((W - r * 2) / 24))
+      for (let k = 1; k < n; k++) {
+        const x = -W / 2 + r + ((W - r * 2) * k) / n
+        wires.push(cyl(wireR, wireR, D - r * 2, metal, [x, y - wireR, 0], { rot: [Math.PI / 2, 0, 0], segments: 6 }))
+      }
+      for (const z of [-D / 6, D / 6]) wires.push(cyl(wireR, wireR, W - r * 2, metal, [0, y - wireR * 3, z], { rot: [0, 0, Math.PI / 2], segments: 6 }))
+      if (q.shelfType === 'board') g.add(panelOn(W - r * 2 - 4, 9, D - r * 2 - 4, mat('wood', q.boardColor), 0, y, 0, { edge: 1.5 }))
+      if (q.shelfType === 'glass') g.add(panelOn(W - r * 2 - 4, 6, D - r * 2 - 4, mat('glass', '#d9e8ea', { opacity: 0.3 }), 0, y, 0, { edge: 1 }))
+    }
+    g.add(merged(poles, metal), merged(wires, metal), merged(grooves, metal, { castShadow: false }))
     return g
   },
 })
@@ -287,45 +361,3 @@ export const hangerRack = defineAsset({
   },
 })
 
-export const tvStand = defineAsset({
-  type: 'tvStand',
-  label: 'テレビ台',
-  category: 'av',
-  description: 'テレビを置く低い台。テレビ（tv）を上に載せて使う',
-  placement: 'floor',
-  params: {
-    width: p.mm('幅', 600, 2000, 1200),
-    height: p.mm('高さ', 250, 600, 400),
-    depth: p.mm('奥行き', 280, 500, 400),
-    style: p.select('スタイル', { open: 'オープン', drawers: '引き出し', doors: '扉付き' }, 'open'),
-    legs: p.bool('脚付き', true),
-    color: p.color('本体', '#8f5f3d', { swatches: SWATCHES.wood }),
-  },
-  build({ width: W, height: H, depth: D, style, legs, color }) {
-    const m = mat('wood', color)
-    const t = 20
-    const g = group()
-    const legH = legs ? Math.min(120, H * 0.3) : 0
-    const bodyH = H - legH
-    const body = carcass(W, bodyH, D, t, m, true)
-    body.position.y = legH
-    g.add(body)
-    if (legs) for (const sx of [-1, 1]) for (const sz of [-1, 1]) g.add(cyl(16, 12, legH, mat('wood', color), [sx * (W / 2 - 60), legH / 2, sz * (D / 2 - 60)], { rot: [sz * deg(5), 0, -sx * deg(5)] }))
-    const innerH = bodyH - t * 2
-    const n = Math.max(2, Math.round(W / 450))
-    const cw = (W - t * 2) / n
-    for (let i = 1; i < n; i++) g.add(boxOn(t, innerH, D - 10, m, -W / 2 + t + cw * i, legH + t, 5, { grain: 'y' }))
-    for (let i = 0; i < n; i++) {
-      const x = -W / 2 + t + cw * (i + 0.5)
-      const closed = style === 'doors' ? i !== Math.floor(n / 2) : style === 'drawers' ? i % 2 === 0 : false
-      if (closed) {
-        g.add(boxOn(cw - 6, innerH - 6, 16, mat('wood', color, { roughness: 0.45 }), x, legH + t + 3, D / 2 - 6))
-        g.add(boxOn(Math.min(120, cw * 0.4), 10, 10, mat('metal', '#2b2b2b'), x, legH + t + innerH - 40, D / 2 + 7))
-      } else if (i === 0 || i === n - 1) {
-        // A game console / router in an open cell
-        g.add(rbox(Math.min(260, cw * 0.7), Math.min(70, innerH * 0.4), 220, 8, mat('plastic', i === 0 ? '#2f2f31' : '#f2efe9'), [x, legH + t + Math.min(70, innerH * 0.4) / 2, 20]))
-      }
-    }
-    return g
-  },
-})

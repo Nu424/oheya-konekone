@@ -117,8 +117,8 @@ const REACHABLE_HEIGHT = 1700
 /** Furniture an onTop item would rather stand on, in order, when nothing is selected. */
 const PREFERRED_SUPPORT: Record<string, string[]> = {
   monitor: ['desk', 'diningTable'],
-  deskLamp: ['desk', 'diningTable', 'lowTable', 'chest'],
-  tv: ['tvStand', 'chest', 'lowTable'],
+  deskLamp: ['desk', 'diningTable', 'lowTable', 'cabinet'],
+  tv: ['tvStand', 'cabinet', 'lowTable'],
 }
 
 /**

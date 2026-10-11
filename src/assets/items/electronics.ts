@@ -1,35 +1,12 @@
 import * as THREE from 'three'
 import { mat } from '../../three/materials'
-import { HEADLESS } from '../../three/textures'
+import { screenMesh } from './computing'
 import { boxOn, cyl, deg, group, rbox } from '../kit'
 import { p } from '../params'
 import { defineAsset } from '../types'
 
-let screenMat: THREE.Material | undefined
-
-/** Screen with a subtle bright wallpaper so it does not read as a black hole. */
 function screen(w: number, h: number, on: boolean) {
-  if (!on) return new THREE.Mesh(new THREE.PlaneGeometry(w, h), mat('screen', '#0c0d10'))
-  if (screenMat) return new THREE.Mesh(new THREE.PlaneGeometry(w, h), screenMat)
-  if (HEADLESS) return new THREE.Mesh(new THREE.PlaneGeometry(w, h), mat('screen', '#0c0d10'))
-  const c = document.createElement('canvas')
-  c.width = 256
-  c.height = 144
-  const ctx = c.getContext('2d')!
-  const g = ctx.createLinearGradient(0, 0, 256, 144)
-  g.addColorStop(0, '#f3a37f')
-  g.addColorStop(0.5, '#c97fa8')
-  g.addColorStop(1, '#5f78c9')
-  ctx.fillStyle = g
-  ctx.fillRect(0, 0, 256, 144)
-  ctx.fillStyle = 'rgba(255,255,255,0.25)'
-  ctx.beginPath()
-  ctx.arc(190, 40, 26, 0, Math.PI * 2)
-  ctx.fill()
-  const tex = new THREE.CanvasTexture(c)
-  tex.colorSpace = THREE.SRGBColorSpace
-  screenMat = new THREE.MeshStandardMaterial({ map: tex, emissive: '#ffffff', emissiveMap: tex, emissiveIntensity: 0.9, roughness: 0.2 })
-  return new THREE.Mesh(new THREE.PlaneGeometry(w, h), screenMat)
+  return screenMesh(w, h, on ? 'wallpaper' : 'off')
 }
 
 export const tv = defineAsset({
@@ -68,73 +45,6 @@ export const tv = defineAsset({
         foot.rotation.x = deg(-10)
         g.add(foot)
       }
-    }
-    return g
-  },
-})
-
-export const monitor = defineAsset({
-  type: 'monitor',
-  label: 'モニター',
-  category: 'work',
-  description: 'PCモニター。デスクの上(y=デスクの高さ)に置く。2枚並べることもできる',
-  placement: 'onTop',
-  // Nothing is meant to stand on it.
-  surfaces: () => [],
-  elevation: 720,
-  contactShadow: false,
-  params: {
-    inches: p.number({ label: 'サイズ', min: 21, max: 34, step: 1, default: 24, unit: 'インチ', group: 'サイズ' }),
-    count: p.number({ label: '枚数', min: 1, max: 2, step: 1, default: 1, group: '形' }),
-    ultrawide: p.bool('ウルトラワイド', false),
-    laptop: p.bool('ノートPCも置く', true),
-    keyboard: p.bool('キーボード', true),
-    color: p.color('色', '#1d1d20', { swatches: ['#1d1d20', '#f2efe9', '#a7aaae'] }),
-    on: p.bool('画面をつける', true),
-  },
-  build({ inches, count, ultrawide, laptop, keyboard, color, on }) {
-    const diag = inches * 25.4
-    const ratio = ultrawide ? 21 / 9 : 16 / 9
-    const h = diag / Math.sqrt(1 + ratio * ratio)
-    const w = h * ratio
-    const body = mat('plastic', color, { roughness: 0.35 })
-    const g = group()
-    const n = Math.round(count)
-    for (let i = 0; i < n; i++) {
-      const x = n === 1 ? 0 : (i - 0.5) * (w + 20)
-      const yaw = n === 1 ? 0 : (i === 0 ? 1 : -1) * deg(12)
-      const m = new THREE.Group()
-      const y0 = 110
-      m.add(rbox(w + 14, h + 14, 22, 4, body, [0, y0 + h / 2, 0]))
-      const sc = screen(w, h, on)
-      sc.position.set(0, y0 + h / 2, 12)
-      m.add(sc)
-      m.add(boxOn(50, y0 + h / 2, 20, body, 0, 0, -30))
-      m.add(rbox(220, 10, 180, 4, body, [0, 5, -20]))
-      m.position.set(x, 0, -60)
-      m.rotation.y = yaw
-      g.add(m)
-    }
-    if (keyboard) {
-      g.add(rbox(440, 22, 140, 6, mat('plastic', color === '#1d1d20' ? '#2b2b2e' : '#e7e7e7', { roughness: 0.5 }), [-40, 11, 180]))
-      g.add(rbox(65, 30, 110, 25, mat('plastic', color, { roughness: 0.4 }), [260, 15, 190]))
-    }
-    if (laptop) {
-      const lx = n === 1 ? -w / 2 - 230 : -w - 200
-      const lm = mat('metal', '#c9ccd0', { roughness: 0.3 })
-      const lap = new THREE.Group()
-      lap.add(rbox(320, 16, 220, 5, lm, [0, 8, 0]))
-      const lid = new THREE.Group()
-      lid.add(rbox(320, 210, 8, 4, lm, [0, 105, 0]))
-      const ls = screen(290, 180, on)
-      ls.position.set(0, 105, 5)
-      lid.add(ls)
-      lid.position.set(0, 16, -110)
-      lid.rotation.x = deg(-15)
-      lap.add(lid)
-      lap.position.set(lx, 0, 80)
-      lap.rotation.y = deg(18)
-      g.add(lap)
     }
     return g
   },

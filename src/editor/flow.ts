@@ -259,7 +259,7 @@ export function analyzeFlow(layout: Layout): FlowResult {
   // Furniture you cannot get to (e.g. a bed boxed in).
   for (const { i, f } of solid) {
     const t = getAsset(i.type)
-    if (!t || !['bed', 'desk', 'sofa', 'fridge', 'washer', 'chest', 'bookshelf', 'miniKitchen'].includes(i.type)) continue
+    if (!t || !['bed', 'desk', 'officeDesk', 'sofa', 'fridge', 'washer', 'cabinet', 'shelf', 'metalRack', 'miniKitchen'].includes(i.type)) continue
     let reach = false
     const pad = 150
     for (let r = Math.max(0, Math.floor((f.minZ - pad) / CELL)); r <= Math.min(rows - 1, Math.floor((f.maxZ + pad) / CELL)) && !reach; r++)

@@ -151,6 +151,44 @@ export function softNoise() {
   })
 }
 
+/**
+ * Hairline brushing for stainless steel / aluminium (linear): fine streaks running along U.
+ * Use as a roughness or bump map.
+ */
+export function brushedLines() {
+  return cached('brushedLines', () => {
+    const streaks = fbm(61, 4, 4)
+    const c = grayCanvas(512, (u, v) => 0.55 + (streaks(u * 0.05, v * 16) - 0.5) * 0.7)
+    const t = toTexture(c, false)
+    t.repeat.set(3, 3)
+    return t
+  })
+}
+
+/** Corrugated cardboard / kraft paper tint: fibres and faint flute ridges along V. */
+export function kraftPaper() {
+  return cached('kraftPaper', () => {
+    const fibres = fbm(71, 16, 4)
+    const blotch = fbm(72, 3, 3)
+    const c = grayCanvas(512, (u, v) => 0.9 + (fibres(u, v * 0.4) - 0.5) * 0.12 + (blotch(u, v) - 0.5) * 0.1 + Math.sin(u * 160 * Math.PI) * 0.012)
+    return toTexture(c, true)
+  })
+}
+
+/**
+ * A texture drawn once on a canvas and cached under `key` (prints on boxes, book spines, clock
+ * faces, whiteboard scribbles). Empty outside the browser.
+ */
+export function drawnTexture(key: string, w: number, h: number, draw: (ctx: CanvasRenderingContext2D, w: number, h: number) => void) {
+  return cached('drawn:' + key, () => {
+    const c = canvas(w, h)
+    draw(c.getContext('2d')!, w, h)
+    const t = toTexture(c, true)
+    t.wrapS = t.wrapT = THREE.ClampToEdgeWrapping
+    return t
+  })
+}
+
 /** Fine embossed-wallpaper noise (linear) for walls. */
 export function wallpaper() {
   return cached('wallpaper', () => {

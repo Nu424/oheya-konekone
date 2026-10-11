@@ -1,5 +1,6 @@
 import * as THREE from 'three'
 import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js'
+import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js'
 
 /**
  * Modelling kit used by asset builders. All sizes are in millimetres;
@@ -67,15 +68,53 @@ export function boxOn(w: number, h: number, d: number, material: THREE.Material,
   return box(w, h, d, material, [x, y + h / 2, z], o)
 }
 
-/** Rounded box (cushions, appliances). `pos` is the centre. */
+/**
+ * Box-projected UVs in metres: every vertex takes its UV from the two axes perpendicular to its
+ * dominant normal, so textures keep the same scale on rounded and bevelled boxes as on plain ones.
+ */
+function projectUVs(geo: THREE.BufferGeometry, grain: Axis) {
+  const pos = geo.attributes.position as THREE.BufferAttribute
+  const nor = geo.attributes.normal as THREE.BufferAttribute
+  const uv = geo.attributes.uv as THREE.BufferAttribute
+  for (let i = 0; i < pos.count; i++) {
+    const nx = Math.abs(nor.getX(i))
+    const ny = Math.abs(nor.getY(i))
+    const nz = Math.abs(nor.getZ(i))
+    const p = { x: pos.getX(i), y: pos.getY(i), z: pos.getZ(i) }
+    const [ua, va]: [Axis, Axis] = nx >= ny && nx >= nz ? ['z', 'y'] : ny >= nz ? ['x', 'z'] : ['x', 'y']
+    const swap = grain === va
+    const u = p[ua] * 0.001
+    const v = p[va] * 0.001
+    if (swap) uv.setXY(i, v, u)
+    else uv.setXY(i, u, v)
+  }
+  uv.needsUpdate = true
+}
+
+/** Rounded box (cushions, soft appliances). `pos` is the centre. For furniture boards use `panel`. */
 export function rbox(w: number, h: number, d: number, radius: number, material: THREE.Material, pos: Vec = [0, 0, 0], o: MeshOpts & { segments?: number } = {}) {
   const r = Math.max(0.5, Math.min(radius, w / 2 - 0.5, h / 2 - 0.5, d / 2 - 0.5))
   const geo = new RoundedBoxGeometry(w, h, d, o.segments ?? 4, r)
-  // RoundedBoxGeometry has UVs per face in 0..1; scale them to metres along the dominant axes.
-  const uv = geo.attributes.uv as THREE.BufferAttribute
-  const s = Math.max(w, h, d) * 0.001
-  for (let i = 0; i < uv.count; i++) uv.setXY(i, uv.getX(i) * s, uv.getY(i) * s)
+  projectUVs(geo, o.grain ?? longest(w, h, d))
   return finish(new THREE.Mesh(geo, material), pos, o)
+}
+
+/**
+ * A board or body with real-world edges: corners eased by `edge` mm (default 1.5, like a
+ * laminated board). Catches a thin highlight along every edge, which is what makes furniture read
+ * as made rather than as a block. `pos` is the centre.
+ */
+export function panel(w: number, h: number, d: number, material: THREE.Material, pos: Vec = [0, 0, 0], o: MeshOpts & { edge?: number } = {}) {
+  const edge = Math.min(o.edge ?? 1.5, w / 2 - 0.1, h / 2 - 0.1, d / 2 - 0.1)
+  if (edge < 0.4) return box(w, h, d, material, pos, o)
+  const geo = new RoundedBoxGeometry(w, h, d, 2, edge)
+  projectUVs(geo, o.grain ?? longest(w, h, d))
+  return finish(new THREE.Mesh(geo, material), pos, o)
+}
+
+/** `panel` whose bottom sits at `y`. */
+export function panelOn(w: number, h: number, d: number, material: THREE.Material, x: number, y: number, z: number, o: MeshOpts & { edge?: number } = {}) {
+  return panel(w, h, d, material, [x, y + h / 2, z], o)
 }
 
 /** Vertical cylinder; `pos` is the centre. Use rot to lay it down. */
@@ -146,6 +185,23 @@ export function roundedRect(w: number, h: number, r: number) {
   s.lineTo(x, y + r)
   s.quadraticCurveTo(x, y, x + r, y)
   return s
+}
+
+/**
+ * Merge the geometry of many same-material meshes into one mesh (key caps, rack wires, slats).
+ * Keeps the draw-call count and the path tracer's mesh count low. Meshes keep their transforms.
+ */
+export function merged(meshes: THREE.Mesh[], material: THREE.Material, o: { castShadow?: boolean } = {}) {
+  const geos = meshes.map((m) => {
+    m.updateMatrix()
+    const g = m.geometry.index ? m.geometry.toNonIndexed() : m.geometry.clone()
+    for (const k of Object.keys(g.attributes)) if (k !== 'position' && k !== 'normal' && k !== 'uv') g.deleteAttribute(k)
+    return g.applyMatrix4(m.matrix)
+  })
+  const mesh = new THREE.Mesh(mergeGeometries(geos) ?? new THREE.BufferGeometry(), material)
+  mesh.castShadow = o.castShadow ?? true
+  mesh.receiveShadow = true
+  return mesh
 }
 
 export function group(...children: (THREE.Object3D | null | undefined | false)[]) {

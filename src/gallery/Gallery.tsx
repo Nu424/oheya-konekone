@@ -12,6 +12,7 @@ import { useThree } from '@react-three/fiber'
 /**
  * Asset gallery for visual QA: `?gallery` shows every asset with its default parameters,
  * `?gallery&type=desk` shows one asset at min / default / max and each preset.
+ * `&only=<index>` frames one cell up close; `&az=<deg>` turns the camera around it.
  * `?gallery&limits=min` (or `max`, optionally with `&types=`) shows every asset at the edge of what can be typed in
  * (`numberLimits`, past the slider range), to catch shapes that break there.
  */
@@ -154,9 +155,13 @@ export default function Gallery() {
   // 3/4 view from the front-right, framed to the grid (which is centred on the origin).
   const cam = (() => {
     const size = Math.max(W, D * 1.2)
-    const dist = only !== null ? size * 1.35 + 0.4 : size * 1.3 + 0.5
+    // A single cell is framed to the object itself, so small things (a kettle, a mouse) fill the view.
+    const b = objs[0]?.box
+    const objSize = b ? Math.max(b.max.x - b.min.x, b.max.y - b.min.y, b.max.z - b.min.z) : 1
+    const dist = only !== null ? objSize * 2.6 + 0.25 : size * 1.3 + 0.5
     const el = THREE.MathUtils.degToRad(only !== null ? 32 : 48)
-    const az = THREE.MathUtils.degToRad(only !== null ? 28 : 8)
+    // `&az=<deg>` turns the view around the object (0 = from the front, 90 = from the right).
+    const az = THREE.MathUtils.degToRad(Number(q.get('az') ?? (only !== null ? 28 : 8)))
     const ty = only !== null ? maxH * 0.4 : 0.1
     const pos: [number, number, number] = [dist * Math.cos(el) * Math.sin(az), ty + dist * Math.sin(el), dist * Math.cos(el) * Math.cos(az)]
     return { pos, ty }

@@ -1,5 +1,5 @@
 import * as THREE from 'three'
-import { fabricWeave, leafVein, softNoise, woodGrain } from './textures'
+import { brushedLines, fabricWeave, kraftPaper, leafVein, softNoise, woodGrain } from './textures'
 
 /**
  * Shared material library for assets. Materials are cached by (kind, color, options),
@@ -21,6 +21,20 @@ export type MatKind =
   | 'leaf'
   | 'emissive'
   | 'rubber'
+  /** Brushed (hairline) stainless steel. */
+  | 'stainless'
+  /** Mirror-like chrome plating. */
+  | 'chrome'
+  /** Powder-coated steel: satin paint over metal (office furniture, racks, lockers). */
+  | 'powder'
+  /** Anodised / brushed aluminium (frames, laptops). */
+  | 'aluminum'
+  /** Kraft paper / corrugated cardboard. */
+  | 'cardboard'
+  /** Plain printing paper. */
+  | 'paper'
+  /** Acrylic or polycarbonate sheet; `opacity` sets clarity, `roughness` frosting. */
+  | 'acrylic'
 
 export interface MatOptions {
   roughness?: number
@@ -159,7 +173,62 @@ function create(kind: MatKind, color: string, o: MatOptions): THREE.Material {
       })
     case 'rubber':
       return new THREE.MeshStandardMaterial({ color: c, roughness: o.roughness ?? 0.95, side })
+    case 'stainless':
+      return new THREE.MeshStandardMaterial({ color: c, metalness: 1, roughness: o.roughness ?? 0.32, roughnessMap: brushedLines(), side })
+    case 'chrome':
+      return new THREE.MeshStandardMaterial({ color: c, metalness: 1, roughness: o.roughness ?? 0.08, side })
+    case 'powder':
+      return new THREE.MeshPhysicalMaterial({
+        color: c,
+        metalness: 0.15,
+        roughness: o.roughness ?? 0.5,
+        bumpMap: softNoise(),
+        bumpScale: 0.08,
+        clearcoat: 0.25,
+        clearcoatRoughness: 0.6,
+        side,
+      })
+    case 'aluminum':
+      return new THREE.MeshStandardMaterial({ color: c, metalness: 1, roughness: o.roughness ?? 0.38, roughnessMap: brushedLines(), side })
+    case 'cardboard':
+      return new THREE.MeshStandardMaterial({ color: c, map: kraftPaper(), roughness: o.roughness ?? 0.9, side })
+    case 'paper':
+      return new THREE.MeshStandardMaterial({ color: c, roughness: o.roughness ?? 0.85, side })
+    case 'acrylic':
+      return new THREE.MeshPhysicalMaterial({
+        color: c,
+        roughness: o.roughness ?? 0.05,
+        transparent: true,
+        opacity: o.opacity ?? 0.35,
+        clearcoat: 1,
+        clearcoatRoughness: 0.05,
+        depthWrite: false,
+        side: THREE.DoubleSide,
+      })
   }
+}
+
+/**
+ * A material that carries its own picture (a print on a box, a clock face, a screen image).
+ * `kind` decides the surface (matte paper, glossy print...). Cached by `key`.
+ */
+export function printedMat(key: string, map: THREE.Texture, kind: 'paper' | 'gloss' | 'screen' | 'cardboard' = 'paper', o: { roughness?: number } = {}): THREE.Material {
+  const k = `printed|${kind}|${key}|${o.roughness ?? ''}`
+  let m = cache.get(k)
+  if (!m) {
+    if (kind === 'screen')
+      m = new THREE.MeshStandardMaterial({ map, emissive: '#ffffff', emissiveMap: map, emissiveIntensity: 0.9, roughness: 0.15 })
+    else
+      m = new THREE.MeshPhysicalMaterial({
+        map,
+        roughness: o.roughness ?? (kind === 'gloss' ? 0.25 : 0.85),
+        clearcoat: kind === 'gloss' ? 0.6 : 0,
+        clearcoatRoughness: 0.2,
+      })
+    m.name = k
+    cache.set(k, m)
+  }
+  return m
 }
 
 /** Common palette for UI swatches. */
@@ -168,4 +237,6 @@ export const SWATCHES = {
   fabric: ['#efe9df', '#d9d2c5', '#b9b0a3', '#8c8a86', '#4d4f53', '#c9d6df', '#8fa9bf', '#9fb59a', '#d8a48f', '#e8c76a', '#c5687a', '#3d4a5c'],
   paint: ['#ffffff', '#f3efe8', '#e7e2da', '#cfcac2', '#8a8780', '#2f2f31', '#dfe8ec', '#e9dccb', '#d9e4d3', '#f2d9cf'],
   metal: ['#d7d9dc', '#a7aaae', '#3a3b3e', '#c9a86a', '#b87a5a'],
+  /** Office furniture / rack paint (powder coat). */
+  steel: ['#f4f4f2', '#e6e6e3', '#c4c6c8', '#8e9196', '#4d5055', '#2a2b2e', '#d9d2c5', '#9fb5a5'],
 }

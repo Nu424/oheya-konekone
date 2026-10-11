@@ -1,11 +1,14 @@
 import { bed, futon } from './items/beds'
 import { desk } from './items/desk'
 import { cushion, curtain, mirror, plant, rug, trashCan } from './items/decor'
-import { aircon, fridge, monitor, tv, washer } from './items/electronics'
-import { miniKitchen, rangeRack } from './items/kitchen'
+import { kettle, microwave, riceCooker, toaster } from './items/appliances'
+import { bookRow, bookStack, fileBox } from './items/books'
+import { desktopPC, keyboardMouse, laptop, monitor } from './items/computing'
+import { aircon, fridge, tv, washer } from './items/electronics'
+import { miniKitchen } from './items/kitchen'
 import { ceilingLight, deskLamp, floorLamp, pendantLight } from './items/lights'
 import { beanbag, diningChair, floorChair, officeChair, sofa } from './items/seating'
-import { bookshelf, chest, colorBox, hangerRack, tvStand } from './items/storage'
+import { cabinet, hangerRack, metalRack, shelf, tvStand } from './items/storage'
 import { diningTable, kotatsu, lowTable } from './items/tables'
 import { defaultParams, describeParam, paramsSchema, resolveParams, type ParamSpecs } from './params'
 import type { AssetDef } from './types'
@@ -25,10 +28,13 @@ const ALL: AssetDef<any>[] = [
   desk,
   officeChair,
   monitor,
+  laptop,
+  keyboardMouse,
+  desktopPC,
   deskLamp,
-  bookshelf,
-  colorBox,
-  chest,
+  shelf,
+  cabinet,
+  metalRack,
   hangerRack,
   tvStand,
   tv,
@@ -36,7 +42,13 @@ const ALL: AssetDef<any>[] = [
   washer,
   aircon,
   miniKitchen,
-  rangeRack,
+  microwave,
+  riceCooker,
+  kettle,
+  toaster,
+  bookRow,
+  bookStack,
+  fileBox,
   rug,
   curtain,
   plant,

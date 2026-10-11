@@ -8,7 +8,7 @@ describe('clipboard', () => {
 
   it('copies an item with everything standing on it and pastes it elsewhere', () => {
     const riders = stack.riders(layout, 'desk')
-    expect(riders.sort()).toEqual(['lamp', 'monitors'])
+    expect(riders.sort()).toEqual(['keyboard', 'lamp', 'monitor-l', 'monitor-r'])
     const clip = makeClip(layout, 'desk', riders)!
     expect(clip.items).toHaveLength(riders.length + 1)
     expect(clip.items[0].offset).toEqual([0, 0, 0])
@@ -57,9 +57,9 @@ describe('clipboard with several picked items', () => {
     // The desk (with its monitor) and the chair in front of it.
     const roots = ['desk', 'chair']
     const riders = roots.flatMap((id) => stack.riders(layout, id))
-    expect(riders).toEqual(['monitor'])
+    expect(riders.sort()).toEqual(['keyboard', 'monitor'])
     const clip = makeClip(layout, roots, riders)!
-    expect(clip.items).toHaveLength(3)
+    expect(clip.items).toHaveLength(4)
     const pasted = instantiateClip(clip, { position: [1500, 0, 1500], rotation: 90 })
     const a = layout.items.find((i) => i.id === 'desk')!
     const b = layout.items.find((i) => i.id === 'chair')!

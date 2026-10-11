@@ -141,7 +141,7 @@ JSONはアプリの「JSON」ダイアログに貼り付けるか、ファイル
 - frameColor: "#rrggbb" (既定 #b8875a) — フレーム
 - seatColor: "#rrggbb" (既定 #d9d2c5) — 座面
 
-### desk — デスク（作業 / placement: floor）
+### desk — デスク（デスク・PC / placement: floor）
 作業机。I字。天板サイズ・脚の形・色を変えられる
 - 載せられる面（既定の寸法のとき）: 上面 高さ 720（1000×600）
 - width: number 600〜1800mm (既定 1000、600〜2700 まで指定可) — 幅
@@ -153,7 +153,7 @@ JSONはアプリの「JSON」ダイアログに貼り付けるか、ファイル
 - drawer: boolean (既定 false) — 引き出し
 - プリセット例: コンパクト {"width":800,"depth":450} / 在宅ワーク {"width":1400,"depth":700,"topColor":"#d2ad7c"} / スタンディング {"width":1200,"depth":650,"height":1050,"legStyle":"steel"}
 
-### officeChair — オフィスチェア（作業 / placement: floor）
+### officeChair — オフィスチェア（デスク・PC / placement: floor）
 キャスター付きのデスクチェア。座る人が正面(+Z)を向く
 - 上には何も載せられない
 - seatHeight: number 380〜520mm (既定 450、380〜780 まで指定可) — 座面の高さ
@@ -163,56 +163,97 @@ JSONはアプリの「JSON」ダイアログに貼り付けるか、ファイル
 - frameColor: "#rrggbb" (既定 #2b2b2b) — フレーム
 - プリセット例: ゲーミング風 {"back":"high","color":"#c5687a"} / ホワイト {"color":"#e7e2da","frameColor":"#f2efe9"}
 
-### monitor — モニター（作業 / placement: onTop / 既定の高さ y=720）
-PCモニター。デスクの上(y=デスクの高さ)に置く。2枚並べることもできる
+### monitor — モニター（デスク・PC / placement: onTop）
+PC モニター 1 台。横置き・縦置き、スタンドかモニターアーム。机の上に置く（2 台なら 2 個置く）
 - 上には何も載せられない
 - inches: number 21〜34インチ (既定 24) — サイズ
-- count: number 1〜2 (既定 1) — 枚数
-- ultrawide: boolean (既定 false) — ウルトラワイド
-- laptop: boolean (既定 true) — ノートPCも置く
-- keyboard: boolean (既定 true) — キーボード
-- color: "#rrggbb" (既定 #1d1d20) — 色
-- on: boolean (既定 true) — 画面をつける
+- aspect: "wide"(16:9) | "ultrawide"(ウルトラワイド (21:9)) (既定 "wide") — 比率
+- orientation: "landscape"(横置き) | "portrait"(縦置き) (既定 "landscape") — 向き
+- stand: "stand"(標準スタンド) | "arm"(モニターアーム) (既定 "stand") — スタンド
+- screen: "off"(消灯) | "wallpaper"(壁紙) | "code"(コード) | "doc"(文書) | "sheet"(表計算) (既定 "wallpaper") — 画面
+- color: "#rrggbb" (既定 #1d1d20) — 本体
+- プリセット例: 縦置き（コード用） {"orientation":"portrait","screen":"code"} / ウルトラワイド {"inches":34,"aspect":"ultrawide"} / アームで浮かせる {"stand":"arm"} / 白 {"color":"#f2f2f0","screen":"doc"}
+
+### laptop — ノートPC（デスク・PC / placement: onTop）
+ノートパソコン。開く角度を変えられる。机の上に置く
+- 上には何も載せられない
+- inches: number 11〜17インチ (既定 14) — サイズ
+- open: number 0〜135° (既定 110) — 開く角度
+- screen: "off"(消灯) | "wallpaper"(壁紙) | "code"(コード) | "doc"(文書) | "sheet"(表計算) (既定 "doc") — 画面
+- color: "#rrggbb" (既定 #c9ccd0) — 本体
+- プリセット例: 閉じている {"open":0} / 黒・16インチ {"inches":16,"color":"#2b2b2e","screen":"code"}
+
+### keyboardMouse — キーボード・マウス（デスク・PC / placement: onTop）
+キーボードとマウス（マウスパッド付きにもできる）。机の上に置く
+- 上には何も載せられない
+- layout: "full"(フルサイズ) | "tenkeyless"(テンキーなし) | "compact"(コンパクト) (既定 "tenkeyless") — キーボード
+- mouse: boolean (既定 true) — マウス
+- pad: "none"(なし) | "small"(小) | "desk"(デスクマット) (既定 "small") — マウスパッド
+- color: "#rrggbb" (既定 #2b2b2e) — キーボード
+- padColor: "#rrggbb" (既定 #3d4a5c) — マット
+
+### desktopPC — デスクトップPC（デスク・PC / placement: floor）
+PC の本体。タワー型・小型・ミニ PC。床にも机の上にも置ける
+- 載せられる面（既定の寸法のとき）: 上面 高さ 484（224×460）
+- form: "tower"(ミドルタワー) | "mini"(ミニタワー) | "mini_pc"(ミニ PC) (既定 "tower") — 形
+- glass: boolean (既定 true) — ガラスの横板
+- glow: "#rrggbb" (既定 #8ab4ff) — 光の色
+- color: "#rrggbb" (既定 #1d1d20) — 本体
+- プリセット例: 白いゲーミング {"color":"#f2f2f0","glow":"#ff7ab6"} / 光らない {"glass":false} / ミニ PC {"form":"mini_pc"}
 
 ### deskLamp — デスクライト（照明 / placement: onTop / 既定の高さ y=720）
 机の上に置くアーム式ライト。y=机の高さ
 - 上には何も載せられない
 - color: "#rrggbb" (既定 #2b2b2b) — 色
 
-### bookshelf — 本棚（収納 / placement: floor）
-オープンシェルフ・本棚。段数・サイズを変えられ、本を並べた状態も表示できる
-- 載せられる面（既定の寸法のとき）: 天板 高さ 1800（800×300） / 1段目 高さ 18（764×294、上の空き 338） / 2段目 高さ 374.4（764×294、上の空き 338） / 3段目 高さ 730.8（764×294、上の空き 338） / 4段目 高さ 1087.2（764×294、上の空き 338） / 5段目 高さ 1443.6（764×294、上の空き 338）
+### shelf — オープン棚（収納 / placement: floor）
+扉のない棚（本棚・カラーボックス・レンジ台・見せる収納）。段数・列数・背板・脚を変えられる。各段に本や家電を載せられる
+- 載せられる面（既定の寸法のとき）: 天板 高さ 1800（800×300） / 1段目 高さ 78（764×291、上の空き 326） / 2段目 高さ 422.4（764×291、上の空き 326） / 3段目 高さ 766.8（764×291、上の空き 326） / 4段目 高さ 1111.2（764×291、上の空き 326） / 5段目 高さ 1455.6（764×291、上の空き 326）
 - width: number 300〜1800mm (既定 800、300〜2700 まで指定可) — 幅
-- height: number 400〜2100mm (既定 1800、400〜3150 まで指定可) — 高さ
-- depth: number 200〜450mm (既定 300、200〜675 まで指定可) — 奥行き
-- shelves: number 1〜8 (既定 5) — 段数
-- columns: number 1〜4 (既定 1) — 列数
+- height: number 300〜2100mm (既定 1800、300〜3150 まで指定可) — 高さ
+- depth: number 200〜600mm (既定 300、200〜900 まで指定可) — 奥行き
+- rows: number 1〜8 (既定 5) — 段数
+- cols: number 1〜5 (既定 1) — 列数
 - back: boolean (既定 true) — 背板
-- books: boolean (既定 true) — 本を並べる
-- color: "#rrggbb" (既定 #d2ad7c) — 本体
-- プリセット例: 壁一面 {"width":1600,"height":2000,"columns":2,"shelves":6} / ロー {"width":1200,"height":800,"shelves":2,"columns":3,"color":"#f1ece4"} / ブラック {"color":"#2b2b2b","back":false}
+- base: "none"(なし（床に直置き）) | "plinth"(台輪) | "legs"(脚) | "casters"(キャスター) | "adjusters"(アジャスター) (既定 "plinth") — 足もと
+- finish: "wood"(木) | "melamine"(化粧板（白木・単色）) | "steel"(スチール) (既定 "wood") — 素材
+- color: "#rrggbb" (既定 #d2ad7c) — 色
+- プリセット例: 本棚 {} / 壁一面の本棚 {"width":1600,"height":2000,"rows":6,"cols":2} / カラーボックス（縦） {"width":420,"height":880,"depth":295,"rows":3,"cols":1,"base":"none","finish":"melamine","color":"#f4f4f2"} / カラーボックス（横） {"width":1150,"height":420,"depth":295,"rows":1,"cols":3,"base":"none","finish":"melamine","color":"#f4f4f2"} / レンジ台 {"width":600,"height":1200,"depth":450,"rows":3,"cols":1,"back":false,"base":"casters","finish":"melamine","color":"#f4f4f2"} / 見せる収納（ロー） {"width":1200,"height":800,"depth":350,"rows":2,"cols":3,"base":"legs","color":"#8f5f3d"} / スチールシェルフ {"width":900,"height":1800,"depth":400,"rows":5,"finish":"steel","color":"#e6e6e3","base":"adjusters","back":false}
 
-### colorBox — カラーボックス（収納 / placement: floor）
-定番のカラーボックス。縦置き・横置き、インナーボックスの有無
-- 載せられる面（既定の寸法のとき）: 天板 高さ 1050（360×290） / 2マス目 高さ 360（330×284、上の空き 330）
-- cubes: number 2〜4 (既定 3) — 段数
-- orientation: "vertical"(縦置き) | "horizontal"(横置き) (既定 "vertical") — 向き
-- bins: "none"(なし) | "some"(いくつか) | "all"(ぜんぶ) (既定 "some") — インナーボックス
-- color: "#rrggbb" (既定 #f1ece4) — 本体
-- binColor: "#rrggbb" (既定 #b9b0a3) — インナーボックス
-
-### chest — チェスト（収納 / placement: floor）
-引き出しの収納家具。段数と列数を変えられる
-- 載せられる面（既定の寸法のとき）: 上面 高さ 900（800×446）
-- width: number 350〜1400mm (既定 800、350〜2100 まで指定可) — 幅
-- height: number 400〜1300mm (既定 900、400〜1950 まで指定可) — 高さ
-- depth: number 300〜550mm (既定 420、300〜825 まで指定可) — 奥行き
-- rows: number 2〜7 (既定 4) — 段数
-- columns: number 1〜3 (既定 1) — 列数
-- handle: "bar"(バー) | "knob"(つまみ) | "groove"(溝) (既定 "bar") — 取っ手
-- material: "wood"(木製) | "plastic"(プラスチック（衣装ケース風）) (既定 "wood") — 素材
+### cabinet — 扉・引き出し付き収納（収納 / placement: floor）
+チェスト・ロッカー・引き戸書庫・食器棚・キャビネットなど、扉や引き出しのある収納。下段と上段で扉の種類を選べる。扉を開けると中の棚に物を置ける
+- 載せられる面（既定の寸法のとき）: 天板 高さ 900（800×450）
+- width: number 300〜1800mm (既定 800、300〜2700 まで指定可) — 幅
+- height: number 300〜2100mm (既定 900、300〜3150 まで指定可) — 高さ
+- depth: number 300〜650mm (既定 450、300〜975 まで指定可) — 奥行き
+- cols: number 1〜4 (既定 1) — 列数
+- lower: "open"(オープン（扉なし）) | "hinged"(開き戸) | "glass"(ガラス開き戸) | "sliding"(引き戸) | "glassSliding"(ガラス引き戸) | "drawers"(引き出し) | "flap"(フラップ扉（下に開く）) (既定 "drawers") — 下段の扉
+- lowerRows: number 1〜8 (既定 4) — 下段の段数
+- upperShare: number 0〜0.9 (既定 0) — 上段の高さ
+- upper: "open"(オープン（扉なし）) | "hinged"(開き戸) | "glass"(ガラス開き戸) | "sliding"(引き戸) | "glassSliding"(ガラス引き戸) | "drawers"(引き出し) | "flap"(フラップ扉（下に開く）) (既定 "glassSliding") — 上段の扉
+- upperRows: number 1〜6 (既定 2) — 上段の段数
+- span: "cell"(マスごと) | "row"(横一列ごと) | "column"(縦一列ごと) | "whole"(全面で 1 枚（2 枚）) (既定 "cell") — 扉の分け方
+- open: number 0〜1 (既定 0) — 開き具合
+- handle: "bar"(バー) | "knob"(つまみ) | "groove"(溝（彫り込み）) | "cup"(くぼみ) | "lever"(レバー（ロッカー）) | "none"(なし) (既定 "bar") — 取っ手
+- base: "none"(なし（床に直置き）) | "plinth"(台輪) | "legs"(脚) | "casters"(キャスター) | "adjusters"(アジャスター) (既定 "plinth") — 足もと
+- finish: "wood"(木) | "melamine"(化粧板（白木・単色）) | "steel"(スチール) | "plastic"(樹脂) (既定 "wood") — 素材
 - color: "#rrggbb" (既定 #d2ad7c) — 本体
-- プリセット例: 衣装ケース {"width":440,"height":1000,"rows":5,"material":"plastic","color":"#ffffff"} / 横長ロー {"width":1200,"height":600,"rows":2,"columns":3}
+- frontColor: "#rrggbb" (既定 #d2ad7c) — 扉・前板
+- プリセット例: チェスト（4 段） {} / 横長チェスト {"width":1200,"height":700,"cols":3,"lowerRows":2,"handle":"knob"} / 衣装ケース {"width":440,"height":1000,"depth":550,"lowerRows":5,"finish":"plastic","color":"#f4f4f2","frontColor":"#f4f4f2","handle":"cup","base":"casters"} / ロッカー（1 人用） {"width":380,"height":1790,"depth":515,"lower":"hinged","lowerRows":4,"span":"column","handle":"lever","finish":"steel","color":"#e6e6e3","frontColor":"#e6e6e3","base":"adjusters"} / ロッカー（3 人用） {"width":900,"height":1790,"depth":515,"cols":3,"lower":"hinged","lowerRows":4,"span":"column","handle":"lever","finish":"steel","color":"#e6e6e3","frontColor":"#e6e6e3","base":"adjusters"} / 引き戸書庫 {"width":880,"height":1050,"depth":400,"lower":"sliding","lowerRows":2,"finish":"steel","color":"#e6e6e3","frontColor":"#e6e6e3","base":"adjusters"} / スチール書庫（上ガラス） {"width":880,"height":1790,"depth":400,"lower":"hinged","lowerRows":2,"upperShare":0.55,"upper":"glassSliding","upperRows":3,"span":"column","handle":"lever","finish":"steel","color":"#e6e6e3","frontColor":"#e6e6e3","base":"adjusters"} / 食器棚 {"width":900,"height":1800,"depth":450,"lower":"drawers","lowerRows":2,"upperShare":0.6,"upper":"glass","upperRows":3,"span":"row","color":"#f1ece4","frontColor":"#f1ece4","finish":"melamine","handle":"bar"} / キャビネット（開き戸） {"width":800,"height":850,"depth":400,"lower":"hinged","lowerRows":2,"span":"whole","handle":"knob","base":"legs","color":"#8f5f3d","frontColor":"#8f5f3d"} / サイドボード {"width":1500,"height":700,"depth":420,"cols":3,"lower":"flap","lowerRows":1,"span":"cell","handle":"groove","base":"legs","color":"#6b4a34","frontColor":"#6b4a34"}
+
+### metalRack — メタルラック（収納 / placement: floor）
+ポールと棚板を組み合わせるスチールラック（ワイヤー棚・木目の棚板・ガラス）。キッチン・洗面所・押し入れなどに。各段に物を載せられる
+- 載せられる面（既定の寸法のとき）: 一番上の棚 高さ 1750（885×435） / 1段目 高さ 55（885×435、上の空き 394） / 2段目 高さ 478.8（885×435、上の空き 394） / 3段目 高さ 902.5（885×435、上の空き 394） / 4段目 高さ 1326.3（885×435、上の空き 394）
+- width: number 450〜1800mm (既定 910、450〜2700 まで指定可) — 幅
+- depth: number 300〜650mm (既定 460、300〜975 まで指定可) — 奥行き
+- height: number 600〜2000mm (既定 1790、600〜3000 まで指定可) — 高さ
+- shelves: number 2〜8 (既定 5) — 棚の数
+- shelfType: "wire"(ワイヤー) | "board"(木目の板をのせる) | "glass"(ガラスをのせる) (既定 "wire") — 棚板
+- pole: "standard"(太い (25mm)) | "slim"(細い (19mm)) (既定 "standard") — ポール
+- feet: "adjuster"(アジャスター) | "casters"(キャスター) (既定 "adjuster") — 足もと
+- finish: "chrome"(クロムめっき) | "black"(ブラック) | "white"(ホワイト) | "gold"(ゴールド) (既定 "chrome") — 色
+- boardColor: "#rrggbb" (既定 #b8875a) — 棚板の色
+- プリセット例: キッチンラック {"width":760,"depth":460,"height":1790,"shelves":5,"feet":"casters"} / ブラック＋木目 {"finish":"black","shelfType":"board","boardColor":"#8f5f3d"} / ロー（3 段） {"width":910,"height":900,"shelves":3,"pole":"slim","finish":"white","shelfType":"board","boardColor":"#e4cfa8"} / すき間ラック {"width":450,"depth":350,"height":1500,"shelves":5,"pole":"slim"}
 
 ### hangerRack — ハンガーラック（収納 / placement: floor）
 服をかけるラック。服をかけた状態も表示できる
@@ -225,13 +266,14 @@ PCモニター。デスクの上(y=デスクの高さ)に置く。2枚並べる�
 - color: "#rrggbb" (既定 #2b2b2b) — フレーム
 
 ### tvStand — テレビ台（AV / placement: floor）
-テレビを置く低い台。テレビ（tv）を上に載せて使う
-- 載せられる面（既定の寸法のとき）: 上面 高さ 400（1200×400）
+テレビを置く低い台。テレビ（tv）を上に載せて使う。中の段にゲーム機などを置ける
+- 載せられる面（既定の寸法のとき）: 天板 高さ 400（1200×400） / 1段目 高さ 158（376×391、上の空き 224） / 2段目 高さ 158（376×391、上の空き 224） / 3段目 高さ 158（376×391、上の空き 224）
 - width: number 600〜2000mm (既定 1200、600〜3000 まで指定可) — 幅
 - height: number 250〜600mm (既定 400、250〜900 まで指定可) — 高さ
 - depth: number 280〜500mm (既定 400、280〜750 まで指定可) — 奥行き
-- style: "open"(オープン) | "drawers"(引き出し) | "doors"(扉付き) (既定 "open") — スタイル
+- style: "open"(オープン) | "drawers"(引き出し) | "doors"(扉付き) | "flap"(フラップ扉) (既定 "open") — スタイル
 - legs: boolean (既定 true) — 脚付き
+- finish: "wood"(木) | "melamine"(化粧板（白木・単色）) (既定 "wood") — 素材
 - color: "#rrggbb" (既定 #8f5f3d) — 本体
 
 ### tv — テレビ（AV / placement: onTop / 既定の高さ y=400）
@@ -273,16 +315,63 @@ PCモニター。デスクの上(y=デスクの高さ)に置く。2枚並べる�
 - fridgeSpace: boolean (既定 false) — 下に小型冷蔵庫
 - プリセット例: コンパクト {"width":1000,"stove":"ih1","depth":500} / 2口コンロ {"width":1800,"stove":"gas2","color":"#d2ad7c"}
 
-### rangeRack — レンジ台（キッチン / placement: floor）
-電子レンジや炊飯器を載せるキッチンラック
-- 載せられる面（既定の寸法のとき）: 天板 高さ 1200（600×420）
-- width: number 450〜900mm (既定 600、450〜1350 まで指定可) — 幅
-- height: number 800〜1800mm (既定 1200、800〜2700 まで指定可) — 高さ
-- depth: number 350〜500mm (既定 420、350〜750 まで指定可) — 奥行き
-- microwave: boolean (既定 true) — 電子レンジ
-- riceCooker: boolean (既定 true) — 炊飯器
-- kettle: boolean (既定 true) — 電気ケトル
-- color: "#rrggbb" (既定 #f1ece4) — 本体
+### microwave — 電子レンジ（キッチン / placement: onTop）
+電子レンジ・オーブンレンジ。レンジ台や棚の段、冷蔵庫の上に置く。上にも物を置ける
+- 載せられる面（既定の寸法のとき）: 天面 高さ 280（430×320）
+- size: "compact"(単機能 (17L)) | "oven"(オーブンレンジ (26L)) (既定 "compact") — 大きさ
+- door: "side"(横開き) | "drop"(縦開き（下に倒す）) (既定 "side") — 扉
+- open: number 0〜1 (既定 0) — 扉の開き
+- color: "#rrggbb" (既定 #f4f4f2) — 本体
+
+### riceCooker — 炊飯器（キッチン / placement: onTop）
+炊飯器。レンジ台や棚、キッチンのカウンターに置く
+- 上には何も載せられない
+- size: "small"(3合) | "medium"(5.5合) (既定 "small") — 大きさ
+- open: boolean (既定 false) — フタを開ける
+- color: "#rrggbb" (既定 #f4f4f2) — 本体
+
+### kettle — 電気ケトル（キッチン / placement: onTop）
+電気ケトル（台座つき）。カウンターや棚に置く
+- 上には何も載せられない
+- style: "round"(丸い) | "slim"(ドリップ（細口）) (既定 "round") — 形
+- color: "#rrggbb" (既定 #2b2b2e) — 本体
+
+### toaster — トースター（キッチン / placement: onTop）
+オーブントースター。レンジ台や棚、カウンターに置く。上にも物を置ける
+- 載せられる面（既定の寸法のとき）: 天面 高さ 220（300×220）
+- color: "#rrggbb" (既定 #f4f4f2) — 本体
+
+### bookRow — 本の列（縦置き）（小物 / placement: onTop）
+本棚や机に立てて並べた本・バインダー・ファイル。幅を決めると、その幅ぶんだけ並ぶ。棚の段の上に置く
+- 上には何も載せられない
+- width: number 60〜1200mm (既定 400、60〜1800 まで指定可) — 幅
+- kind: "books"(単行本) | "bunko"(文庫) | "manga"(マンガ) | "large"(大判・図鑑) | "magazines"(雑誌) | "binders"(バインダー) | "files"(フラットファイル) (既定 "books") — 種類
+- palette: "colorful"(カラフル) | "calm"(落ち着いた色) | "mono"(モノトーン) | "pastel"(パステル) | "office"(事務用) (既定 "colorful") — 色
+- lean: boolean (既定 true) — 端の 1 冊を斜めに
+- bookends: boolean (既定 false) — ブックエンド
+- seed: number 1〜50 (既定 1) — 並び
+- プリセット例: 文庫の列 {"kind":"bunko","width":300,"palette":"calm"} / マンガ全巻 {"kind":"manga","width":500,"palette":"colorful"} / バインダー {"kind":"binders","width":350,"palette":"office","lean":false} / 雑誌 {"kind":"magazines","width":200,"palette":"pastel","bookends":true}
+
+### bookStack — 本・書類の平積み（小物 / placement: onTop）
+平積みにした本・雑誌・書類・クリアファイル。机や棚、床の上に置く。上にも物を置ける
+- 載せられる面（既定の寸法のとき）: 一番上 高さ 90.2（111×199）
+- kind: "books"(本) | "large"(大判の本) | "magazines"(雑誌) | "paper"(コピー用紙・書類) | "clearFolders"(クリアファイル) (既定 "books") — 種類
+- count: number 1〜15 (既定 4) — 冊数・束の数
+- mess: number 0〜1 (既定 0.3) — 散らかり具合
+- palette: "colorful"(カラフル) | "calm"(落ち着いた色) | "mono"(モノトーン) | "pastel"(パステル) | "office"(事務用) (既定 "colorful") — 色
+- seed: number 1〜50 (既定 1) — 並び
+- プリセット例: 書類の山 {"kind":"paper","count":6,"mess":0.6} / クリアファイル {"kind":"clearFolders","count":8,"mess":0.2,"palette":"pastel"} / きっちり {"mess":0}
+
+### fileBox — ファイルボックス（小物 / placement: onTop）
+書類やファイルを立てて入れる箱。横から見ると斜めに切れている。棚に並べたり机に置いたりする
+- 上には何も載せられない
+- width: number 75〜200mm (既定 100、75〜300 まで指定可) — 幅
+- height: number 240〜330mm (既定 320、240〜495 まで指定可) — 高さ
+- depth: number 240〜340mm (既定 280、240〜510 まで指定可) — 奥行き
+- material: "plastic"(プラスチック) | "paper"(紙（段ボール）) | "steel"(スチール) (既定 "plastic") — 素材
+- color: "#rrggbb" (既定 #f4f2ee) — 色
+- contents: "none"(からっぽ) | "files"(ファイル) | "papers"(書類) (既定 "files") — 中身
+- プリセット例: 紙のファイルボックス {"material":"paper","color":"#e3cfa8"} / スチール {"material":"steel","color":"#2b2b2e"}
 
 ### rug — ラグ（雑貨 / placement: floor）
 床に敷くラグ。家具の下に敷いてよい（重なってもOK）
@@ -535,6 +624,7 @@ PCモニター。デスクの上(y=デスクの高さ)に置く。2枚並べる�
         "depth": 330,
         "style": "open",
         "legs": true,
+        "finish": "wood",
         "color": "#8f5f3d"
       }
     },
@@ -592,19 +682,35 @@ PCモニター。デスクの上(y=デスクの高さ)に置く。2枚並べる�
       "id": "monitor",
       "type": "monitor",
       "position": [
-        240,
+        200,
         720,
         2950
       ],
       "rotation": 90,
       "params": {
         "inches": 24,
-        "count": 1,
-        "ultrawide": false,
-        "laptop": false,
-        "keyboard": true,
-        "color": "#1d1d20",
-        "on": true
+        "aspect": "wide",
+        "orientation": "landscape",
+        "stand": "stand",
+        "screen": "wallpaper",
+        "color": "#1d1d20"
+      }
+    },
+    {
+      "id": "keyboard",
+      "type": "keyboardMouse",
+      "position": [
+        420,
+        720,
+        2900
+      ],
+      "rotation": 90,
+      "params": {
+        "layout": "tenkeyless",
+        "mouse": true,
+        "pad": "none",
+        "color": "#2b2b2e",
+        "padColor": "#3d4a5c"
       }
     },
     {
