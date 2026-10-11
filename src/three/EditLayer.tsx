@@ -356,6 +356,7 @@ export function EditLayer({ cutaway }: { cutaway: boolean }) {
   const dragging = useUi((s) => s.dragging)
   const view = useUi((s) => s.view)
   const colliding = useMemo(() => collisions(layout), [layout])
+  const overlaps = useUi((s) => s.overlaps)
 
   const picked = selection.map((id) => layout.items.find((i) => i.id === id)).filter((i): i is Item => !!i)
   const primary = picked[picked.length - 1]
@@ -368,7 +369,8 @@ export function EditLayer({ cutaway }: { cutaway: boolean }) {
       {layout.items.map((it) =>
         getAsset(it.type)?.hideWithCeiling && cutaway ? null : <EditableItem key={it.id} item={it} ceiling={layout.room.height} />,
       )}
-      {[...colliding].map((id) => {
+      {/* With the overlap display off, only the selected / dragged items keep their red outline. */}
+      {overlaps && [...colliding].map((id) => {
         const it = layout.items.find((i) => i.id === id)
         return it && !selected.has(id) ? <Outline key={`c${id}`} f={itemFootprint2D(it, layout)} color={DANGER} /> : null
       })}

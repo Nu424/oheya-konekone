@@ -209,6 +209,8 @@ interface UiState {
   hour: number
   /** Circulation check overlay. */
   flow: boolean
+  /** Red outlines around every overlapping item (the selected / dragged ones always show theirs). */
+  overlaps: boolean
   /** Path-traced photo mode and its progress. */
   photo: boolean
   photoSamples: number
@@ -222,12 +224,30 @@ interface UiState {
   setSnap(v: boolean): void
   setHour(h: number): void
   setFlow(v: boolean): void
+  setOverlaps(v: boolean): void
   setPhoto(v: boolean): void
   setPhotoSamples(n: number): void
   setPanel(p: UiState['panel']): void
   setJsonOpen(v: boolean): void
   setHelpOpen(v: boolean): void
   notify(text: string, tone?: 'info' | 'error'): void
+}
+
+/** Per-viewer display preferences (best effort: storage may be unavailable). */
+function readPref(key: string, fallback: boolean): boolean {
+  try {
+    const v = localStorage.getItem(`oheya-konekone:pref:${key}`)
+    return v === null ? fallback : v === '1'
+  } catch {
+    return fallback
+  }
+}
+function writePref(key: string, value: boolean) {
+  try {
+    localStorage.setItem(`oheya-konekone:pref:${key}`, value ? '1' : '0')
+  } catch {
+    /* ignore */
+  }
 }
 
 export const useUi = create<UiState>()((set) => ({
@@ -237,6 +257,7 @@ export const useUi = create<UiState>()((set) => ({
   snap: true,
   hour: 14,
   flow: false,
+  overlaps: readPref('overlaps', true),
   photo: false,
   photoSamples: 0,
   // Start with the panel closed on phones so the room is visible.
@@ -261,6 +282,10 @@ export const useUi = create<UiState>()((set) => ({
   setSnap: (snap) => set({ snap }),
   setHour: (hour) => set({ hour }),
   setFlow: (flow) => set({ flow }),
+  setOverlaps: (overlaps) => {
+    writePref('overlaps', overlaps)
+    set({ overlaps })
+  },
   setPhoto: (photo) => set(photo ? { photo, selection: [], flow: false, photoSamples: 0 } : { photo }),
   setPhotoSamples: (photoSamples) => set({ photoSamples }),
   setPanel: (panel) => set({ panel }),

@@ -36,6 +36,13 @@ export const Icon = {
       <path d="m9 21 2.5-6.5L14 17v4M7 12l3-4 4 1 2.5 3.5M11.5 14.5 12.5 9" />
     </>,
   ),
+  overlap: make(
+    <>
+      <rect x="3.5" y="3.5" width="11" height="11" rx="2" />
+      <rect x="9.5" y="9.5" width="11" height="11" rx="2" />
+      <path d="M9.5 14.5h5v-5" strokeWidth={2.4} />
+    </>,
+  ),
   code: make(<path d="m8 8-4 4 4 4M16 8l4 4-4 4M13.5 5l-3 14" />),
   menu: make(<path d="M4 7h16M4 12h16M4 17h16" />),
   file: make(

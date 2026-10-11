@@ -1,9 +1,10 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useStore } from 'zustand'
 import { downloadText, parseLayoutText, serializeLayout } from '../model/io'
 import { redo, undo, useDoc, useUi } from '../store/useStore'
 import { itemCommands } from '../three/EditLayer'
 import { getFlow } from '../editor/flow'
+import { collisions } from '../editor/placement'
 import { copySelection, cutSelection, pasteText, trackPointer } from '../editor/commands'
 import { PHOTO_SAMPLES } from '../three/PhotoMode'
 import { Segmented } from './controls'
@@ -158,6 +159,9 @@ export function Hud() {
   const night = hour < 6.5 || hour > 17.5
   const flow = useUi((s) => s.flow)
   const setFlow = useUi((s) => s.setFlow)
+  const overlaps = useUi((s) => s.overlaps)
+  const layout = useDoc((s) => s.layout)
+  const overlapCount = useMemo(() => collisions(layout).size, [layout])
   return (
     <div className="hud glass">
       <label className="clock" title="時間帯（夜は照明が点くよ）">
@@ -176,6 +180,15 @@ export function Hud() {
       <span className="sep" />
       <button className={`icon-btn flow-btn${flow ? ' on' : ''}`} onClick={() => setFlow(!flow)} title="動線チェック (F)">
         <Icon.walk /> <span className="label">動線</span>
+      </button>
+      <button
+        className={`icon-btn overlap-btn${overlaps ? ' on' : ''}`}
+        onClick={() => useUi.getState().setOverlaps(!overlaps)}
+        title={`重なっている家具を赤枠で表示 (O)${overlapCount ? ` ・ いま ${overlapCount} 点が重なってるよ` : ''}`}
+        aria-pressed={overlaps}
+      >
+        <Icon.overlap /> <span className="label">重なり</span>
+        {overlapCount > 0 && <span className="overlap-count">{overlapCount}</span>}
       </button>
       <button className="icon-btn" onClick={() => useUi.getState().setPhoto(true)} title="撮影モード（パストレーシングで写真みたいに）(P)">
         <Icon.camera /> <span className="label">撮影</span>
@@ -285,6 +298,7 @@ export function useShortcuts() {
         if (e.key === '3') ui.setView('walk')
         if (e.key.toLowerCase() === 'j') ui.setJsonOpen(true)
         if (e.key.toLowerCase() === 'f') ui.setFlow(!ui.flow)
+        if (e.key.toLowerCase() === 'o') ui.setOverlaps(!ui.overlaps)
         if (e.key.toLowerCase() === 'p') ui.setPhoto(!ui.photo)
         if (e.key === '?') ui.setHelpOpen(true)
         if (e.key === 'Escape') {

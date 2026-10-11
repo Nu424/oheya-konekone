@@ -768,6 +768,11 @@ input[type='range']:focus-visible::-webkit-slider-thumb { box-shadow: 0 0 0 4px 
 /* ---------- flow check ---------- */
 .flow-btn.on { background: var(--ok); color: #fff; }
 .flow-btn.on:hover:not(:disabled) { background: #548e63; color: #fff; }
+/* Overlap outlines toggle: soft red when on; the count shows even when the outlines are off. */
+.overlap-btn { position: relative; }
+.overlap-btn.on { background: var(--err-soft); color: var(--err); }
+.overlap-count { min-width: 17px; height: 17px; padding: 0 5px; border-radius: 999px; background: var(--err); color: #fff; font-size: 10px; font-weight: 900; line-height: 17px; text-align: center; }
+.overlap-btn:not(.on) .overlap-count { background: var(--ink-3); }
 .flow-panel {
   position: absolute;
   top: 80px;
@@ -921,4 +926,10 @@ input[type='range']:focus-visible::-webkit-slider-thumb { box-shadow: 0 0 0 4px 
 .help-group .field-hint { margin-top: 6px; }
 @media (max-width: 760px) {
   .help-grid { columns: 1; }
+}
+@media (max-width: 760px) {
+  /* narrow HUD: the badge rides on the icon's corner instead of taking its own width */
+  .overlap-count { position: absolute; top: -3px; right: -4px; min-width: 15px; height: 15px; padding: 0 4px; line-height: 15px; font-size: 9px; }
+  .hud .clock input, .hud .clock input[type=range] { width: 44px; }
+  .hud .seg button { padding: 8px 8px; }
 }
