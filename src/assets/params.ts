@@ -12,6 +12,8 @@ interface Base {
   group?: string
   /** Extra hint shown in the UI tooltip and the AI catalog. */
   hint?: string
+  /** Driven by the app (see AssetDef.live): not shown in the panel or the AI catalog. */
+  hidden?: boolean
 }
 
 export interface NumberParam extends Base {

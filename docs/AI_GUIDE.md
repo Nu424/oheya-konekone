@@ -88,8 +88,8 @@ JSONはアプリの「JSON」ダイアログに貼り付けるか、ファイル
 ### beanbag — ビーズクッション（くつろぎ / placement: floor）
 体が沈み込む大きなビーズクッション
 - 上には何も載せられない
-- size: number 500〜1100mm (既定 750、500〜1650 まで指定可) — 直径
-- height: number 300〜700mm (既定 450、300〜1050 まで指定可) — 高さ
+- size: number 500〜1100mm (既定 700、500〜1650 まで指定可) — 直径
+- height: number 300〜800mm (既定 620、300〜1200 まで指定可) — 高さ
 - color: "#rrggbb" (既定 #d8a48f) — 布の色
 
 ### cushion — クッション（雑貨 / placement: floor）
@@ -206,6 +206,74 @@ PC の本体。タワー型・小型・ミニ PC。床にも机の上にも置�
 - 上には何も載せられない
 - color: "#rrggbb" (既定 #2b2b2b) — 色
 
+### officeDesk — オフィスデスク（オフィス / placement: floor）
+スチール脚の事務机（コクヨの S シリーズ風）。奥の幕板、片袖・両袖の引き出し、センター引き出しを選べる
+- 載せられる面（既定の寸法のとき）: 天板 高さ 720（1200×700）
+- width: number 1000〜1800mm (既定 1200、1000〜2700 まで指定可) — 幅
+- depth: number 600〜800mm (既定 700、600〜1200 まで指定可) — 奥行き
+- height: number 700〜740mm (既定 720、700〜1110 まで指定可) — 高さ
+- legs: "panel"(パネル脚) | "frame"(4 本脚（角）) | "tleg"(T 字脚) (既定 "panel") — 脚
+- modesty: "none"(なし) | "half"(半分) | "full"(床まで) (既定 "half") — 幕板（奥のパネル）
+- pedestal: "none"(なし) | "left"(左) | "right"(右) | "both"(両袖) (既定 "right") — 袖（引き出し）
+- pedDrawers: "three"(3 段) | "file"(2 段（A4 ファイル）) (既定 "three") — 袖の段
+- center: boolean (既定 true) — センター引き出し
+- edge: "soft"(ソフトエッジ) | "square"(角) | "wood"(木口) (既定 "soft") — 天板の縁
+- open: number 0〜1 (既定 0) — 引き出しを開ける
+- topColor: "#rrggbb" (既定 #e6e3dc) — 天板
+- frameColor: "#rrggbb" (既定 #f4f4f2) — 脚・袖
+- プリセット例: 片袖デスク {} / 平机（引き出しなし） {"pedestal":"none","center":false,"modesty":"half"} / 両袖デスク {"width":1600,"pedestal":"both"} / 木目の天板・黒脚 {"topColor":"#b8875a","frameColor":"#2a2b2e","legs":"frame","edge":"wood","modesty":"none","pedestal":"none"}
+
+### foldingChair — 折りたたみ・ミーティングチェア（オフィス / placement: floor）
+パイプ椅子（折りたためる）、ミーティングチェア（座面を跳ね上げて重ねられる、キャスター付きにもできる）、スタッキングチェア
+- 上には何も載せられない
+- style: "pipe"(パイプ椅子) | "meeting"(ミーティングチェア) | "stacking"(スタッキングチェア) (既定 "pipe") — 種類
+- folded: boolean (既定 false) — たたむ（跳ね上げる）
+- casters: boolean (既定 false) — キャスター
+- arms: boolean (既定 false) — ひじ掛け
+- back: "plastic"(樹脂) | "mesh"(メッシュ) | "cushion"(クッション) (既定 "cushion") — 背もたれ
+- seatColor: "#rrggbb" (既定 #3d4a5c) — 座面
+- frame: "chrome"(クロム) | "black"(ブラック) | "white"(ホワイト) | "silver"(シルバー) (既定 "chrome") — フレーム
+- プリセット例: パイプ椅子 {} / たたんだパイプ椅子 {"folded":true} / ミーティングチェア {"style":"meeting","casters":true,"back":"mesh","seatColor":"#2b2b2e","frame":"silver"} / 跳ね上げて重ねる {"style":"meeting","folded":true,"casters":true,"back":"plastic","seatColor":"#f4f4f2","frame":"silver"} / カフェ風スタッキング {"style":"stacking","back":"plastic","seatColor":"#9fb5a5","frame":"black"}
+
+### partition — パーテーション（オフィス / placement: floor）
+自立式のついたて・間仕切り。布・アクリル・木・ホワイトボードの面、フレームと脚を選べる。何枚かつなげられる
+- 上には何も載せられない
+- width: number 400〜1800mm (既定 1200、400〜2700 まで指定可) — 1 枚の幅
+- height: number 900〜1800mm (既定 1500、900〜2700 まで指定可) — 高さ
+- panels: number 1〜4 (既定 1) — 枚数
+- face: "fabric"(布) | "clear"(アクリル（透明）) | "frosted"(アクリル（すりガラス）) | "wood"(木) | "board"(ホワイトボード) | "perforated"(有孔ボード) (既定 "fabric") — 面
+- topClear: boolean (既定 false) — 上だけ透明
+- frame: "aluminum"(アルミ) | "wood"(木) | "black"(黒) | "none"(なし) (既定 "aluminum") — フレーム
+- feet: "tleg"(T 字脚) | "base"(平たい台) | "casters"(キャスター) (既定 "tleg") — 脚
+- color: "#rrggbb" (既定 #8c9aa8) — 面の色
+- プリセット例: 布のパーテーション {} / 飛沫防止アクリル {"width":800,"height":900,"face":"clear","frame":"none","feet":"base"} / 上だけ透明 {"topClear":true,"height":1800,"color":"#4d5055"} / 木の衝立 {"face":"wood","frame":"wood","color":"#b8875a","feet":"base","height":1200} / 3 枚つなげる {"panels":3,"width":900}
+
+### whiteboard — ホワイトボード（オフィス / placement: floor）
+脚付き・キャスター付きの移動式ホワイトボード。板の大きさと、書いてある内容を選べる
+- 上には何も載せられない
+- width: number 900〜1800mm (既定 1200、900〜2700 まで指定可) — 板の幅
+- height: number 600〜1200mm (既定 900、600〜1800 まで指定可) — 板の高さ
+- content: "none"(まっさら) | "meeting"(会議メモ) | "plan"(間取りの落書き) | "todo"(やることリスト) (既定 "meeting") — 書いてあること
+- tilt: number -30〜30° (既定 0) — 板の角度
+- casters: boolean (既定 true) — キャスター
+- frameColor: "#rrggbb" (既定 #c9ccd0) — フレーム
+- プリセット例: 会議用 {} / 大きいボード {"width":1800,"height":1200,"content":"todo"} / 小さめ・黒フレーム {"width":900,"height":600,"content":"plan","frameColor":"#2a2b2e"}
+
+### printer — プリンター（オフィス / placement: onTop）
+家庭用のインクジェット複合機、または A4 レーザープリンター。机や棚に置く（大きなオフィス用は「オフィス複合機」）
+- 上には何も載せられない
+- kind: "inkjet"(インクジェット複合機) | "laser"(A4 レーザー) (既定 "inkjet") — 種類
+- lid: boolean (既定 false) — スキャナーのフタを開ける
+- paper: boolean (既定 true) — 印刷した紙
+- color: "#rrggbb" (既定 #f4f4f2) — 本体
+
+### copier — オフィス複合機（オフィス / placement: floor）
+床置きの大型複合機（コピー・プリント・スキャン）。給紙トレイの段数を変えられる
+- 上には何も載せられない
+- trays: number 1〜4 (既定 3) — 給紙トレイ
+- finisher: boolean (既定 false) — フィニッシャー（横の排紙ユニット）
+- color: "#rrggbb" (既定 #f2f2f0) — 本体
+
 ### shelf — オープン棚（収納 / placement: floor）
 扉のない棚（本棚・カラーボックス・レンジ台・見せる収納）。段数・列数・背板・脚を変えられる。各段に本や家電を載せられる
 - 載せられる面（既定の寸法のとき）: 天板 高さ 1800（800×300） / 1段目 高さ 78（764×291、上の空き 326） / 2段目 高さ 422.4（764×291、上の空き 326） / 3段目 高さ 766.8（764×291、上の空き 326） / 4段目 高さ 1111.2（764×291、上の空き 326） / 5段目 高さ 1455.6（764×291、上の空き 326）
@@ -284,17 +352,21 @@ PC の本体。タワー型・小型・ミニ PC。床にも机の上にも置�
 - on: boolean (既定 false) — 画面をつける
 
 ### fridge — 冷蔵庫（家電 / placement: floor）
-冷蔵庫。容量でサイズが変わる。一人暮らしなら150L前後の2ドアが定番
-- 載せられる面（既定の寸法のとき）: 上面 高さ 1220（480×591）
+冷蔵庫。容量でサイズが変わる。一人暮らしなら150L前後の2ドアが定番。扉を開けると中の棚に物を置ける。上に電子レンジを載せられる
+- 載せられる面（既定の寸法のとき）: 天面 高さ 1220（460×530） / 庫内の棚1 高さ 492（420×450、上の空き 334） / 庫内の棚2 高さ 836（420×450、上の空き 344）
 - capacity: "mini"(小型 (90L)) | "small"(2ドア (150L)) | "medium"(3ドア (300L)) | "large"(大型 (450L)) (既定 "small") — 容量
+- open: number 0〜1 (既定 0) — 扉の開き
+- hinge: "right"(右) | "left"(左) (既定 "right") — 扉の吊り元
 - color: "#rrggbb" (既定 #f4f4f2) — 色
-- finish: "matte"(マット) | "gloss"(つや) (既定 "matte") — 仕上げ
+- finish: "matte"(マット) | "gloss"(つや) | "steel"(ステンレス) (既定 "matte") — 仕上げ
 - magnets: boolean (既定 true) — マグネット・メモ
+- プリセット例: 扉を開ける {"open":0.8} / 黒・大型 {"capacity":"large","color":"#2f2f31","finish":"gloss"} / ステンレス {"capacity":"medium","finish":"steel","color":"#c9ccd0","magnets":false}
 
 ### washer — 洗濯機（家電 / placement: floor）
-洗濯機。縦型かドラム式。防水パンも付けられる
-- 上には何も載せられない
-- kind: "vertical"(縦型) | "drum"(ドラム式) (既定 "vertical") — タイプ
+洗濯機。縦型かドラム式。防水パンも付けられる。ドラム式の天面には物を置ける
+- 載せられる面（既定の寸法のとき）: 天面 高さ 1110（560×540）
+- kind: "vertical"(縦型) | "drum"(ドラム式) (既定 "drum") — タイプ
+- open: boolean (既定 false) — フタ・扉を開ける
 - pan: boolean (既定 true) — 防水パン
 - color: "#rrggbb" (既定 #f4f4f2) — 色
 
@@ -373,6 +445,43 @@ PC の本体。タワー型・小型・ミニ PC。床にも机の上にも置�
 - contents: "none"(からっぽ) | "files"(ファイル) | "papers"(書類) (既定 "files") — 中身
 - プリセット例: 紙のファイルボックス {"material":"paper","color":"#e3cfa8"} / スチール {"material":"steel","color":"#2b2b2e"}
 
+### cardboardBox — 段ボール・箱（小物 / placement: floor）
+段ボール箱、かぶせ蓋の紙箱（お菓子・贈答品）、トレー。フタの開き具合と印刷を選べる。閉じていれば上に積み重ねられ、開いていれば中に物を入れられる
+- 載せられる面（既定の寸法のとき）: フタの上 高さ 310（400×300）
+- width: number 120〜800mm (既定 400、120〜1200 まで指定可) — 幅
+- depth: number 100〜600mm (既定 300、100〜900 まで指定可) — 奥行き
+- height: number 40〜600mm (既定 300、40〜900 まで指定可) — 高さ
+- style: "flaps"(段ボール（フラップ）) | "lid"(かぶせ蓋) | "tray"(トレー（フタなし）) (既定 "flaps") — 形
+- lid: "closed"(閉じる（テープ）) | "half"(半開き) | "open"(全開) (既定 "closed") — フタ
+- material: "corrugated"(段ボール) | "board"(厚紙（印刷つき）) (既定 "corrugated") — 材質
+- color: "#rrggbb" (既定 #c8a172) — 色
+- print: "none"(なし) | "fragile"(取扱注意) | "moving"(引越し) | "shipping"(通販（伝票つき）) | "snack"(お菓子の箱) | "stripes"(帯（ストライプ）) (既定 "none") — 印刷
+- printColor: "#rrggbb" (既定 #c4372f) — 印刷の色
+- プリセット例: 引越しの段ボール {"print":"moving","printColor":"#1d3f8f"} / 開いた段ボール {"lid":"open","width":450,"height":280} / 通販の箱 {"width":320,"depth":240,"height":120,"print":"shipping","printColor":"#20242a"} / 割れ物注意 {"print":"fragile"} / お菓子の箱 {"style":"lid","material":"board","width":260,"depth":180,"height":60,"color":"#f2b8c6","print":"snack","printColor":"#c4372f"} / 書類トレー {"style":"tray","material":"board","width":330,"depth":240,"height":60,"color":"#f4f2ee"}
+
+### organizer — 小物入れ（小物 / placement: onTop）
+仕切りのある小物入れ・ペン立て・引き出しの中のトレー。仕切りの数と中身を選べる。机や棚に置く
+- 上には何も載せられない
+- width: number 60〜400mm (既定 240、60〜600 まで指定可) — 幅
+- depth: number 60〜300mm (既定 160、60〜450 まで指定可) — 奥行き
+- height: number 20〜150mm (既定 50、20〜225 まで指定可) — 高さ
+- cols: number 1〜6 (既定 3) — 横の仕切り
+- rows: number 1〜4 (既定 2) — 縦の仕切り
+- material: "plastic"(プラスチック) | "wood"(木) | "acrylic"(アクリル) | "steel"(スチール) (既定 "plastic") — 素材
+- color: "#rrggbb" (既定 #f4f4f2) — 色
+- contents: "none"(からっぽ) | "stationery"(文房具いろいろ) | "pens"(ペン立て) (既定 "stationery") — 中身
+- プリセット例: ペン立て {"width":90,"depth":90,"height":100,"cols":1,"rows":1,"contents":"pens"} / 木のトレー {"material":"wood","color":"#b8875a","cols":4,"rows":1,"height":40} / アクリルケース {"material":"acrylic","color":"#eef3f4","cols":2,"rows":2,"height":80}
+
+### wallClock — 壁掛け時計（雑貨 / placement: wall / 既定の高さ y=1750）
+壁に掛ける時計。針は画面の時間帯スライダーの時刻を指す
+- diameter: number 200〜450mm (既定 300、200〜675 まで指定可) — 直径
+- shape: "round"(丸) | "square"(四角) (既定 "round") — 形
+- frame: "plastic"(樹脂) | "wood"(木) | "metal"(金属) | "none"(枠なし) (既定 "wood") — 枠
+- frameColor: "#rrggbb" (既定 #b8875a) — 枠の色
+- face: "numbers"(数字) | "bars"(線) | "minimal"(シンプル) (既定 "numbers") — 文字盤
+- faceColor: "#rrggbb" (既定 #fbfaf6) — 文字盤の色
+- プリセット例: 駅の時計風 {"frame":"metal","frameColor":"#2b2b2e","face":"bars","diameter":350} / 黒い文字盤 {"faceColor":"#2b2b2e","frame":"none","face":"minimal"} / 四角い木の時計 {"shape":"square","frame":"wood","face":"bars"}
+
 ### rug — ラグ（雑貨 / placement: floor）
 床に敷くラグ。家具の下に敷いてよい（重なってもOK）
 - 上には何も載せられない
@@ -403,21 +512,25 @@ PC の本体。タワー型・小型・ミニ PC。床にも机の上にも置�
 - プリセット例: 小さめ {"height":450,"kind":"sansevieria","potColor":"#c87f5c"} / 大きめ {"height":1700,"kind":"umbellata","potStyle":"basket"}
 
 ### mirror — 姿見（雑貨 / placement: floor）
-全身が映る鏡。壁に立てかけるかスタンド式
+全身が映る鏡。壁に立てかける、左右の支柱で支えて角度を変えるスタンド式、後ろ脚で立てるイーゼル式
 - 上には何も載せられない
 - width: number 300〜900mm (既定 450、300〜1350 まで指定可) — 幅
 - height: number 1000〜1900mm (既定 1500、1000〜2850 まで指定可) — 高さ
-- style: "lean"(立てかけ) | "stand"(スタンド) (既定 "lean") — 置き方
+- style: "lean"(壁に立てかけ) | "stand"(スタンド（支柱ではさむ）) | "easel"(イーゼル（後ろ脚）) (既定 "lean") — 置き方
+- tilt: number 0〜15° (既定 6) — 傾き
 - frame: "thin"(細い) | "wide"(太い) | "none"(なし) (既定 "thin") — フレーム
 - frameColor: "#rrggbb" (既定 #b8875a) — フレームの色
+- プリセット例: スタンドミラー {"style":"stand","tilt":5} / イーゼル {"style":"easel","frame":"wide","frameColor":"#f1ece4"} / 黒い細枠 {"frameColor":"#2b2b2b","width":400,"height":1600}
 
 ### trashCan — ゴミ箱（雑貨 / placement: floor）
-ゴミ箱
+ゴミ箱。丸・角・分別スリム。フタなし・スイング・ペダル・跳ね上げ。フタなしなら中が空洞でゴミ袋のふちが見える
 - 上には何も載せられない
-- shape: "round"(丸) | "square"(角) | "slim"(スリム（分別）) (既定 "round") — 形
+- shape: "round"(丸) | "square"(角) | "slim"(分別スリム（2 つ）) (既定 "round") — 形
 - height: number 250〜700mm (既定 380、250〜1050 まで指定可) — 高さ
-- lid: boolean (既定 true) — フタ
+- lid: "none"(なし) | "swing"(スイング) | "pedal"(ペダル式) | "flip"(跳ね上げ（開いた状態）) (既定 "none") — フタ
+- bag: boolean (既定 true) — ゴミ袋
 - color: "#rrggbb" (既定 #f2efe9) — 色
+- プリセット例: ペダル式 {"lid":"pedal","height":450,"color":"#c9ccd0"} / 分別スリム {"shape":"slim","height":600,"lid":"swing","color":"#2f2f31"} / 木目の角型 {"shape":"square","color":"#b8875a"}
 
 ### pendantLight — ペンダントライト（照明 / placement: ceiling）
 天井から吊るす照明。position yは無視され天井から吊るされる。x,zで位置を決める
@@ -742,7 +855,8 @@ PC の本体。タワー型・小型・ミニ PC。床にも机の上にも置�
       "params": {
         "shape": "round",
         "height": 380,
-        "lid": true,
+        "lid": "none",
+        "bag": true,
         "color": "#f2efe9"
       }
     },

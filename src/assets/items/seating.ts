@@ -1,6 +1,6 @@
 import * as THREE from 'three'
 import { mat, SWATCHES } from '../../three/materials'
-import { boxOn, cyl, deg, group, lathe, rbox, sphere, tube } from '../kit'
+import { cyl, deg, group, panelOn, rbox, sphere, tube } from '../kit'
 import { p } from '../params'
 import { defineAsset } from '../types'
 
@@ -74,7 +74,7 @@ export const sofa = defineAsset({
       for (const sx of [-1, 1])
         for (const sz of [-1, 1]) {
           if (legs === 'wood') g.add(cyl(20, 14, legH, lm, [sx * ix, legH / 2, sz * iz], { rot: [sz * deg(6), 0, -sx * deg(6)] }))
-          else g.add(boxOn(16, legH, 40, lm, sx * ix, 0, sz * iz))
+          else g.add(panelOn(16, legH, 40, lm, sx * ix, 0, sz * iz))
         }
     }
     return g
@@ -120,27 +120,35 @@ export const beanbag = defineAsset({
   // Nothing is meant to stand on it.
   surfaces: () => [],
   params: {
-    size: p.mm('直径', 500, 1100, 750),
-    height: p.mm('高さ', 300, 700, 450),
+    size: p.mm('直径', 500, 1100, 700),
+    height: p.mm('高さ', 300, 800, 620),
     color: p.color('布の色', '#d8a48f', { swatches: SWATCHES.fabric }),
   },
   build({ size, height, color }) {
     const fab = mat('fabric', color, { roughness: 0.85 })
-    // Squashed blob with a dent on top: lathe profile.
+    // A slouched bag: wide flat bottom, the back standing taller than the front, a seat hollow
+    // pressed in towards the front, and soft wrinkles. Deformed from a sphere.
     const r = size / 2
     const h = height
-    const pts: [number, number][] = []
-    for (let i = 0; i <= 24; i++) {
-      const t = i / 24
-      const a = -Math.PI / 2 + t * Math.PI
-      const rr = r * Math.cos(a) * (1 + 0.08 * Math.sin(t * Math.PI))
-      const yy = (Math.sin(a) * 0.5 + 0.5) * h
-      const dent = t > 0.8 ? (t - 0.8) * 5 * h * 0.12 : 0
-      pts.push([Math.max(0.5, rr), yy - dent])
+    const geo = new THREE.SphereGeometry(1, 56, 36)
+    const pos = geo.attributes.position as THREE.BufferAttribute
+    for (let i = 0; i < pos.count; i++) {
+      const x = pos.getX(i)
+      const y = Math.max(-0.82, pos.getY(i))
+      const z = pos.getZ(i)
+      const t = (y + 0.82) / 1.82 // 0 at the floor, 1 at the top
+      const top = h * (0.72 - 0.28 * z) // taller at the back (-z), low in front
+      const bulge = 1 + 0.1 * Math.sin(t * Math.PI) - 0.06 * t
+      const dent = y > 0 ? Math.exp(-((x / 0.5) ** 2 + ((z - 0.25) / 0.45) ** 2)) * 0.28 * h * y : 0
+      const wrinkle = 1 + 0.018 * Math.sin(Math.atan2(z, x) * 9 + t * 7) * Math.sin(t * Math.PI)
+      pos.setXYZ(i, x * r * bulge * wrinkle, t * top - dent, z * r * 0.94 * bulge * wrinkle)
     }
-    pts.push([0.5, h * 0.86])
-    const m = lathe(pts, fab, [0, 0, 0], { segments: 48 })
-    m.scale.set(1, 1, 0.92)
+    geo.computeVertexNormals()
+    const uv = geo.attributes.uv as THREE.BufferAttribute
+    for (let i = 0; i < uv.count; i++) uv.setXY(i, uv.getX(i) * size * 0.0031, uv.getY(i) * h * 0.002)
+    const m = new THREE.Mesh(geo, fab)
+    m.castShadow = true
+    m.receiveShadow = true
     return group(m)
   },
 })
@@ -172,7 +180,7 @@ export const officeChair = defineAsset({
     // Five-star base with casters
     for (let i = 0; i < 5; i++) {
       const a = (i / 5) * Math.PI * 2
-      const leg = boxOn(300, 30, 50, frame, 0, 45, 0)
+      const leg = panelOn(300, 30, 50, frame, 0, 45, 0)
       leg.position.set(Math.cos(a) * 150, 60, Math.sin(a) * 150)
       leg.rotation.y = -a
       g.add(leg)
@@ -182,7 +190,7 @@ export const officeChair = defineAsset({
     g.add(cyl(22, 22, sh - 160, chrome, [0, 60 + (sh - 160) / 2, 0]))
     // Seat
     g.add(rbox(490, 80, 480, 35, seatM, [0, sh - 20, 20]))
-    g.add(boxOn(260, 40, 240, frame, 0, sh - 100, 0))
+    g.add(panelOn(260, 40, 240, frame, 0, sh - 100, 0))
     // Back
     const backH = back === 'high' ? 820 : 540
     const bm = back === 'mesh' ? mat('fabric', color, { roughness: 0.7, opacity: 1 }) : seatM
@@ -193,7 +201,7 @@ export const officeChair = defineAsset({
     backG.position.set(0, sh + 50, -230)
     backG.rotation.x = deg(-8)
     g.add(backG)
-    g.add(boxOn(60, 160, 40, frame, 0, sh - 60, -230))
+    g.add(panelOn(60, 160, 40, frame, 0, sh - 60, -230))
     if (arms) {
       for (const s of [-1, 1]) {
         g.add(tube([[s * 230, sh - 40, -40], [s * 250, sh + 120, -60], [s * 250, sh + 200, 40]], 14, frame))
@@ -244,15 +252,15 @@ export const diningChair = defineAsset({
     for (const sx of [-1, 1])
       for (const sz of [-1, 1]) {
         const h = sz < 0 ? sh + 400 : sh - 30
-        g.add(boxOn(legT, h, legT, fm, sx * (W / 2 - legT / 2 - 5), 0, sz * (D / 2 - legT / 2 - 5)))
+        g.add(panelOn(legT, h, legT, fm, sx * (W / 2 - legT / 2 - 5), 0, sz * (D / 2 - legT / 2 - 5)))
       }
     if (isWood) {
-      g.add(boxOn(W - 20, 90, 22, fm, 0, sh + 280, -D / 2 + 22))
-      g.add(boxOn(W - 20, 40, 22, fm, 0, sh + 120, -D / 2 + 22))
-      for (const sz of [-1, 1]) g.add(boxOn(W - 60, 30, 20, fm, 0, sh * 0.35, sz * (D / 2 - 22)))
+      g.add(panelOn(W - 20, 90, 22, fm, 0, sh + 280, -D / 2 + 22))
+      g.add(panelOn(W - 20, 40, 22, fm, 0, sh + 120, -D / 2 + 22))
+      for (const sz of [-1, 1]) g.add(panelOn(W - 60, 30, 20, fm, 0, sh * 0.35, sz * (D / 2 - 22)))
     } else {
       g.add(rbox(W - 10, 140, 18, 8, mat('wood', seatColor === '#d9d2c5' ? '#b8875a' : seatColor), [0, sh + 300, -D / 2 + 10]))
-      for (const sx of [-1, 1]) g.add(boxOn(12, 12, D - 40, fm, sx * (W / 2 - 14), sh * 0.3, 0))
+      for (const sx of [-1, 1]) g.add(panelOn(12, 12, D - 40, fm, sx * (W / 2 - 14), sh * 0.3, 0))
     }
     return g
   },

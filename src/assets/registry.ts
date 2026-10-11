@@ -5,6 +5,8 @@ import { kettle, microwave, riceCooker, toaster } from './items/appliances'
 import { bookRow, bookStack, fileBox } from './items/books'
 import { desktopPC, keyboardMouse, laptop, monitor } from './items/computing'
 import { aircon, fridge, tv, washer } from './items/electronics'
+import { cardboardBox, organizer, wallClock } from './items/small'
+import { copier, foldingChair, officeDesk, partition, printer, whiteboard } from './items/office'
 import { miniKitchen } from './items/kitchen'
 import { ceilingLight, deskLamp, floorLamp, pendantLight } from './items/lights'
 import { beanbag, diningChair, floorChair, officeChair, sofa } from './items/seating'
@@ -32,6 +34,12 @@ const ALL: AssetDef<any>[] = [
   keyboardMouse,
   desktopPC,
   deskLamp,
+  officeDesk,
+  foldingChair,
+  partition,
+  whiteboard,
+  printer,
+  copier,
   shelf,
   cabinet,
   metalRack,
@@ -49,6 +57,9 @@ const ALL: AssetDef<any>[] = [
   bookRow,
   bookStack,
   fileBox,
+  cardboardBox,
+  organizer,
+  wallClock,
   rug,
   curtain,
   plant,

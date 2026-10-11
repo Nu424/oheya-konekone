@@ -1,5 +1,5 @@
 import { mat, SWATCHES } from '../../three/materials'
-import { boxOn, cyl, group } from '../kit'
+import { cyl, group, panelOn } from '../kit'
 import { p } from '../params'
 import { defineAsset } from '../types'
 
@@ -26,19 +26,19 @@ export const desk = defineAsset({
   build({ width: w, depth: d, height: h, legStyle, topColor, legColor, drawer }) {
     const top = mat('wood', topColor)
     const t = 25
-    const g = group(boxOn(w, t, d, top, 0, h - t, 0, { grain: 'x' }))
+    const g = group(panelOn(w, t, d, top, 0, h - t, 0, { grain: 'x' }))
     const legH = h - t
     if (legStyle === 'panel') {
       const pm = mat('wood', topColor)
-      for (const s of [-1, 1]) g.add(boxOn(20, legH, d - 20, pm, s * (w / 2 - 25), 0, 0, { grain: 'y' }))
-      g.add(boxOn(w - 70, legH * 0.35, 15, pm, 0, legH * 0.6, -d / 2 + 30))
+      for (const s of [-1, 1]) g.add(panelOn(20, legH, d - 20, pm, s * (w / 2 - 25), 0, 0, { grain: 'y' }))
+      g.add(panelOn(w - 70, legH * 0.35, 15, pm, 0, legH * 0.6, -d / 2 + 30))
     } else if (legStyle === 'steel') {
       const lm = mat('metal', legColor, { roughness: 0.45 })
       for (const sx of [-1, 1]) {
-        for (const sz of [-1, 1]) g.add(boxOn(30, legH, 30, lm, sx * (w / 2 - 35), 0, sz * (d / 2 - 35)))
-        g.add(boxOn(20, 30, d - 70, lm, sx * (w / 2 - 35), legH - 30, 0))
+        for (const sz of [-1, 1]) g.add(panelOn(30, legH, 30, lm, sx * (w / 2 - 35), 0, sz * (d / 2 - 35)))
+        g.add(panelOn(20, 30, d - 70, lm, sx * (w / 2 - 35), legH - 30, 0))
       }
-      g.add(boxOn(w - 70, 30, 20, lm, 0, legH - 30, -d / 2 + 35))
+      g.add(panelOn(w - 70, 30, 20, lm, 0, legH - 30, -d / 2 + 35))
     } else {
       const lm = mat('wood', legColor === '#2f2f31' ? topColor : legColor)
       for (const sx of [-1, 1])
@@ -47,8 +47,8 @@ export const desk = defineAsset({
     if (drawer) {
       const dm = mat('wood', topColor)
       const dw = Math.min(450, w * 0.45)
-      g.add(boxOn(dw, 90, d - 60, dm, 0, h - t - 90, 0))
-      g.add(boxOn(120, 12, 14, mat('metal', '#a7aaae'), 0, h - t - 50, d / 2 - 28))
+      g.add(panelOn(dw, 90, d - 60, dm, 0, h - t - 90, 0))
+      g.add(panelOn(120, 12, 14, mat('metal', '#a7aaae'), 0, h - t - 50, d / 2 - 28))
     }
     return g
   },

@@ -1,6 +1,6 @@
 import * as THREE from 'three'
 import { mat, SWATCHES } from '../../three/materials'
-import { boxOn, cyl, group, rbox, tube } from '../kit'
+import { cyl, group, panelOn, rbox, tube } from '../kit'
 import { p } from '../params'
 import { defineAsset } from '../types'
 
@@ -32,8 +32,8 @@ export const miniKitchen = defineAsset({
     const toe = 80
     const counterT = 30
     const cabH = H - counterT - toe
-    g.add(boxOn(W - 40, toe, D - 60, mat('matte', '#3b3633'), 0, 0, -10))
-    g.add(boxOn(W, cabH, D - 20, door, 0, toe, -10))
+    g.add(panelOn(W - 40, toe, D - 60, mat('matte', '#3b3633'), 0, 0, -10))
+    g.add(panelOn(W, cabH, D - 20, door, 0, toe, -10))
 
     // Layout along the counter: sink ~ 600, stove ~ 400 (1口) / 600 (2口), rest is worktop.
     const sinkW = Math.min(600, W * 0.42)
@@ -47,22 +47,22 @@ export const miniKitchen = defineAsset({
     const cutL = sinkX - sinkW / 2
     const cutR = sinkX + sinkW / 2
     const sinkD = D - 200
-    if (cutL > -W / 2) g.add(boxOn(cutL + W / 2, counterT, D, steel, (-W / 2 + cutL) / 2, top, 0))
-    if (cutR < W / 2) g.add(boxOn(W / 2 - cutR, counterT, D, steel, (cutR + W / 2) / 2, top, 0))
-    g.add(boxOn(sinkW, counterT, (D - sinkD) / 2 + 40, steel, sinkX, top, D / 2 - ((D - sinkD) / 2 + 40) / 2))
-    g.add(boxOn(sinkW, counterT, (D - sinkD) / 2 - 40, steel, sinkX, top, -D / 2 + ((D - sinkD) / 2 - 40) / 2))
+    if (cutL > -W / 2) g.add(panelOn(cutL + W / 2, counterT, D, steel, (-W / 2 + cutL) / 2, top, 0))
+    if (cutR < W / 2) g.add(panelOn(W / 2 - cutR, counterT, D, steel, (cutR + W / 2) / 2, top, 0))
+    g.add(panelOn(sinkW, counterT, (D - sinkD) / 2 + 40, steel, sinkX, top, D / 2 - ((D - sinkD) / 2 + 40) / 2))
+    g.add(panelOn(sinkW, counterT, (D - sinkD) / 2 - 40, steel, sinkX, top, -D / 2 + ((D - sinkD) / 2 - 40) / 2))
     // Sink basin
     const basin = mat('metal', '#bfc3c7', { roughness: 0.35 })
-    g.add(boxOn(sinkW, 8, sinkD, basin, sinkX, top - 180, 40 - 0))
+    g.add(panelOn(sinkW, 8, sinkD, basin, sinkX, top - 180, 40 - 0))
     for (const s of [-1, 1]) {
-      g.add(boxOn(6, 180, sinkD, basin, sinkX + s * (sinkW / 2 - 3), top - 180, 40))
+      g.add(panelOn(6, 180, sinkD, basin, sinkX + s * (sinkW / 2 - 3), top - 180, 40))
     }
-    g.add(boxOn(sinkW, 180, 6, basin, sinkX, top - 180, 40 + sinkD / 2 - 3))
-    g.add(boxOn(sinkW, 180, 6, basin, sinkX, top - 180, 40 - sinkD / 2 + 3))
+    g.add(panelOn(sinkW, 180, 6, basin, sinkX, top - 180, 40 + sinkD / 2 - 3))
+    g.add(panelOn(sinkW, 180, 6, basin, sinkX, top - 180, 40 - sinkD / 2 + 3))
     // Faucet
     g.add(cyl(18, 22, 40, steel, [sinkX, H + 20, -D / 2 + 70]))
     g.add(tube([[sinkX, H + 30, -D / 2 + 70], [sinkX, H + 260, -D / 2 + 80], [sinkX, H + 280, -D / 2 + 180], [sinkX, H + 200, -D / 2 + 230]], 12, steel))
-    g.add(boxOn(20, 20, 90, steel, sinkX + 40, H + 30, -D / 2 + 80))
+    g.add(panelOn(20, 20, 90, steel, sinkX + 40, H + 30, -D / 2 + 80))
 
     // Stove
     if (stove === 'ih1' || stove === 'ih2') {
@@ -83,7 +83,7 @@ export const miniKitchen = defineAsset({
         g.add(cyl(45, 50, 25, mat('metal', '#3a3b3e'), [x, H + 72, -20]))
         for (let k = 0; k < 4; k++) {
           const a = (k / 4) * Math.PI * 2
-          const bar = boxOn(150, 12, 14, mat('metal', '#1d1d1d'), x, H + 70, -20)
+          const bar = panelOn(150, 12, 14, mat('metal', '#1d1d1d'), x, H + 70, -20)
           bar.rotation.y = a
           g.add(bar)
         }
@@ -99,8 +99,8 @@ export const miniKitchen = defineAsset({
         g.add(rbox(dw - 20, cabH - 20, 20, 8, mat('plastic', '#f4f4f2'), [x, toe + cabH / 2, D / 2 - 18]))
         continue
       }
-      g.add(boxOn(dw - 8, cabH - 10, 16, door, x, toe + 5, D / 2 - 22))
-      g.add(boxOn(Math.min(140, dw * 0.4), 12, 14, steel, x, toe + cabH - 50, D / 2 - 8))
+      g.add(panelOn(dw - 8, cabH - 10, 16, door, x, toe + 5, D / 2 - 22))
+      g.add(panelOn(Math.min(140, dw * 0.4), 12, 14, steel, x, toe + cabH - 50, D / 2 - 8))
     }
 
     if (upper) {
@@ -108,14 +108,14 @@ export const miniKitchen = defineAsset({
       const uy = 1500
       const uh = 600
       const ud = 330
-      g.add(boxOn(W, uh, ud, door, 0, uy + 200, -D / 2 + ud / 2))
-      for (let i = 0; i < doorsN; i++) g.add(boxOn(W / doorsN - 8, uh - 10, 6, door, -W / 2 + (W / doorsN) * (i + 0.5), uy + 205, -D / 2 + ud + 2))
+      g.add(panelOn(W, uh, ud, door, 0, uy + 200, -D / 2 + ud / 2))
+      for (let i = 0; i < doorsN; i++) g.add(panelOn(W / doorsN - 8, uh - 10, 6, door, -W / 2 + (W / doorsN) * (i + 0.5), uy + 205, -D / 2 + ud + 2))
       if (stove !== 'none') {
-        g.add(boxOn(Math.max(stoveW + 100, 500), 160, 450, mat('metal', '#d9dcdf', { roughness: 0.3 }), stoveX, uy + 40, -D / 2 + 225))
-        g.add(boxOn(Math.max(stoveW + 60, 460), 6, 400, mat('emissive', '#fff3dc', { intensity: 0.6 }), stoveX, uy + 36, -D / 2 + 225))
+        g.add(panelOn(Math.max(stoveW + 100, 500), 160, 450, mat('metal', '#d9dcdf', { roughness: 0.3 }), stoveX, uy + 40, -D / 2 + 225))
+        g.add(panelOn(Math.max(stoveW + 60, 460), 6, 400, mat('emissive', '#fff3dc', { intensity: 0.6 }), stoveX, uy + 36, -D / 2 + 225))
       }
       // Backsplash
-      g.add(boxOn(W, uy + 200 - H, 10, mat('ceramic', '#f6f4f0'), 0, H, -D / 2 + 5))
+      g.add(panelOn(W, uy + 200 - H, 10, mat('ceramic', '#f6f4f0'), 0, H, -D / 2 + 5))
     }
     return g
   },

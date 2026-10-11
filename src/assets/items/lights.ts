@@ -1,6 +1,6 @@
 import * as THREE from 'three'
 import { mat, SWATCHES } from '../../three/materials'
-import { boxOn, cyl, deg, group, lathe, sphere, tube } from '../kit'
+import { cyl, deg, group, lathe, panelOn, sphere, tube } from '../kit'
 import { p } from '../params'
 import { defineAsset } from '../types'
 
@@ -139,7 +139,7 @@ export const floorLamp = defineAsset({
       }
       g.add(drum(H - 180, 230, 320))
     } else {
-      g.add(boxOn(260, 60, 260, mat('ceramic', '#e9e4dc', { roughness: 0.3 }), 0, 0, -400))
+      g.add(panelOn(260, 60, 260, mat('ceramic', '#e9e4dc', { roughness: 0.3 }), 0, 0, -400))
       const reach = Math.min(1400, H * 0.8)
       g.add(tube([[0, 60, -400], [0, H * 0.75, -380], [0, H, -100], [0, H * 0.92, reach - 400]], 12, fm, { segments: 60, tension: 0.5 }))
       const sh = shade('dome', 380, frameColor === '#2b2b2b' ? '#2b2b2b' : '#d7d9dc')

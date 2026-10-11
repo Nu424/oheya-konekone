@@ -1,6 +1,6 @@
 import * as THREE from 'three'
 import { mat, SWATCHES } from '../../three/materials'
-import { boxOn, cyl, group, rbox } from '../kit'
+import { cyl, group, panelOn, rbox } from '../kit'
 import { p } from '../params'
 import { defineAsset } from '../types'
 
@@ -61,15 +61,15 @@ export const bed = defineAsset({
     if (frame === 'wood') {
       const railH = 160
       const ry = deck - railH + 60
-      g.add(boxOn(ft, railH, L, wood, -W / 2 + ft / 2, ry, 0, { grain: 'z' }))
-      g.add(boxOn(ft, railH, L, wood, W / 2 - ft / 2, ry, 0, { grain: 'z' }))
-      g.add(boxOn(W, railH, ft, wood, 0, ry, L / 2 - ft / 2))
-      g.add(boxOn(W, railH, ft, wood, 0, ry, -L / 2 + ft / 2))
+      g.add(panelOn(ft, railH, L, wood, -W / 2 + ft / 2, ry, 0, { grain: 'z' }))
+      g.add(panelOn(ft, railH, L, wood, W / 2 - ft / 2, ry, 0, { grain: 'z' }))
+      g.add(panelOn(W, railH, ft, wood, 0, ry, L / 2 - ft / 2))
+      g.add(panelOn(W, railH, ft, wood, 0, ry, -L / 2 + ft / 2))
       if (legHeight > 0) {
         const lh = ry
         for (const sx of [-1, 1])
-          for (const sz of [-1, 1]) g.add(boxOn(60, lh, 60, wood, sx * (W / 2 - 30), 0, sz * (L / 2 - 30), { grain: 'y' }))
-        if (mw >= 1400) for (const sz of [-1, 1]) g.add(boxOn(60, lh, 60, wood, 0, 0, sz * (L / 2 - 30)))
+          for (const sz of [-1, 1]) g.add(panelOn(60, lh, 60, wood, sx * (W / 2 - 30), 0, sz * (L / 2 - 30), { grain: 'y' }))
+        if (mw >= 1400) for (const sz of [-1, 1]) g.add(panelOn(60, lh, 60, wood, 0, 0, sz * (L / 2 - 30)))
       }
     } else if (frame === 'steel') {
       const r = 14
@@ -86,17 +86,17 @@ export const bed = defineAsset({
       }
       g.add(cyl(r, r, W, wood, [0, top + 260, L / 2 - r], { rot: [0, 0, Math.PI / 2] }))
     } else if (frame === 'storage' || frame === 'low') {
-      g.add(boxOn(W, deck, L, wood, 0, 0, 0, { grain: 'z' }))
+      g.add(panelOn(W, deck, L, wood, 0, 0, 0, { grain: 'z' }))
       if (frame === 'storage') {
         // Two drawers on the +X side
         const dl = (L - 200) / 2 - 20
         const front = mat('wood', frameColor, { roughness: 0.5 })
         for (const i of [0, 1]) {
           const z = L / 2 - 100 - dl / 2 - i * (dl + 20)
-          g.add(boxOn(16, deck - 80, dl, front, W / 2 + 6, 30, z))
-          g.add(boxOn(10, 22, 160, mat('metal', '#a7aaae'), W / 2 + 18, deck - 120, z))
+          g.add(panelOn(16, deck - 80, dl, front, W / 2 + 6, 30, z))
+          g.add(panelOn(10, 22, 160, mat('metal', '#a7aaae'), W / 2 + 18, deck - 120, z))
         }
-        g.add(boxOn(W - 20, 30, L - 20, mat('matte', '#2b2420'), 0, 0, 0)) // plinth shadow gap
+        g.add(panelOn(W - 20, 30, L - 20, mat('matte', '#2b2420'), 0, 0, 0)) // plinth shadow gap
       }
     }
 
@@ -134,10 +134,10 @@ export const bed = defineAsset({
     } else if (headboard !== 'none' && frame !== 'none') {
       const hbH = top + 380
       const hbD = headboard === 'shelf' ? 220 : 40
-      g.add(boxOn(W, hbH, hbD, wood, 0, 0, -L / 2 - hbD / 2 + (frame === 'wood' ? 0 : 10), { grain: 'x' }))
+      g.add(panelOn(W, hbH, hbD, wood, 0, 0, -L / 2 - hbD / 2 + (frame === 'wood' ? 0 : 10), { grain: 'x' }))
       if (headboard === 'shelf') {
         // Recessed niche
-        g.add(boxOn(W - 60, 140, hbD - 30, mat('matte', '#2b2420', { roughness: 0.9 }), 0, hbH - 180, -L / 2 - hbD / 2 + 15))
+        g.add(panelOn(W - 60, 140, hbD - 30, mat('matte', '#2b2420', { roughness: 0.9 }), 0, hbH - 180, -L / 2 - hbD / 2 + 15))
       }
     }
     return g

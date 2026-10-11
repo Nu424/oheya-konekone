@@ -58,7 +58,7 @@ export function catalogText(): string {
     lines.push(a.description)
     const sl = surfaceLine(a)
     if (sl) lines.push(sl)
-    for (const [k, s] of Object.entries(a.params)) lines.push(`- ${describeParam(k, s)}`)
+    for (const [k, s] of Object.entries(a.params)) if (!s.hidden) lines.push(`- ${describeParam(k, s)}`)
     if (a.presets?.length) lines.push(`- プリセット例: ${a.presets.map((p) => `${p.name} ${JSON.stringify(p.params)}`).join(' / ')}`)
     lines.push('')
   }

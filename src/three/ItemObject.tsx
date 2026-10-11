@@ -95,14 +95,21 @@ export function ItemObject({
   ceiling,
   onPointerDown,
   innerRef,
+  live,
 }: {
   item: Item
+  /** App state for assets with live parameters (see AssetDef.live). */
+  live?: { hour: number }
   ceiling?: number
   onPointerDown?: (e: { stopPropagation(): void }) => void
   /** Wrapper around the model at the item's origin (for pop-in scaling). */
   innerRef?: React.Ref<THREE.Group>
 }) {
-  const obj = useMemo(() => buildItemObject(item.type, item.params), [item.type, item.params])
+  const asset = getAsset(item.type)
+  // Assets with live parameters (the wall clock) follow the time of day; others ignore it.
+  const hour = asset?.live ? (live?.hour ?? 10) : 0
+  const params = useMemo(() => (asset?.live ? { ...item.params, ...asset.live({ hour }) } : item.params), [asset, item.params, hour])
+  const obj = useMemo(() => buildItemObject(item.type, params), [item.type, params])
   useEffect(
     () => () => {
       if (obj) disposeObject(obj)
@@ -111,7 +118,7 @@ export function ItemObject({
   )
   if (!obj) return null
   const [x, y, z] = item.position
-  const hang = getAsset(item.type)?.placement === 'ceiling' && ceiling !== undefined
+  const hang = asset?.placement === 'ceiling' && ceiling !== undefined
   return (
     <group
       position={[x * S, (hang ? ceiling : y) * S, z * S]}

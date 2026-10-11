@@ -168,6 +168,7 @@ function ParamControl({ k, spec, value, onChange }: { k: string; spec: ParamSpec
 function paramGroups(asset: AssetDef) {
   const groups = new Map<string, [string, ParamSpec][]>()
   for (const [k, s] of Object.entries(asset.params)) {
+    if (s.hidden) continue
     const g = s.group ?? 'その他'
     if (!groups.has(g)) groups.set(g, [])
     groups.get(g)!.push([k, s])

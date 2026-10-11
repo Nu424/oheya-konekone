@@ -1,7 +1,7 @@
 import * as THREE from 'three'
 import { mat, SWATCHES } from '../../three/materials'
 import { HEADLESS, rng } from '../../three/textures'
-import { boxOn, cyl, deg, extrude, group, lathe, rbox, roundedRect, tube } from '../kit'
+import { cyl, deg, extrude, group, lathe, panelOn, rbox, roundedRect, tube } from '../kit'
 import { p } from '../params'
 import { defineAsset } from '../types'
 
@@ -175,17 +175,17 @@ export const curtain = defineAsset({
     const o = open / 100
     // Rail
     const rail = mat('metal', '#d7d9dc', { roughness: 0.35 })
-    g.add(boxOn(W + 100, 30, 40, rail, 0, H + 20, -40))
-    for (const s of [-1, 1]) g.add(boxOn(20, 40, 80, rail, s * (W / 2 + 40), H + 20, -70))
+    g.add(panelOn(W + 100, 30, 40, rail, 0, H + 20, -40))
+    for (const s of [-1, 1]) g.add(panelOn(20, 40, 80, rail, s * (W / 2 + 40), H + 20, -70))
     // Drape panels: each covers half the rail when closed, gathered toward the sides when open.
     const half = W / 2 + 30
     const pw = Math.max(W * 0.11, half * (1 - o * 0.82))
     const folds = Math.max(3, Math.round(half / 160))
     const amp = 18 + (half / pw) * 14
     for (const s of [-1, 1]) {
-      const panel = pleatPanel(pw, H, folds, Math.min(amp, 70), fab)
-      panel.position.set(s * (W / 2 + 30 - pw / 2), H / 2, -15)
-      g.add(panel)
+      const drape = pleatPanel(pw, H, folds, Math.min(amp, 70), fab)
+      drape.position.set(s * (W / 2 + 30 - pw / 2), H / 2, -15)
+      g.add(drape)
     }
     if (lace) {
       const lm = mat('fabric', '#fbfaf6', { side: THREE.DoubleSide, roughness: 0.95 })
@@ -390,39 +390,74 @@ export const mirror = defineAsset({
   type: 'mirror',
   label: '姿見',
   category: 'decor',
-  description: '全身が映る鏡。壁に立てかけるかスタンド式',
+  description: '全身が映る鏡。壁に立てかける、左右の支柱で支えて角度を変えるスタンド式、後ろ脚で立てるイーゼル式',
   placement: 'floor',
   // Nothing is meant to stand on it.
   surfaces: () => [],
   params: {
     width: p.mm('幅', 300, 900, 450),
     height: p.mm('高さ', 1000, 1900, 1500),
-    style: p.select('置き方', { lean: '立てかけ', stand: 'スタンド' }, 'lean'),
+    style: p.select('置き方', { lean: '壁に立てかけ', stand: 'スタンド（支柱ではさむ）', easel: 'イーゼル（後ろ脚）' }, 'lean'),
+    tilt: p.number({ label: '傾き', min: 0, max: 15, step: 1, default: 6, unit: '°', group: '形', hint: '鏡を後ろに倒す角度' }),
     frame: p.select('フレーム', { thin: '細い', wide: '太い', none: 'なし' }, 'thin'),
     frameColor: p.color('フレームの色', '#b8875a', { swatches: [...SWATCHES.wood, ...SWATCHES.metal] }),
   },
-  build({ width: W, height: H, style, frame, frameColor }) {
+  presets: [
+    { name: 'スタンドミラー', params: { style: 'stand', tilt: 5 } },
+    { name: 'イーゼル', params: { style: 'easel', frame: 'wide', frameColor: '#f1ece4' } },
+    { name: '黒い細枠', params: { frameColor: '#2b2b2b', width: 400, height: 1600 } },
+  ],
+  body: ({ width: W, height: H, style, tilt }) => {
+    // Footprint of the mirror on the floor: the frame plus how far its top leans back.
+    const back = style === 'stand' ? 230 : Math.sin(deg(style === 'easel' ? 14 : tilt)) * H + 40
+    const sideW = style === 'stand' ? W + 80 : W
+    return { min: { x: -sideW / 2, y: 0, z: -back }, max: { x: sideW / 2, y: H + (style === 'stand' ? 80 : 0), z: 40 } }
+  },
+  build({ width: W, height: H, style, tilt, frame, frameColor }) {
     const g = group()
     const fw = frame === 'none' ? 0 : frame === 'thin' ? 25 : 60
-    const fm = mat('wood', frameColor)
+    const metal = SWATCHES.metal.includes(frameColor)
+    const fm = metal ? mat('powder', frameColor) : mat('wood', frameColor)
     const glass = mirrorMaterial()
+    // The mirror panel, built with its bottom edge on its local origin and its face towards +Z.
     const m = new THREE.Group()
-    if (fw > 0) m.add(extrude(roundedRect(W, H, frame === 'wide' ? 20 : 8), 30, fm, [0, H / 2, 0]))
+    const t = 30
+    if (fw > 0) m.add(extrude(roundedRect(W, H, frame === 'wide' ? 6 : 3), t, fm, [0, H / 2, 0], { bevel: 2 }))
+    else m.add(panelOn(W, H, 6, mat('plastic', '#c9ccd0'), 0, 0, -t / 2 + 3, { edge: 1 }))
     const pane = new THREE.Mesh(new THREE.PlaneGeometry(W - fw * 2, H - fw * 2), glass)
-    pane.position.set(0, H / 2, 16)
+    pane.position.set(0, H / 2, fw > 0 ? t / 2 + 0.5 : -t / 2 + 6.5)
     m.add(pane)
     if (style === 'lean') {
-      m.rotation.x = -deg(8)
-      m.position.z = H * Math.sin(deg(8)) * 0.5 - 40
+      // Leaning on the wall: the bottom edge stays on the floor in front, the top rests further back.
+      m.rotation.x = -deg(tilt)
       g.add(m)
+    } else if (style === 'easel') {
+      // A fold-out leg from the upper back to the floor behind, with a stop strap.
+      const a = deg(Math.max(8, tilt))
+      m.rotation.x = -a
+      g.add(m)
+      const topY = H * 0.78 * Math.cos(a)
+      const topZ = -H * 0.78 * Math.sin(a) - t / 2
+      const footZ = topZ - topY * Math.tan(deg(20))
+      g.add(tube([[0, topY, topZ], [0, 0, footZ]], 14, fm, { segments: 2 }))
+      g.add(tube([[0, topY * 0.3, -H * 0.3 * Math.sin(a) - t / 2], [0, topY * 0.3, topZ - topY * 0.7 * Math.tan(deg(20))]], 3, mat('fabric', '#3a3b3e'), { segments: 2 }))
     } else {
-      m.position.y = 60
-      g.add(m)
+      // Stand: two side posts on splayed feet hold the mirror by pivots at mid-height.
+      const postX = W / 2 + 28
+      const pivotY = 60 + H / 2
+      const postH = H + 80
       for (const s of [-1, 1]) {
-        const leg = boxOn(25, H * 0.5, 25, fm, s * (W / 2 - 40), 0, -120)
-        leg.rotation.x = deg(-12)
-        g.add(leg)
+        g.add(panelOn(30, postH, 30, fm, s * postX, 0, 0, { edge: 3 }))
+        g.add(panelOn(36, 26, 380, fm, s * postX, 0, -60, { edge: 4 }))
+        g.add(cyl(16, 16, 22, mat('powder', '#2b2b2b'), [s * (postX - 22), pivotY, 0], { rot: [0, 0, Math.PI / 2], segments: 20 }))
       }
+      g.add(panelOn(W + 56, 24, 24, fm, 0, 80, -80, { edge: 3 })) // stretcher
+      const pivot = new THREE.Group()
+      pivot.position.set(0, pivotY, 0)
+      m.position.y = -H / 2
+      pivot.add(m)
+      pivot.rotation.x = -deg(tilt)
+      g.add(pivot)
     }
     return g
   },
@@ -432,32 +467,109 @@ export const trashCan = defineAsset({
   type: 'trashCan',
   label: 'ゴミ箱',
   category: 'decor',
-  description: 'ゴミ箱',
+  description: 'ゴミ箱。丸・角・分別スリム。フタなし・スイング・ペダル・跳ね上げ。フタなしなら中が空洞でゴミ袋のふちが見える',
   placement: 'floor',
   // Nothing is meant to stand on it.
   surfaces: () => [],
   params: {
-    shape: p.select('形', { round: '丸', square: '角', slim: 'スリム（分別）' }, 'round'),
+    shape: p.select('形', { round: '丸', square: '角', slim: '分別スリム（2 つ）' }, 'round'),
     height: p.mm('高さ', 250, 700, 380),
-    lid: p.bool('フタ', true),
+    lid: p.select('フタ', { none: 'なし', swing: 'スイング', pedal: 'ペダル式', flip: '跳ね上げ（開いた状態）' }, 'none'),
+    bag: p.bool('ゴミ袋', true),
     color: p.color('色', '#f2efe9', { swatches: ['#f2efe9', '#2f2f31', '#c9ccd0', '#b8875a', '#9fb5a5', '#e8c76a'] }),
   },
-  build({ shape, height: H, lid, color }) {
+  presets: [
+    { name: 'ペダル式', params: { lid: 'pedal', height: 450, color: '#c9ccd0' } },
+    { name: '分別スリム', params: { shape: 'slim', height: 600, lid: 'swing', color: '#2f2f31' } },
+    { name: '木目の角型', params: { shape: 'square', color: '#b8875a' } },
+  ],
+  build({ shape, height: H, lid, bag, color }) {
     const g = group()
-    const m = mat('plastic', color, { roughness: 0.35 })
-    const bodyH = lid ? H - 30 : H
-    if (shape === 'round') {
-      g.add(cyl(130, 110, bodyH, m, [0, bodyH / 2, 0], { open: !lid, segments: 40 }))
-      if (lid) g.add(cyl(135, 135, 30, m, [0, bodyH + 15, 0], { segments: 40 }))
-      else g.add(cyl(110, 110, 4, mat('matte', '#3b3633'), [0, bodyH - 30, 0]))
-    } else {
-      const w = shape === 'slim' ? 200 : 260
-      const d = shape === 'slim' ? 400 : 260
-      g.add(rbox(w, bodyH, d, 20, m, [0, bodyH / 2, 0]))
-      if (lid) {
-        g.add(rbox(w + 6, 30, d + 6, 15, m, [0, bodyH + 15, 0]))
-        g.add(boxOn(60, 10, 20, mat('matte', '#3b3633'), 0, bodyH + 30, d / 2 - 30))
+    const steel = color === '#c9ccd0'
+    const m = steel ? mat('stainless', color) : color === '#b8875a' ? mat('wood', color) : mat('plastic', color, { roughness: 0.35 })
+    const t = 4
+    const bodyH = lid === 'none' || lid === 'flip' ? H : H - 28
+    const bagM = mat('plastic', '#e9ece8', { roughness: 0.55 })
+    const floorM = mat('matte', '#5a5752')
+    // Footprint and opening, per shape.
+    const round = shape === 'round'
+    const w = shape === 'slim' ? 220 : 260
+    const d = shape === 'slim' ? 420 : 260
+    if (round) {
+      // A hollow tapered tub: outer wall, rim, inner wall and floor in one lathe.
+      g.add(
+        lathe(
+          [
+            [0, 0],
+            [112, 0],
+            [116, 4],
+            [130, bodyH - 4],
+            [131, bodyH],
+            [131 - t, bodyH],
+            [112 - t, t + 6],
+            [0, t + 6],
+          ],
+          m,
+          [0, 0, 0],
+          { segments: 48 },
+        ),
+      )
+      g.add(cyl(104, 104, 1, floorM, [0, t + 7, 0], { segments: 32 }))
+      if (bag && lid === 'none') {
+        // The bag's edge folded over the rim, a little loose.
+        g.add(new THREE.Mesh(new THREE.TorusGeometry(130, 3.5, 6, 48), bagM).translateY(bodyH - 6).rotateX(Math.PI / 2))
+        g.add(cyl(131, 130, 22, bagM, [0, bodyH - 14, 0], { open: true, segments: 48 }))
       }
+    } else {
+      // Square / slim: four walls and a floor, with eased edges.
+      g.add(panelOn(w, t + 6, d, m, 0, 0, 0, { edge: 4 }))
+      for (const s of [-1, 1]) {
+        g.add(panelOn(w, bodyH, t, m, 0, 0, s * (d / 2 - t / 2), { edge: 2 }))
+        g.add(panelOn(t, bodyH, d - t * 2, m, s * (w / 2 - t / 2), 0, 0, { edge: 2 }))
+      }
+      g.add(panelOn(w - t * 2 - 2, 1, d - t * 2 - 2, floorM, 0, t + 6, 0))
+      if (shape === 'slim') g.add(panelOn(w - t * 2, bodyH - 10, t, m, 0, 0, 0, { edge: 1.5 }))
+      if (bag && lid === 'none')
+        for (const s of shape === 'slim' ? [-1, 1] : [0]) {
+          const dz = shape === 'slim' ? s * (d / 4) : 0
+          const dd = shape === 'slim' ? d / 2 : d
+          for (const k of [-1, 1]) {
+            g.add(panelOn(w + 2, 20, 2, bagM, 0, bodyH - 18, dz + k * (dd / 2 - (shape === 'slim' && k === -s ? t : 0))))
+          }
+        }
+    }
+    const lidM = steel ? mat('stainless', color) : mat('plastic', color, { roughness: 0.3 })
+    const darkSlot = mat('matte', '#2a2826')
+    const lidTop = (o: { open?: number; flap?: boolean }) => {
+      const L = new THREE.Group()
+      if (round) {
+        L.add(cyl(134, 134, 18, lidM, [0, 9, 0], { segments: 48 }))
+        L.add(cyl(110, 134, 12, lidM, [0, 24, 0], { segments: 48 }))
+      } else for (const s of shape === 'slim' ? [-1, 1] : [0]) L.add(panelOn(w + 6, 24, (shape === 'slim' ? d / 2 : d) + 6 - (shape === 'slim' ? 2 : 0), lidM, 0, 0, s * (d / 4), { edge: 6 }))
+      if (o.flap) {
+        // Swing flap: a slot that tips both ways.
+        for (const s of shape === 'slim' ? [-1, 1] : [0]) g.add(panelOn(round ? 150 : w - 50, 2, 26, darkSlot, 0, bodyH + 22, s * (d / 4)))
+      }
+      return L
+    }
+    if (lid === 'swing') {
+      const L = lidTop({ flap: true })
+      L.position.y = bodyH
+      g.add(L)
+    } else if (lid === 'pedal') {
+      const L = lidTop({})
+      L.position.y = bodyH
+      g.add(L)
+      g.add(panelOn(90, 14, 60, mat('plastic', '#2b2b2e'), 0, 0, (round ? 120 : d / 2) + 20, { edge: 4 }))
+    } else if (lid === 'flip') {
+      // Lid hinged at the back, standing open.
+      const L = lidTop({})
+      const pivot = new THREE.Group()
+      pivot.position.set(0, bodyH, round ? -130 : -d / 2)
+      L.position.z = round ? 130 : d / 2
+      pivot.add(L)
+      pivot.rotation.x = -deg(100)
+      g.add(pivot)
     }
     return g
   },

@@ -86,6 +86,11 @@ export interface AssetDef<S extends ParamSpecs = ParamSpecs> {
    * Open frames: items whose footprint lies inside this item's footprint do not collide with it.
    */
   hollow?: boolean | ((p: ParamValues<S>) => boolean)
+  /**
+   * Parameters that follow the app's state instead of the layout (a wall clock showing the time of
+   * the time-of-day slider). Applied when drawing; never saved in the JSON.
+   */
+  live?(ctx: { hour: number }): Partial<ParamValues<S>>
   /** Light sources this item emits (lamps), in mm relative to the item origin. */
   lights?(p: ParamValues<S>): { position: [number, number, number]; color: string; intensity: number; distance?: number }[]
 }

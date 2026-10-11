@@ -66,6 +66,10 @@ function usePop() {
 }
 
 function EditableItem({ item, ceiling }: { item: Item; ceiling: number }) {
+  // Only items with live parameters subscribe to the clock, so moving the slider redraws just those.
+  const hasLive = !!getAsset(item.type)?.live
+  const hour = useUi((s) => (hasLive ? s.hour : 0))
+  const live = hasLive ? { hour } : undefined
   const controls = useThree((s) => s.controls) as unknown as CameraControlsImpl | null
   const drag = useRef<DragState | null>(null)
   const hit = useMemo(() => new THREE.Vector3(), [])
@@ -218,7 +222,7 @@ function EditableItem({ item, ceiling }: { item: Item; ceiling: number }) {
         if (!drag.current) document.body.style.cursor = ''
       }}
     >
-      <ItemObject item={item} ceiling={ceiling} innerRef={pop} />
+      <ItemObject item={item} ceiling={ceiling} innerRef={pop} live={live} />
     </group>
   )
 }
