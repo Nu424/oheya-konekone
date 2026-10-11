@@ -63,3 +63,7 @@ node scripts/shot.mjs '/?gallery&type=desk' shots/desk.png 1400 900
 （リポジトリの Settings → Pages で Source を「GitHub Actions」にしておく必要があります）
 
 計画と設計は [docs/PLAN.md](docs/PLAN.md)、開発で得た知見（モデリング・レンダリング・検証の罠）は [docs/KNOWLEDGE.md](docs/KNOWLEDGE.md) にまとめています。
+
+## ライセンス
+
+[MIT](LICENSE)
