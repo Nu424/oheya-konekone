@@ -1,5 +1,6 @@
 import { z } from 'zod'
 import { getAsset, itemParamsSchema } from '../assets/registry'
+import { stack } from '../editor/placement'
 import { overlappingOpenings, wallLength } from './geometry'
 import { Layout, type LayoutInput } from './schema'
 
@@ -77,6 +78,19 @@ export function parseLayout(raw: unknown): ParseResult {
     if (x < 0 || x > layout.room.width || z < 0 || z > layout.room.depth)
       warnings.push({ path: `${base}.position`, message: `「${item.name ?? asset.label}」の中心が部屋の外にあります` })
   })
+
+  // Items in mid-air: y must match the surface they stand on (see docs/STACKING.md).
+  if (!errors.length) {
+    for (const { item, nearest } of stack.floating(layout)) {
+      const idx = layout.items.indexOf(item)
+      const y = item.position[1]
+      const name = item.name ?? getAsset(item.type)?.label ?? item.type
+      const fix = nearest
+        ? `真下の面（${layout.items.find((i) => i.id === nearest.itemId)?.id} の${nearest.label ?? '上面'}）は y=${Math.round(nearest.worldY * 10) / 10} です`
+        : '真下に載せられる面がありません。床に置くなら y=0 にしてください'
+      warnings.push({ path: `items[${idx}].position`, message: `「${name}」が宙に浮いています（y=${y}）。${fix}` })
+    }
+  }
 
   // Openings must fit on their wall.
   const oids = new Set<string>()

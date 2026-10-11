@@ -1,6 +1,6 @@
 import { getAsset } from '../assets/registry'
 import type { Layout, Opening } from '../model/schema'
-import { isPassive, itemFootprint2D, SEATS } from './placement'
+import { isPassive, itemFootprint2D, SEATS, stack } from './placement'
 import { footprint, overlaps2D, type Footprint2D } from './space'
 
 /**
@@ -155,9 +155,11 @@ export function analyzeFlow(layout: Layout): FlowResult {
   const blocked = new Uint8Array(n)
 
   // Obstacles: furniture that stands in the way at body height, and columns.
+  // Things standing on other furniture (a TV on its stand) are covered by what carries them.
+  const sup = stack.supports(layout)
   const solid = layout.items
     // Chairs can be pulled out, so they do not block access to the desk / table they belong to.
-    .filter((i) => !isPassive(i.type) && !SEATS.has(i.type))
+    .filter((i) => !isPassive(i.type) && !SEATS.has(i.type) && !sup.has(i.id))
     .map((i) => ({ i, f: itemFootprint2D(i, layout) }))
     .filter(({ f }) => f.minY < 1200)
   const cols2 = room.columns.map((c) => footprint({ min: { x: -c.width / 2, y: 0, z: -c.depth / 2 }, max: { x: c.width / 2, y: room.height, z: c.depth / 2 } }, c.x, 0, c.z, 0))

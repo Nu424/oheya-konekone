@@ -40,7 +40,14 @@ export interface BoolParam extends Base {
   default: boolean
 }
 
-export type ParamSpec = NumberParam | ColorParam | SelectParam | BoolParam
+/** Short free text (labels, name plates). */
+export interface TextParam extends Base {
+  kind: 'text'
+  default: string
+  maxLength: number
+}
+
+export type ParamSpec = NumberParam | ColorParam | SelectParam | BoolParam | TextParam
 export type ParamSpecs = Record<string, ParamSpec>
 
 export type ParamValue<P> = P extends NumberParam
@@ -90,6 +97,14 @@ export const p = {
     group: '形',
     ...extra,
   }),
+  text: (label: string, def: string, extra: Partial<TextParam> = {}): TextParam => ({
+    kind: 'text',
+    label,
+    default: def,
+    maxLength: 40,
+    group: '表示',
+    ...extra,
+  }),
 }
 
 function zodFor(spec: ParamSpec): z.ZodType {
@@ -105,6 +120,8 @@ function zodFor(spec: ParamSpec): z.ZodType {
       return z.enum(Object.keys(spec.options) as [string, ...string[]]).default(spec.default)
     case 'bool':
       return z.boolean().default(spec.default)
+    case 'text':
+      return z.string().max(spec.maxLength).default(spec.default)
   }
 }
 
@@ -143,6 +160,9 @@ export function resolveParams<S extends ParamSpecs>(specs: S, raw: Record<string
       case 'bool':
         if (typeof v === 'boolean') out[k] = v
         break
+      case 'text':
+        if (typeof v === 'string') out[k] = v.slice(0, s.maxLength)
+        break
     }
   }
   return out as ParamValues<S>
@@ -161,5 +181,7 @@ export function describeParam(key: string, s: ParamSpec): string {
         .join(' | ')} (既定 "${s.default}") — ${s.label}`
     case 'bool':
       return `${key}: boolean (既定 ${s.default}) — ${s.label}`
+    case 'text':
+      return `${key}: string ${s.maxLength}文字まで (既定 "${s.default}") — ${s.label}`
   }
 }

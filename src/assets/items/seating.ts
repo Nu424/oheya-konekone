@@ -10,6 +10,8 @@ export const sofa = defineAsset({
   category: 'sofa',
   description: 'ソファ。幅で1〜3人掛けを表現。ひじ掛けや脚の形、布の色を変えられる。座る側が正面',
   placement: 'floor',
+  // Nothing is meant to stand on it.
+  surfaces: () => [],
   params: {
     width: p.mm('幅', 700, 2400, 1600, { hint: '1人掛け≈800、2人掛け≈1400〜1600、3人掛け≈1900以上' }),
     depth: p.mm('奥行き', 650, 1000, 800),
@@ -85,6 +87,8 @@ export const floorChair = defineAsset({
   category: 'sofa',
   description: '床に置く座椅子。背もたれの角度を変えられる',
   placement: 'floor',
+  // Nothing is meant to stand on it.
+  surfaces: () => [],
   params: {
     width: p.mm('幅', 450, 700, 550),
     recline: p.number({ label: '背もたれの角度', min: 95, max: 160, step: 1, default: 110, unit: '°', group: '形' }),
@@ -113,6 +117,8 @@ export const beanbag = defineAsset({
   category: 'sofa',
   description: '体が沈み込む大きなビーズクッション',
   placement: 'floor',
+  // Nothing is meant to stand on it.
+  surfaces: () => [],
   params: {
     size: p.mm('直径', 500, 1100, 750),
     height: p.mm('高さ', 300, 700, 450),
@@ -145,6 +151,8 @@ export const officeChair = defineAsset({
   category: 'work',
   description: 'キャスター付きのデスクチェア。座る人が正面(+Z)を向く',
   placement: 'floor',
+  // Nothing is meant to stand on it.
+  surfaces: () => [],
   params: {
     seatHeight: p.mm('座面の高さ', 380, 520, 450),
     back: p.select('背もたれ', { mesh: 'メッシュ', fabric: 'ファブリック', high: 'ハイバック' }, 'mesh'),
@@ -202,6 +210,8 @@ export const diningChair = defineAsset({
   category: 'table',
   description: 'ダイニングチェアやスツール。座る人が正面(+Z)を向く',
   placement: 'floor',
+  // Nothing is meant to stand on it.
+  surfaces: () => [],
   params: {
     style: p.select('スタイル', { wood: '木製', cafe: 'カフェ（金属）', stool: 'スツール' }, 'wood'),
     seatHeight: p.mm('座面の高さ', 380, 750, 440, { hint: 'カウンタースツールなら650前後' }),

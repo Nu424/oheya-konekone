@@ -106,6 +106,8 @@ export const floorLamp = defineAsset({
   category: 'light',
   description: '床置きの照明。スタンド・アーチ・三脚',
   placement: 'floor',
+  // Nothing is meant to stand on it.
+  surfaces: () => [],
   params: {
     style: p.select('形', { stick: 'スタンド', arc: 'アーチ', tripod: '三脚' }, 'stick'),
     height: p.mm('高さ', 1000, 2000, 1500),
@@ -159,6 +161,8 @@ export const deskLamp = defineAsset({
   category: 'light',
   description: '机の上に置くアーム式ライト。y=机の高さ',
   placement: 'onTop',
+  // Nothing is meant to stand on it.
+  surfaces: () => [],
   elevation: 720,
   contactShadow: false,
   params: {

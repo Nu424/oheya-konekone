@@ -9,7 +9,8 @@ import { DoorOpening, WindowOpening, ClosetOpening } from '../model/schema'
 const STORAGE_KEY = 'oheya-konekone:layout:v1'
 
 export type ViewMode = 'orbit' | 'top' | 'walk'
-export type Selection = { kind: 'item'; id: string } | { kind: 'opening'; id: string } | null
+/** How `select` combines with what is already selected. */
+export type SelectMode = 'replace' | 'toggle' | 'add'
 
 interface DocState {
   layout: Layout
@@ -24,8 +25,10 @@ interface Actions {
   addItem(item: Omit<Item, 'id'> & { id?: string }): string
   updateItem(id: string, patch: Partial<Item>): void
   updateItemParams(id: string, patch: Record<string, unknown>): void
+  /** Patch several items in one step (an item moving together with what stands on it). */
+  patchItems(patches: ReadonlyMap<string, Partial<Item>>): void
+  addItems(items: Item[]): void
   removeItem(id: string): void
-  duplicateItem(id: string): string | null
   setMeta(patch: Partial<Layout['meta']>): void
 }
 
@@ -119,22 +122,17 @@ export const useDoc = create<DocState & Actions>()(
           },
         })),
 
+      patchItems: (patches) => {
+        if (!patches.size) return
+        set(({ layout }) => ({
+          layout: { ...layout, items: layout.items.map((i) => (patches.has(i.id) ? { ...i, ...patches.get(i.id) } : i)) },
+        }))
+      },
+
+      addItems: (items) => set(({ layout }) => ({ layout: { ...layout, items: [...layout.items, ...items] } })),
+
       removeItem: (id) =>
         set(({ layout }) => ({ layout: { ...layout, items: layout.items.filter((i) => i.id !== id) } })),
-
-      duplicateItem: (id) => {
-        const src = get().layout.items.find((i) => i.id === id)
-        if (!src) return null
-        const nid = uid(src.type)
-        const { room } = get().layout
-        const [x, y, z] = src.position
-        // Offset diagonally, staying inside the room.
-        const nx = Math.min(room.width - 100, x + 300)
-        const nz = Math.min(room.depth - 100, z + 300)
-        const copy = { ...src, id: nid, position: [nx, y, nz] as [number, number, number], locked: false }
-        set(({ layout }) => ({ layout: { ...layout, items: [...layout.items, copy] } }))
-        return nid
-      },
 
       setMeta: (patch) => set(({ layout }) => ({ layout: { ...layout, meta: { ...layout.meta, ...patch } } })),
     }),
@@ -201,7 +199,8 @@ export const redo = () => useDoc.temporal.getState().redo()
 
 interface UiState {
   view: ViewMode
-  selection: Selection
+  /** Selected item ids in the order they were picked; the last one is the primary (docs/MULTISELECT.md). */
+  selection: string[]
   /** Item currently being dragged (for guides / camera lock). */
   dragging: string | null
   /** Hold Alt to disable snapping; this toggles it persistently. */
@@ -217,7 +216,7 @@ interface UiState {
   jsonOpen: boolean
   toast: { id: number; text: string; tone?: 'info' | 'error' } | null
   setView(v: ViewMode): void
-  select(s: Selection): void
+  select(ids: string | string[] | null, mode?: SelectMode): void
   setDragging(id: string | null): void
   setSnap(v: boolean): void
   setHour(h: number): void
@@ -231,7 +230,7 @@ interface UiState {
 
 export const useUi = create<UiState>()((set) => ({
   view: 'orbit',
-  selection: null,
+  selection: [],
   dragging: null,
   snap: true,
   hour: 14,
@@ -243,14 +242,37 @@ export const useUi = create<UiState>()((set) => ({
   jsonOpen: false,
   toast: null,
   setView: (view) => set({ view }),
-  select: (selection) => set({ selection }),
+  select: (ids, mode = 'replace') =>
+    set((s) => {
+      const list = ids === null ? [] : typeof ids === 'string' ? [ids] : ids
+      if (mode === 'replace') return { selection: [...new Set(list)] }
+      let next = s.selection
+      for (const id of list) {
+        // Toggling removes; adding (or re-picking) moves the id to the end, making it the primary.
+        if (mode === 'toggle' && next.includes(id)) next = next.filter((x) => x !== id)
+        else next = [...next.filter((x) => x !== id), id]
+      }
+      return { selection: next }
+    }),
   setDragging: (dragging) => set({ dragging }),
   setSnap: (snap) => set({ snap }),
   setHour: (hour) => set({ hour }),
   setFlow: (flow) => set({ flow }),
-  setPhoto: (photo) => set(photo ? { photo, selection: null, flow: false, photoSamples: 0 } : { photo }),
+  setPhoto: (photo) => set(photo ? { photo, selection: [], flow: false, photoSamples: 0 } : { photo }),
   setPhotoSamples: (photoSamples) => set({ photoSamples }),
   setPanel: (panel) => set({ panel }),
   setJsonOpen: (jsonOpen) => set({ jsonOpen }),
   notify: (text, tone = 'info') => set({ toast: { id: Date.now(), text, tone } }),
 }))
+
+/** The primary selected id (the last one picked), or null. */
+export const primaryOf = (selection: readonly string[]) => selection[selection.length - 1] ?? null
+
+// Drop selected ids that no longer exist (after undo, delete or loading another layout).
+useDoc.subscribe((s, prev) => {
+  if (s.layout.items === prev.layout.items) return
+  const ui = useUi.getState()
+  if (!ui.selection.length) return
+  const alive = new Set(s.layout.items.map((i) => i.id))
+  if (ui.selection.some((id) => !alive.has(id))) useUi.setState({ selection: ui.selection.filter((id) => alive.has(id)) })
+})

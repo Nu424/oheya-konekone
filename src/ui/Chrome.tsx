@@ -4,6 +4,7 @@ import { downloadText, parseLayoutText, serializeLayout } from '../model/io'
 import { redo, undo, useDoc, useUi } from '../store/useStore'
 import { itemCommands } from '../three/EditLayer'
 import { getFlow } from '../editor/flow'
+import { copySelection, cutSelection, pasteText, trackPointer } from '../editor/commands'
 import { PHOTO_SAMPLES } from '../three/PhotoMode'
 import { Segmented } from './controls'
 import { Icon } from './icons'
@@ -266,9 +267,12 @@ export function useShortcuts() {
         openLayoutFile()
       } else if (mod && e.key.toLowerCase() === 'd' && !typing) {
         e.preventDefault()
-        if (ui.selection?.kind === 'item') itemCommands.duplicate(ui.selection.id)
+        if (ui.selection.length) itemCommands.duplicate(ui.selection)
+      } else if (mod && e.key.toLowerCase() === 'a' && !typing && !ui.jsonOpen) {
+        e.preventDefault()
+        ui.select(useDoc.getState().layout.items.map((i) => i.id))
       } else if (!typing && !mod && !ui.jsonOpen) {
-        const sel = ui.selection?.kind === 'item' ? ui.selection.id : null
+        const sel = ui.selection.length ? ui.selection : null
         if (e.key === '1') ui.setView('orbit')
         if (e.key === '2') ui.setView('top')
         if (e.key === '3') ui.setView('walk')
@@ -277,7 +281,7 @@ export function useShortcuts() {
         if (e.key.toLowerCase() === 'p') ui.setPhoto(!ui.photo)
         if (e.key === 'Escape') {
           if (ui.photo) ui.setPhoto(false)
-          else if (ui.selection) ui.select(null)
+          else if (ui.selection.length) ui.select(null)
           else if (ui.view === 'walk') ui.setView('orbit')
         }
         if (sel) {
@@ -296,15 +300,51 @@ export function useShortcuts() {
         }
       }
     }
+    // Copy / cut / paste go through the browser's clipboard events: they need no permission prompt
+    // and leave ordinary text editing alone.
+    const editing = (e: Event) => {
+      const el = e.target as HTMLElement | null
+      const typing = !!el && (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA' || el.isContentEditable)
+      return typing || !!window.getSelection()?.toString() || useUi.getState().jsonOpen || !!document.querySelector('.backdrop')
+    }
+    const onCopy = (e: ClipboardEvent) => {
+      if (editing(e)) return
+      const text = e.type === 'cut' ? cutSelection() : copySelection()
+      if (!text) return
+      e.clipboardData?.setData('text/plain', text)
+      e.preventDefault()
+    }
+    const onPaste = (e: ClipboardEvent) => {
+      if (editing(e)) return
+      const text = e.clipboardData?.getData('text/plain') ?? ''
+      if (!text.trim()) return
+      if (pasteText(text)) e.preventDefault()
+      // A whole layout on the clipboard replaces the current one, like "クリップボードから読み込む".
+      else if (/"items"\s*:/.test(text) && /"room"\s*:/.test(text)) {
+        e.preventDefault()
+        loadLayoutText(text, 'クリップボード')
+      }
+    }
+    const onPointer = (e: PointerEvent) => trackPointer(e.clientX, e.clientY, !!(e.target as HTMLElement | null)?.closest?.('.viewport-wrap'))
     window.addEventListener('keydown', onKey)
-    return () => window.removeEventListener('keydown', onKey)
+    document.addEventListener('copy', onCopy)
+    document.addEventListener('cut', onCopy)
+    document.addEventListener('paste', onPaste)
+    window.addEventListener('pointermove', onPointer)
+    return () => {
+      window.removeEventListener('keydown', onKey)
+      document.removeEventListener('copy', onCopy)
+      document.removeEventListener('cut', onCopy)
+      document.removeEventListener('paste', onPaste)
+      window.removeEventListener('pointermove', onPointer)
+    }
   }, [])
 }
 
 export function FlowPanel() {
   const flow = useUi((s) => s.flow)
   const layout = useDoc((s) => s.layout)
-  const beside = useUi((s) => s.selection?.kind === 'item')
+  const beside = useUi((s) => s.selection.length > 0)
   if (!flow) return null
   const f = getFlow(layout)
   const warn = f.issues.filter((i) => i.level === 'warn').length
@@ -327,7 +367,7 @@ export function FlowPanel() {
       {f.issues.length > 0 && (
         <ul className="flow-issues">
           {f.issues.map((i, k) => (
-            <li key={k} className={i.level} onClick={() => i.itemId && useUi.getState().select({ kind: 'item', id: i.itemId })}>
+            <li key={k} className={i.level} onClick={() => i.itemId && useUi.getState().select(i.itemId)}>
               {i.level === 'warn' ? <Icon.alert /> : <Icon.check />}
               {i.message}
             </li>

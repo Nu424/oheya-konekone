@@ -5,12 +5,14 @@ import { Suspense, useEffect, useLayoutEffect, useMemo, useRef } from 'react'
 import * as THREE from 'three'
 import type { Item, Room } from '../model/schema'
 import { getAsset, resolveItemParams } from '../assets/registry'
+import { itemFootprint2D, solids, stack } from '../editor/placement'
 import { rotateXZ } from '../editor/space'
+import { roundY } from '../editor/stacking'
 import { useDoc, useUi, type ViewMode } from '../store/useStore'
 import { Effects } from './Effects'
 import { Lighting, type Lamp } from './Lighting'
 import { RoomMesh } from './RoomMesh'
-import { EditLayer } from './EditLayer'
+import { clicksSuppressed, EditLayer, suppressClicks } from './EditLayer'
 import { FlowOverlay } from './FlowOverlay'
 import { PhotoMode } from './PhotoMode'
 import { registerScreenToFloor } from '../editor/commands'
@@ -19,7 +21,12 @@ const S = 0.001
 
 declare global {
   interface Window {
-    __oheya?: { frames: number; ready: boolean }
+    __oheya?: {
+      frames: number
+      ready: boolean
+      /** Dev builds only: room point (mm) → client pixel, for scripted checks that need to aim the mouse. */
+      project?: (x: number, y: number, z: number) => { x: number; y: number }
+    }
   }
 }
 
@@ -46,21 +53,130 @@ function FrameProbe() {
   return null
 }
 
-/** Lets DOM drag-and-drop convert a screen point to a floor point. */
+/** Lets DOM drag-and-drop convert a screen point to the spot under it: a table top, a shelf or the floor. */
 function FloorPicker() {
   const { camera, gl } = useThree()
   useEffect(() => {
     const ray = new THREE.Raycaster()
-    const plane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0)
-    const v = new THREE.Vector3()
     registerScreenToFloor((cx, cy) => {
       const r = gl.domElement.getBoundingClientRect()
       ray.setFromCamera(new THREE.Vector2(((cx - r.left) / r.width) * 2 - 1, -((cy - r.top) / r.height) * 2 + 1), camera)
-      const p = ray.ray.intersectPlane(plane, v)
-      return p ? { x: p.x / S, z: p.z / S } : null
+      const o = ray.ray.origin
+      const L = useDoc.getState().layout
+      const p = stack.pickAlongRay(stack.placedSurfaces(L), { x: o.x / S, y: o.y / S, z: o.z / S }, ray.ray.direction, { x: 0, z: 0 }, { solids: solids(L) })
+      return p ? { x: p.x, y: roundY(p.y), z: p.z } : null
     })
+    if (import.meta.env.DEV) {
+      const p = (window.__oheya ??= { frames: 0, ready: false })
+      p.project = (x, y, z) => {
+        const r = gl.domElement.getBoundingClientRect()
+        const v = new THREE.Vector3(x * S, y * S, z * S).project(camera)
+        return { x: r.left + ((v.x + 1) / 2) * r.width, y: r.top + ((1 - v.y) / 2) * r.height }
+      }
+    }
     return () => registerScreenToFloor(null)
   }, [camera, gl])
+  return null
+}
+
+/**
+ * Shift + drag draws a rectangle and adds what it catches to the selection (docs/MULTISELECT.md).
+ * Dragging to the right takes items entirely inside the rectangle, to the left anything it touches.
+ */
+function RubberBand() {
+  const { gl, camera } = useThree()
+  const controls = useThree((s) => s.controls) as unknown as CameraControlsImpl | null
+  const controlsRef = useRef(controls)
+  controlsRef.current = controls
+  const cameraRef = useRef(camera)
+  cameraRef.current = camera
+  useEffect(() => {
+    const el = gl.domElement
+    const host = el.parentElement
+    if (!host) return
+    const band = document.createElement('div')
+    band.className = 'rubber-band'
+    band.style.display = 'none'
+    host.appendChild(band)
+    let start: { x: number; y: number; id: number } | null = null
+    let active = false
+
+    const down = (e: PointerEvent) => {
+      const ui = useUi.getState()
+      if (e.button !== 0 || !e.shiftKey || ui.photo || ui.view === 'walk') return
+      start = { x: e.clientX, y: e.clientY, id: e.pointerId }
+      active = false
+      // Camera controls must not orbit while the rectangle is being drawn.
+      if (controlsRef.current) controlsRef.current.enabled = false
+    }
+    const move = (e: PointerEvent) => {
+      if (!start || e.pointerId !== start.id) return
+      if (!active && Math.hypot(e.clientX - start.x, e.clientY - start.y) < 5) return
+      active = true
+      const r = host.getBoundingClientRect()
+      band.style.display = 'block'
+      band.classList.toggle('touch', e.clientX < start.x)
+      band.style.left = Math.min(start.x, e.clientX) - r.left + 'px'
+      band.style.top = Math.min(start.y, e.clientY) - r.top + 'px'
+      band.style.width = Math.abs(e.clientX - start.x) + 'px'
+      band.style.height = Math.abs(e.clientY - start.y) + 'px'
+    }
+    const up = (e: PointerEvent) => {
+      if (!start || e.pointerId !== start.id) return
+      const s0 = start
+      start = null
+      band.style.display = 'none'
+      if (controlsRef.current) controlsRef.current.enabled = true
+      if (!active) return
+      active = false
+      suppressClicks()
+      const r = el.getBoundingClientRect()
+      const x0 = Math.min(s0.x, e.clientX)
+      const x1 = Math.max(s0.x, e.clientX)
+      const y0 = Math.min(s0.y, e.clientY)
+      const y1 = Math.max(s0.y, e.clientY)
+      const touch = e.clientX < s0.x
+      const cam = cameraRef.current
+      const L = useDoc.getState().layout
+      const p = new THREE.Vector3()
+      const hits: string[] = []
+      for (const it of L.items) {
+        // Project the eight corners of the item's body and take their bounds on screen.
+        const f = itemFootprint2D(it, L)
+        let minX = Infinity
+        let maxX = -Infinity
+        let minY = Infinity
+        let maxY = -Infinity
+        let behind = false
+        for (const [cx, cz] of f.corners)
+          for (const cy of [f.minY, f.maxY]) {
+            p.set(cx * S, cy * S, cz * S).project(cam)
+            if (p.z > 1) behind = true
+            const sx = r.left + ((p.x + 1) / 2) * r.width
+            const sy = r.top + ((1 - p.y) / 2) * r.height
+            minX = Math.min(minX, sx)
+            maxX = Math.max(maxX, sx)
+            minY = Math.min(minY, sy)
+            maxY = Math.max(maxY, sy)
+          }
+        if (behind) continue
+        const inside = minX >= x0 && maxX <= x1 && minY >= y0 && maxY <= y1
+        const touches = maxX >= x0 && minX <= x1 && maxY >= y0 && minY <= y1
+        if (touch ? touches : inside) hits.push(it.id)
+      }
+      if (hits.length) useUi.getState().select(hits, 'add')
+    }
+    // Capture phase on the wrapper: this runs before the camera controls see the press.
+    host.addEventListener('pointerdown', down, true)
+    window.addEventListener('pointermove', move)
+    window.addEventListener('pointerup', up)
+    return () => {
+      host.removeEventListener('pointerdown', down, true)
+      window.removeEventListener('pointermove', move)
+      window.removeEventListener('pointerup', up)
+      band.remove()
+    }
+  }, [gl])
   return null
 }
 
@@ -327,7 +443,10 @@ export function Viewport() {
       shadows={{ type: THREE.PCFShadowMap }}
       dpr={[1, 2]}
       gl={{ antialias: false, powerPreference: 'high-performance', stencil: false, preserveDrawingBuffer: true }}
-      onPointerMissed={() => select(null)}
+      onPointerMissed={(e) => {
+        // Shift / Ctrl + click on nothing keeps the selection (the user is adding to it), as does the end of a rubber band.
+        if (!e.shiftKey && !e.ctrlKey && !e.metaKey && !clicksSuppressed()) select(null)
+      }}
     >
       <Suspense fallback={null}>
         <Lighting room={room} hour={hour} lamps={lamps} />
@@ -340,6 +459,7 @@ export function Viewport() {
       {view === 'top' && <PlanDims room={room} />}
       <FrameProbe />
       <FloorPicker />
+      <RubberBand />
     </Canvas>
   )
 }

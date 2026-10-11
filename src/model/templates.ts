@@ -135,7 +135,7 @@ export const TEMPLATES: RoomTemplate[] = [
         { id: 'curtain', type: 'curtain', position: [2300, 15, 70], rotation: 0, params: { width: 2800, height: 2030, color: '#b9b0a3', open: 80 } },
         { id: 'desk', type: 'desk', position: [3550, 0, 1300], rotation: 270, params: { width: 1400, depth: 700, topColor: '#d2ad7c', legStyle: 'steel', drawer: true } },
         { id: 'monitors', type: 'monitor', position: [3620, 720, 1300], rotation: 270, params: { count: 2, inches: 24, laptop: false } },
-        { id: 'lamp', type: 'deskLamp', position: [3720, 720, 760], rotation: 270, params: { color: '#2b2b2b' } },
+        { id: 'lamp', type: 'deskLamp', position: [3720, 720, 660], rotation: 270, params: { color: '#2b2b2b' } },
         { id: 'chair', type: 'officeChair', position: [3000, 0, 1300], rotation: 90, params: { back: 'mesh' } },
         { id: 'bed', type: 'bed', position: [1010, 0, 650], rotation: 90, params: { size: 'semiDouble', frame: 'low', headboard: 'none', frameColor: '#6b4a34', beddingColor: '#d9d2c5' } },
         { id: 'rug', type: 'rug', position: [1650, 0, 2050], rotation: 0, params: { shape: 'round', width: 1300, pattern: 'border', color: '#e7dfd2', accent: '#9fb59a' } },

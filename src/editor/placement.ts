@@ -1,13 +1,20 @@
-import { getAsset } from '../assets/registry'
+import { getAsset, resolveItemParams } from '../assets/registry'
+import type { Surface } from '../assets/types'
 import type { Item, Layout } from '../model/schema'
 import { itemFootprint } from '../three/ItemObject'
 import { flushToWall, footprint, nearestWall, overlaps3D, type Footprint2D, type LocalBox } from './space'
+import { createStacking, roundY, surfaceBounds, type PlacedSurface, type Solid } from './stacking'
 
-/** Local bounding box of an item (mm), from its built geometry. */
+const FALLBACK: LocalBox = { min: { x: -100, y: 0, z: -100 }, max: { x: 100, y: 100, z: 100 } }
+
+/** Local box of the part of an item that occupies space (mm): the asset's `body`, or its bounding box. */
 export function localBox(item: Pick<Item, 'type' | 'params'>): LocalBox {
-  const fp = itemFootprint(item.type, item.params)
-  if (!fp) return { min: { x: -250, y: 0, z: -250 }, max: { x: 250, y: 500, z: 250 } }
-  return fp.box
+  return itemFootprint(item.type, item.params)?.body ?? FALLBACK
+}
+
+/** Local bounding box of everything the item draws, including arms and open doors. */
+export function visualBox(item: Pick<Item, 'type' | 'params'>): LocalBox {
+  return itemFootprint(item.type, item.params)?.box ?? FALLBACK
 }
 
 /** Room-space footprint of an item; ceiling items hang from the ceiling height. */
@@ -17,6 +24,34 @@ export function itemFootprint2D(item: Item, layout: Layout, at?: { x?: number; y
   const y = asset?.placement === 'ceiling' ? layout.room.height : (at?.y ?? item.position[1])
   return footprint(box, at?.x ?? item.position[0], y, at?.z ?? item.position[2], at?.rotation ?? item.rotation)
 }
+
+const surfaceCache = new Map<string, Surface[]>()
+
+/** Support surfaces of an item in its local frame: the asset's `surfaces`, or the top of its body. */
+export function itemSurfaces(item: Pick<Item, 'type' | 'params'>): Surface[] {
+  const asset = getAsset(item.type)
+  if (!asset || asset.placement === 'wall' || asset.placement === 'ceiling') return []
+  const key = item.type + JSON.stringify(item.params)
+  let s = surfaceCache.get(key)
+  if (!s) {
+    if (asset.surfaces) s = asset.surfaces(resolveItemParams(item.type, item.params) as never)
+    else {
+      const b = localBox(item)
+      s = [{ y: b.max.y, minX: b.min.x, maxX: b.max.x, minZ: b.min.z, maxZ: b.max.z }]
+    }
+    if (surfaceCache.size > 500) surfaceCache.clear()
+    surfaceCache.set(key, s)
+  }
+  return s
+}
+
+function stackable(item: Item) {
+  const p = getAsset(item.type)?.placement
+  return p !== 'wall' && p !== 'ceiling'
+}
+
+/** Stacking helpers bound to the asset registry. */
+export const stack = createStacking({ surfaces: itemSurfaces, stackable })
 
 /** Soft or flat things that never block others (rugs, curtains, floor cushions, ceiling fixtures). */
 const SOFT = new Set(['rug', 'curtain', 'cushion'])
@@ -32,98 +67,140 @@ function tucks(a: string, b: string) {
   return (SEATS.has(a) && TABLES.has(b)) || (SEATS.has(b) && TABLES.has(a))
 }
 
-/** Ids of items that collide with something (furniture vs furniture, furniture vs columns). */
+function isHollow(item: Item) {
+  const h = getAsset(item.type)?.hollow
+  return typeof h === 'function' ? h(resolveItemParams(item.type, item.params) as never) : !!h
+}
+
+/** `inner` lies within the outline of `outer` when seen from above. */
+function within(inner: Footprint2D, outer: Footprint2D) {
+  return inner.minX >= outer.minX - 1 && inner.maxX <= outer.maxX + 1 && inner.minZ >= outer.minZ - 1 && inner.maxZ <= outer.maxZ + 1
+}
+
+/**
+ * Ids of items that collide with something. Two items do not collide when
+ * - one stands on the other, directly or through other items (a lamp on a book on a desk), or
+ * - one is a hollow frame and the other fits inside its outline, or
+ * - one is a seat tucked under a table or desk.
+ */
 export function collisions(layout: Layout): Set<string> {
   const out = new Set<string>()
-  const list = layout.items.filter((i) => !isPassive(i.type)).map((i) => ({ i, f: itemFootprint2D(i, layout) }))
+  const sup = stack.supports(layout)
+  const list = layout.items.filter((i) => !isPassive(i.type)).map((i) => ({ i, f: itemFootprint2D(i, layout), hollow: isHollow(i) }))
   const cols = layout.room.columns.map((c) => footprint({ min: { x: -c.width / 2, y: 0, z: -c.depth / 2 }, max: { x: c.width / 2, y: layout.room.height, z: c.depth / 2 } }, c.x, 0, c.z, 0))
   for (let a = 0; a < list.length; a++) {
     for (let b = a + 1; b < list.length; b++) {
-      if (supports(list[a], list[b]) || supports(list[b], list[a])) continue
-      if (tucks(list[a].i.type, list[b].i.type)) continue
-      if (overlaps3D(list[a].f, list[b].f)) {
-        out.add(list[a].i.id)
-        out.add(list[b].i.id)
-      }
+      const A = list[a]
+      const B = list[b]
+      if (!overlaps3D(A.f, B.f)) continue
+      if (stack.restsOn(sup, A.i.id, B.i.id) || stack.restsOn(sup, B.i.id, A.i.id)) continue
+      if ((B.hollow && within(A.f, B.f)) || (A.hollow && within(B.f, A.f))) continue
+      if (tucks(A.i.type, B.i.type)) continue
+      out.add(A.i.id)
+      out.add(B.i.id)
     }
     for (const c of cols) if (overlaps3D(list[a].f, c)) out.add(list[a].i.id)
   }
   return out
 }
 
-/** True when `top` rests on `base` (e.g. a monitor on a desk): treated as stacking, not collision. */
-function supports(base: { i: Item; f: Footprint2D }, top: { i: Item; f: Footprint2D }) {
-  const a = getAsset(top.i.type)
-  if (a?.placement !== 'onTop') return false
-  return Math.abs(top.f.minY - base.f.maxY) < 60 || (top.f.minY >= base.f.minY && top.f.minY <= base.f.maxY)
+/** Height at which an item dropped at (x, z) comes to rest: the highest surface under it, or the floor. */
+export function supportHeight(layout: Layout, x: number, z: number, except?: ReadonlySet<string>): number {
+  return roundY(stack.surfaceUnder(layout, x, z, { except })?.worldY ?? 0)
 }
 
-/**
- * Height of the surface under (x, z) for an onTop item: the highest top among floor items
- * whose footprint contains the point (ignoring rugs and the item itself). 0 if none.
- */
-export function supportHeight(layout: Layout, x: number, z: number, exceptId?: string): number {
-  let best = 0
-  for (const it of layout.items) {
-    if (it.id === exceptId || isPassive(it.type)) continue
-    const a = getAsset(it.type)
-    if (a?.placement !== 'floor') continue
-    const f = itemFootprint2D(it, layout)
-    if (x < f.minX || x > f.maxX || z < f.minZ || z > f.maxZ) continue
-    if (f.maxY > 1300) continue // shelves taller than this are not "surfaces"
-    best = Math.max(best, f.maxY)
-  }
-  return best
-}
+const area = (s: PlacedSurface) => (s.maxX - s.minX) * (s.maxZ - s.minZ)
 
+/** Items that sit on furniture look for surfaces no higher than this when they are added. */
+const REACHABLE_HEIGHT = 1700
+
+/** Furniture an onTop item would rather stand on, in order, when nothing is selected. */
 const PREFERRED_SUPPORT: Record<string, string[]> = {
   monitor: ['desk', 'diningTable'],
   deskLamp: ['desk', 'diningTable', 'lowTable', 'chest'],
   tv: ['tvStand', 'chest', 'lowTable'],
 }
 
-/** Find a sensible spot for a newly added item. */
-export function placeNewItem(layout: Layout, type: string, params: Record<string, unknown>): Pick<Item, 'position' | 'rotation'> & { crowded?: boolean } {
+/**
+ * A free spot for an item that sits on furniture: the preferred item's surfaces first, then the largest ones,
+ * scanning each from its centre outwards.
+ */
+function placeOnSurface(layout: Layout, probe: Item, preferId?: string): Pick<Item, 'position' | 'rotation'> | null {
+  const box = localBox(probe)
+  const height = box.max.y - box.min.y
+  const sup = stack.supports(layout)
+  const others = layout.items.filter((i) => !isPassive(i.type)).map((i) => ({ i, f: itemFootprint2D(i, layout) }))
+  const surfaces = stack
+    .placedSurfaces(layout)
+    .filter((s) => s.worldY <= REACHABLE_HEIGHT && (s.clearance === undefined || s.clearance >= height))
+    .sort((a, b) => Number(b.itemId === preferId) - Number(a.itemId === preferId) || area(b) - area(a))
+  for (const s of surfaces) {
+    // Things that the surface's owner stands on (and the owner itself) are not obstacles.
+    const blockers = others.filter((o) => o.i.id !== s.itemId && !stack.restsOn(sup, s.itemId, o.i.id)).map((o) => o.f)
+    const w = box.max.x - box.min.x
+    const d = box.max.z - box.min.z
+    const spanX = s.maxX - s.minX - w
+    const spanZ = s.maxZ - s.minZ - d
+    if (spanX < 0 || spanZ < 0) continue
+    const step = Math.max(25, Math.max(spanX, spanZ) / 40)
+    const cx = (s.minX + s.maxX) / 2 - (box.min.x + box.max.x) / 2
+    const cz = (s.minZ + s.maxZ) / 2 - (box.min.z + box.max.z) / 2
+    const spots: [number, number][] = []
+    for (let ix = -Math.floor(spanX / 2 / step); ix <= Math.floor(spanX / 2 / step); ix++)
+      for (let iz = -Math.floor(spanZ / 2 / step); iz <= Math.floor(spanZ / 2 / step); iz++) spots.push([cx + ix * step, cz + iz * step])
+    spots.sort((p, q) => Math.hypot(p[0] - cx, p[1] - cz) - Math.hypot(q[0] - cx, q[1] - cz))
+    const r = (s.rotation * Math.PI) / 180
+    for (const [lx, lz] of spots) {
+      const x = Math.round(s.x + lx * Math.cos(r) + lz * Math.sin(r))
+      const z = Math.round(s.z - lx * Math.sin(r) + lz * Math.cos(r))
+      const f = footprint(box, x, s.worldY, z, s.rotation)
+      if (!blockers.some((o) => overlaps3D(f, o))) return { position: [x, roundY(s.worldY), z], rotation: s.rotation }
+    }
+  }
+  return null
+}
+
+/** Find a sensible spot for a newly added item. `preferId` is the item whose surfaces are tried first. */
+export function placeNewItem(
+  layout: Layout,
+  type: string,
+  params: Record<string, unknown>,
+  preferId?: string,
+): Pick<Item, 'position' | 'rotation'> & { crowded?: boolean } {
   const asset = getAsset(type)
   const { room } = layout
   const probe: Item = { id: '__new', type, params, position: [room.width / 2, 0, room.depth / 2], rotation: 0 }
   const fpAt = (x: number, z: number, rot: number, y = 0) => itemFootprint2D(probe, layout, { x, z, rotation: rot, y })
 
   if (asset?.placement === 'onTop') {
-    for (const st of PREFERRED_SUPPORT[type] ?? []) {
-      const base = layout.items.find((i) => i.type === st)
-      if (!base) continue
-      const bf = itemFootprint2D(base, layout)
-      // Sit towards the back of the support.
-      const [bx, , bz] = base.position
-      const back = rotateBack(base.rotation, Math.min(120, (bf.maxZ - bf.minZ) * 0.2))
-      return { position: [bx + back[0], bf.maxY, bz + back[1]], rotation: base.rotation }
-    }
-    return { position: [room.width / 2, asset.elevation ?? 0, room.depth / 2], rotation: 0 }
+    const prefer = preferId ?? (PREFERRED_SUPPORT[type] ?? []).map((t) => layout.items.find((i) => i.type === t)?.id).find(Boolean)
+    const spot = placeOnSurface(layout, probe, prefer)
+    if (spot) return spot
   }
 
   if (asset?.placement === 'wall') {
     const windows = room.openings.filter((o) => o.type === 'window').sort((a, b) => b.width * b.height - a.width * a.height)
-    const at = (w: (typeof windows)[number]['wall'], u: number) => {
-      const nx = w === 'west' ? 100 : w === 'east' ? room.width - 100 : u
-      const nz = w === 'north' ? 100 : w === 'south' ? room.depth - 100 : u
-      const rot = nearestWall(room, nx, nz).rotation
-      const p = flushToWall((x, z) => fpAt(x, z, rot), nx, nz, room, w)
-      return { x: p.x, z: p.z, rot }
-    }
     // Curtains go on the biggest window; everything else prefers a wall without windows.
     if (type === 'curtain' && windows[0]) {
-      const w = windows[0]
-      const p = at(w.wall, w.offset + w.width / 2)
-      return { position: [p.x, Math.max(10, w.sill - 150), p.z], rotation: p.rot }
+      const win = windows[0]
+      const u = win.offset + win.width / 2
+      const nx = win.wall === 'west' ? 100 : win.wall === 'east' ? room.width - 100 : u
+      const nz = win.wall === 'north' ? 100 : win.wall === 'south' ? room.depth - 100 : u
+      const rot = nearestWall(room, nx, nz).rotation
+      const p = flushToWall((x, z) => fpAt(x, z, rot), nx, nz, room, win.wall)
+      return { position: [p.x, Math.max(10, win.sill - 150), p.z], rotation: rot }
     }
     const walls = (['north', 'west', 'east', 'south'] as const).slice().sort((a, b) => {
       const n = (w: string) => room.openings.filter((o) => o.wall === w).length
       return n(a) - n(b)
     })
     const w = walls[0]
-    const p = at(w, (w === 'north' || w === 'south' ? room.width : room.depth) / 2)
-    return { position: [p.x, asset.elevation ?? 1500, p.z], rotation: p.rot }
+    const u = (w === 'north' || w === 'south' ? room.width : room.depth) / 2
+    const nx = w === 'west' ? 100 : w === 'east' ? room.width - 100 : u
+    const nz = w === 'north' ? 100 : w === 'south' ? room.depth - 100 : u
+    const rot = nearestWall(room, nx, nz).rotation
+    const p = flushToWall((x, z) => fpAt(x, z, rot), nx, nz, room, w)
+    return { position: [p.x, asset.elevation ?? 1500, p.z], rotation: rot }
   }
 
   // Floor / ceiling: spiral out from the room centre until there is no overlap.
@@ -148,8 +225,18 @@ export function placeNewItem(layout: Layout, type: string, params: Record<string
   return { position: [cx, 0, cz], rotation: 0, crowded: true }
 }
 
-/** Offset pointing towards the back (-Z local) of an item with the given rotation. */
-function rotateBack(rotation: number, dist: number): [number, number] {
-  const r = (rotation * Math.PI) / 180
-  return [-Math.sin(r) * dist, -Math.cos(r) * dist]
+/** Snap targets and bounds for an item resting on `surface` (null = the floor of the room). */
+export function surfaceFrame(surface: PlacedSurface | null, room: { width: number; depth: number }) {
+  if (!surface) return { minX: 0, maxX: room.width, minZ: 0, maxZ: room.depth, y: 0 }
+  return { ...surfaceBounds(surface), y: surface.worldY }
+}
+
+/** Bodies nothing can be dropped into (open frames excluded), for `stack.pickAlongRay`. */
+export function solids(layout: Layout, except?: ReadonlySet<string>): Solid[] {
+  return layout.items
+    .filter((i) => !except?.has(i.id) && !isPassive(i.type) && !isHollow(i))
+    .map((i) => {
+      const f = itemFootprint2D(i, layout)
+      return { itemId: i.id, occludes: itemSurfaces(i).length > 0, minX: f.minX, maxX: f.maxX, minY: f.minY, maxY: f.maxY, minZ: f.minZ, maxZ: f.maxZ }
+    })
 }

@@ -38,6 +38,8 @@ export const tv = defineAsset({
   category: 'av',
   description: '薄型テレビ。インチ数でサイズが変わる。テレビ台の上(y=テレビ台の高さ)に置く',
   placement: 'onTop',
+  // Nothing is meant to stand on it.
+  surfaces: () => [],
   elevation: 400,
   contactShadow: false,
   params: {
@@ -77,6 +79,8 @@ export const monitor = defineAsset({
   category: 'work',
   description: 'PCモニター。デスクの上(y=デスクの高さ)に置く。2枚並べることもできる',
   placement: 'onTop',
+  // Nothing is meant to stand on it.
+  surfaces: () => [],
   elevation: 720,
   contactShadow: false,
   params: {
@@ -185,6 +189,8 @@ export const washer = defineAsset({
   category: 'appliance',
   description: '洗濯機。縦型かドラム式。防水パンも付けられる',
   placement: 'floor',
+  // A drum washer's flat top is a handy shelf; a top loader's lid has to open.
+  surfaces: ({ kind, pan }) => (kind === 'drum' ? [{ y: (pan ? 90 : 0) + 1020, minX: -290, maxX: 290, minZ: -300, maxZ: 300, label: '天面' }] : []),
   params: {
     kind: p.select('タイプ', { vertical: '縦型', drum: 'ドラム式' }, 'vertical'),
     pan: p.bool('防水パン', true),

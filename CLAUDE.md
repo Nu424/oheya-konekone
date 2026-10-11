@@ -5,6 +5,7 @@ Vite + React + TypeScript + react-three-fiber。GitHub Pages に静的デプロ�
 
 くわしい知見（モデリング・レンダリング・検証の罠）は [docs/KNOWLEDGE.md](docs/KNOWLEDGE.md)、
 計画と進捗は [docs/PLAN.md](docs/PLAN.md)、レイアウト JSON のルールとカタログは [docs/AI_GUIDE.md](docs/AI_GUIDE.md)。
+積み重ね・コピペ・複数選択の設計は [docs/STACKING.md](docs/STACKING.md)・[docs/CLIPBOARD.md](docs/CLIPBOARD.md)・[docs/MULTISELECT.md](docs/MULTISELECT.md)。
 
 ## このプロジェクトの前提（迷ったらここに立ち返る）
 
@@ -27,6 +28,7 @@ npm run typecheck    # tsc -b
 npm run build        # dist/
 npm run ai-guide     # docs/AI_GUIDE.md を再生成（アセットやルールを変えたら必ず）
 node scripts/shot.mjs '<path?query>' shots/x.png [w] [h] [waitMs] [actions...]   # スクショ（dev サーバー起動中に）
+npx tsx scripts/check-layout.ts [id | file.json]   # 重なり・浮き・何に載っているかを一覧（ブラウザ不要）
 ```
 
 - `npm install` は `.npmrc` の `legacy-peer-deps=true` 前提（drei が古い three-mesh-bvh を固定しているため）。
@@ -39,8 +41,8 @@ node scripts/shot.mjs '<path?query>' shots/x.png [w] [h] [waitMs] [actions...]  
 | `src/model/` | レイアウト JSON の zod スキーマ（`schema.ts`）、検証と入出力（`io.ts`）、テンプレート |
 | `src/assets/` | パラメトリック家具。`params.ts`（パラメータ DSL）、`kit.ts`（モデリング道具）、`items/*.ts`（各アセット）、`registry.ts`（一覧） |
 | `src/three/` | 描画。部屋（`RoomMesh`）、照明（`Lighting`）、ポストエフェクト、テクスチャ・マテリアル、編集レイヤー、動線オーバーレイ、撮影モード、サムネイル |
-| `src/editor/` | 描画に依存しない編集ロジック。2D の当たり判定と吸い付き（`space.ts`）、配置（`placement.ts`）、動線解析（`flow.ts`） |
-| `src/store/` | Zustand。`useDoc`（レイアウト本体、zundo で undo）と `useUi`（選択・視点・時間帯など） |
+| `src/editor/` | 描画に依存しない編集ロジック。2D の当たり判定と吸い付き（`space.ts`）、積み重ね（`stacking.ts`）、配置（`placement.ts`）、編集操作（`commands.ts` の `itemCommands`）、コピペ（`clipboard.ts`）、動線解析（`flow.ts`） |
+| `src/store/` | Zustand。`useDoc`（レイアウト本体、zundo で undo）と `useUi`（選択 `string[]`・視点・時間帯など） |
 | `src/ui/` | パネル・ダイアログ・HUD・スタイル（`styles.css` 1枚） |
 | `src/ai/prompt.ts` | AI 向けのルール文・カタログ文・プロンプト生成（アプリと AI_GUIDE で共用） |
 | `src/gallery/` | `/?gallery` のアセット目視チェック画面 |
@@ -49,9 +51,10 @@ node scripts/shot.mjs '<path?query>' shots/x.png [w] [h] [waitMs] [actions...]  
 
 - **単位と座標**：JSON もアセットも mm。原点は北西の床の角、+X 東・+Z 南・+Y 上。`rotation` 0 で正面が南(+Z)、90 で東。three.js のシーンは m（アセットのルートを 0.001 倍）。
 - **アセットの規約**：`build(params)` は mm で組み、底面中心が原点、正面が +Z。マテリアルは `mat(kind, color)` で共有キャッシュから取る（直接 `new` しない）。新しいアセットは `registry.ts` の `ALL` に足し、`/?gallery&type=<type>` で最小・最大・各プリセットを目で確認する。
+- **上に物を置ける面はアセットが宣言する**（`surfaces`）。省略すると本体の上面が面になる。上に何も置かない家具（ベッド・椅子・ラグなど）は `surfaces: () => []`。段のある家具は段ごとに返し、**返す順番の意味をパラメータで変えない**（0 番は天板）。見た目より小さい本体があるときは `body` を書く。
 - **マテリアル配列を持つメッシュを作らない**（撮影モードのパストレーサーで以降の全マテリアルがずれる）。色違いの面は別メッシュにする。
 - **ブラウザ外でも組み立てられるように**：テクスチャ生成は `textures.ts` の `HEADLESS` ガードを通す。`document` を直接触る処理をアセットに書かない（テストと `scripts/` が node で寸法を測っている）。
-- **レイアウトの変更は store のアクション経由**。ドラッグのような連続操作は `beginGesture()` / `endGesture()` で 1 回の undo にまとめる。
+- **アイテムの編集は `itemCommands`（`src/editor/commands.ts`）経由**。上に載っている物がついてくる・落ちる・高さを追う処理がここに入っている。`updateItem` で位置を直接書き換えると、載っている物が置いていかれる。ドラッグのような連続操作は `beginGesture()` / `endGesture()` で 1 回の undo にまとめる。
 - **JSON の仕様を変えたら** `src/ai/prompt.ts` の RULES、`docs/AI_GUIDE.md`（再生成）、README を合わせて更新する。
 - **テンプレートを足したら** `src/__tests__/templates.test.ts` が自動で重なりと動線を検査する。通るように配置を直す。
 - UI の文言は日本語で、やわらかい口調（「〜したよ」）。コードのコメントは英語。

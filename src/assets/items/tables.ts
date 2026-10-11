@@ -76,6 +76,8 @@ export const kotatsu = defineAsset({
   category: 'table',
   description: 'こたつ布団付きのこたつ。布団なし（夏モード）にもできる',
   placement: 'floor',
+  // The board, not the futon that flares out around it.
+  surfaces: ({ width: W, depth: D, futon }) => [futon ? { y: 395, minX: -W / 2 - 20, maxX: W / 2 + 20, minZ: -D / 2 - 20, maxZ: D / 2 + 20, label: '天板' } : { y: 380, minX: -W / 2, maxX: W / 2, minZ: -D / 2, maxZ: D / 2, label: '天板' }],
   params: {
     width: p.mm('幅', 600, 1200, 800),
     depth: p.mm('奥行き', 600, 900, 600),

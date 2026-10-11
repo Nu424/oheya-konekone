@@ -12,8 +12,10 @@ export interface Footprint {
   w: number
   h: number
   d: number
-  /** Local bounding box in mm. */
+  /** Local bounding box of everything that is drawn, in mm. */
   box: THREE.Box3
+  /** The solid part used for collision and snapping (the asset's `body`, or the bounding box). */
+  body: THREE.Box3
 }
 
 const shadowMat = new THREE.MeshBasicMaterial({
@@ -49,7 +51,8 @@ function contactShadow(box: THREE.Box3) {
 export function buildItemObject(type: string, params: Record<string, unknown>): THREE.Object3D | null {
   const asset = getAsset(type)
   if (!asset) return null
-  const obj = asset.build(resolveItemParams(type, params) as never)
+  const resolved = resolveItemParams(type, params)
+  const obj = asset.build(resolved as never)
   obj.traverse((m) => {
     if (m instanceof THREE.Mesh) {
       if (m.userData.noShadow) {
@@ -63,8 +66,10 @@ export function buildItemObject(type: string, params: Record<string, unknown>): 
   const root = new THREE.Group()
   root.add(obj)
   const box = new THREE.Box3().setFromObject(obj)
-  root.userData.footprint = { w: box.max.x - box.min.x, h: box.max.y - box.min.y, d: box.max.z - box.min.z, box } satisfies Footprint
-  if ((asset.contactShadow ?? asset.placement === 'floor') && !box.isEmpty()) root.add(contactShadow(box))
+  const b = asset.body?.(resolved as never)
+  const body = b ? new THREE.Box3(new THREE.Vector3(b.min.x, b.min.y, b.min.z), new THREE.Vector3(b.max.x, b.max.y, b.max.z)) : box
+  root.userData.footprint = { w: box.max.x - box.min.x, h: box.max.y - box.min.y, d: box.max.z - box.min.z, box, body } satisfies Footprint
+  if ((asset.contactShadow ?? asset.placement === 'floor') && !body.isEmpty()) root.add(contactShadow(body))
   root.scale.setScalar(S)
   return root
 }

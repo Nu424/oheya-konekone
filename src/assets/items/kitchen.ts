@@ -10,6 +10,7 @@ export const miniKitchen = defineAsset({
   category: 'kitchen',
   description: '1K/ワンルームによくある備え付けキッチン。シンク・コンロ・吊り戸棚。背面を壁につけて置く（locked推奨）',
   placement: 'floor',
+  surfaces: ({ width: W, depth: D, upper }) => [{ y: 850, minX: -W / 2, maxX: W / 2, minZ: -D / 2, maxZ: D / 2, label: 'カウンター', ...(upper ? { clearance: 690 } : {}) }],
   params: {
     width: p.mm('幅', 900, 2400, 1500),
     depth: p.mm('奥行き', 450, 650, 550),
@@ -126,6 +127,7 @@ export const rangeRack = defineAsset({
   category: 'kitchen',
   description: '電子レンジや炊飯器を載せるキッチンラック',
   placement: 'floor',
+  surfaces: ({ width: W, height: H, depth: D }) => [{ y: H, minX: -W / 2, maxX: W / 2, minZ: -D / 2, maxZ: D / 2, label: '天板' }],
   params: {
     width: p.mm('幅', 450, 900, 600),
     height: p.mm('高さ', 800, 1800, 1200),

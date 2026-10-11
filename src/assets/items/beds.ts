@@ -24,6 +24,8 @@ export const bed = defineAsset({
   category: 'bed',
   description: 'ベッド。サイズ（シングル〜クイーン）、フレームの種類、脚の高さ、ヘッドボードの有無、寝具の色を変えられる。足元が正面(+Z)、頭側が背面',
   placement: 'floor',
+  // Nothing is meant to stand on it.
+  surfaces: () => [],
   params: {
     size: p.select('サイズ', { single: 'シングル', semiDouble: 'セミダブル', double: 'ダブル', queen: 'クイーン' }, 'single', { group: 'サイズ' }),
     length: p.mm('長さ', 1950, 2150, 1950, { hint: 'マットレスの長さ。フレームはこれより少し長くなる' }),
@@ -148,6 +150,8 @@ export const futon = defineAsset({
   category: 'bed',
   description: '床に敷く布団。たたんだ状態にもできる',
   placement: 'floor',
+  // Nothing is meant to stand on it.
+  surfaces: () => [],
   params: {
     width: p.mm('幅', 900, 1500, 1000),
     length: p.mm('長さ', 1900, 2200, 2100),

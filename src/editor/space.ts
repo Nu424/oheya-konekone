@@ -1,3 +1,4 @@
+import type { LocalBox } from '../assets/types'
 import type { Item, Room, WallSide } from '../model/schema'
 
 /**
@@ -5,10 +6,7 @@ import type { Item, Room, WallSide } from '../model/schema'
  * All values are in mm in room coordinates (x east, z south).
  */
 
-export interface LocalBox {
-  min: { x: number; y: number; z: number }
-  max: { x: number; y: number; z: number }
-}
+export type { LocalBox }
 
 export interface Footprint2D {
   /** Corners in room coordinates (counter-clockwise when seen from above). */
@@ -93,7 +91,7 @@ export function overlaps3D(a: Footprint2D, b: Footprint2D) {
 export interface SnapTarget {
   axis: 'x' | 'z'
   value: number
-  kind: 'wall' | 'item' | 'grid'
+  kind: 'wall' | 'item' | 'grid' | 'surface'
 }
 
 export interface SnapResult {
@@ -112,7 +110,13 @@ export function snapPosition(
   z: number,
   room: Room,
   others: Footprint2D[],
-  o: { threshold?: number; grid?: number; free?: boolean } = {},
+  o: {
+    threshold?: number
+    grid?: number
+    free?: boolean
+    /** Edges of the surface the item stands on (bench top, shelf): extra snap targets. */
+    surface?: { minX: number; maxX: number; minZ: number; maxZ: number }
+  } = {},
 ): SnapResult {
   const T = o.threshold ?? 80
   const grid = o.grid ?? 50
@@ -131,6 +135,10 @@ export function snapPosition(
   for (const c of room.columns) {
     edgesX.push({ v: c.x - c.width / 2, kind: 'wall' }, { v: c.x + c.width / 2, kind: 'wall' })
     edgesZ.push({ v: c.z - c.depth / 2, kind: 'wall' }, { v: c.z + c.depth / 2, kind: 'wall' })
+  }
+  if (o.surface) {
+    edgesX.push({ v: o.surface.minX, kind: 'surface' }, { v: o.surface.maxX, kind: 'surface' })
+    edgesZ.push({ v: o.surface.minZ, kind: 'surface' }, { v: o.surface.maxZ, kind: 'surface' })
   }
   for (const b of others) {
     // Only items near on the other axis are useful snap targets.

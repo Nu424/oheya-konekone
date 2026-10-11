@@ -85,6 +85,8 @@ export const rug = defineAsset({
   category: 'decor',
   description: '床に敷くラグ。家具の下に敷いてよい（重なってもOK）',
   placement: 'floor',
+  // Furniture on the rug should not ride along when the rug moves.
+  surfaces: () => [],
   contactShadow: false,
   params: {
     shape: p.select('形', { rect: '四角', round: '丸' }, 'rect'),
@@ -256,6 +258,8 @@ export const plant = defineAsset({
   category: 'decor',
   description: '鉢植えの観葉植物。種類と高さを変えられる',
   placement: 'floor',
+  // Nothing is meant to stand on it.
+  surfaces: () => [],
   params: {
     kind: p.select('種類', { monstera: 'モンステラ', umbellata: 'ウンベラータ', sansevieria: 'サンスベリア', olive: 'オリーブ' }, 'monstera'),
     height: p.mm('高さ', 300, 1900, 900),
@@ -388,6 +392,8 @@ export const mirror = defineAsset({
   category: 'decor',
   description: '全身が映る鏡。壁に立てかけるかスタンド式',
   placement: 'floor',
+  // Nothing is meant to stand on it.
+  surfaces: () => [],
   params: {
     width: p.mm('幅', 300, 900, 450),
     height: p.mm('高さ', 1000, 1900, 1500),
@@ -428,6 +434,8 @@ export const trashCan = defineAsset({
   category: 'decor',
   description: 'ゴミ箱',
   placement: 'floor',
+  // Nothing is meant to stand on it.
+  surfaces: () => [],
   params: {
     shape: p.select('形', { round: '丸', square: '角', slim: 'スリム（分別）' }, 'round'),
     height: p.mm('高さ', 250, 700, 380),
@@ -461,6 +469,8 @@ export const cushion = defineAsset({
   category: 'decor',
   description: '床やソファに置くクッション・座布団',
   placement: 'floor',
+  // Nothing is meant to stand on it.
+  surfaces: () => [],
   params: {
     kind: p.select('種類', { square: '四角クッション', zabuton: '座布団', round: '丸クッション' }, 'zabuton'),
     size: p.mm('大きさ', 350, 650, 550),

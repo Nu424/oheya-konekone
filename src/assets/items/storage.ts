@@ -3,7 +3,7 @@ import { mat, SWATCHES } from '../../three/materials'
 import { rng } from '../../three/textures'
 import { boxOn, cyl, deg, group, rbox } from '../kit'
 import { p } from '../params'
-import { defineAsset } from '../types'
+import { defineAsset, type Surface } from '../types'
 
 const BOOK_COLORS = ['#c96f53', '#e2b75f', '#5d7a8c', '#8c9f7a', '#efe6d6', '#3d4a5c', '#a24d4d', '#d9cbb4', '#6f5b8a', '#2f2f31', '#f2d3c0', '#4f7f73']
 
@@ -52,6 +52,21 @@ export const bookshelf = defineAsset({
   category: 'storage',
   description: 'オープンシェルフ・本棚。段数・サイズを変えられ、本を並べた状態も表示できる',
   placement: 'floor',
+  // Index 0 is always the top board; the shelves follow from the bottom up (row by row, left to right).
+  surfaces: ({ width: W, height: H, depth: D, shelves, columns }) => {
+    const t = 18
+    const n = Math.round(shelves)
+    const cols = Math.round(columns)
+    const cellH = (H - t * 2 - t * (n - 1)) / n
+    const cellW = (W - t * 2 - t * (cols - 1)) / cols
+    const out: Surface[] = [{ y: H, minX: -W / 2, maxX: W / 2, minZ: -D / 2, maxZ: D / 2, label: '天板' }]
+    for (let i = 0; i < n; i++)
+      for (let c = 0; c < cols; c++) {
+        const x0 = -W / 2 + t + c * (cellW + t)
+        out.push({ y: t + i * (cellH + t), minX: x0, maxX: x0 + cellW, minZ: -D / 2 + 6, maxZ: D / 2, clearance: cellH, label: `${i + 1}段目` })
+      }
+    return out
+  },
   params: {
     width: p.mm('幅', 300, 1800, 800),
     height: p.mm('高さ', 400, 2100, 1800),
@@ -101,6 +116,24 @@ export const colorBox = defineAsset({
   category: 'storage',
   description: '定番のカラーボックス。縦置き・横置き、インナーボックスの有無',
   placement: 'floor',
+  // Index 0 is always the top; then the cubes from the bottom (or the left) that have no inner box.
+  surfaces: ({ cubes, orientation, bins }) => {
+    const n = Math.round(cubes)
+    const t = 15
+    const cell = 330
+    const D = 290
+    const vertical = orientation === 'vertical'
+    const W = vertical ? cell + t * 2 : n * cell + (n + 1) * t
+    const H = vertical ? n * cell + (n + 1) * t : cell + t * 2
+    const out: Surface[] = [{ y: H, minX: -W / 2, maxX: W / 2, minZ: -D / 2, maxZ: D / 2, label: '天板' }]
+    for (let i = 0; i < n; i++) {
+      if (bins === 'all' || (bins === 'some' && i % 2 === 0)) continue
+      const x = vertical ? 0 : -W / 2 + t + i * (cell + t) + cell / 2
+      const y = vertical ? t + i * (cell + t) : t
+      out.push({ y, minX: x - cell / 2, maxX: x + cell / 2, minZ: -D / 2 + 6, maxZ: D / 2, clearance: cell, label: `${i + 1}マス目` })
+    }
+    return out
+  },
   params: {
     cubes: p.number({ label: '段数', min: 2, max: 4, step: 1, default: 3, group: '形' }),
     orientation: p.select('向き', { vertical: '縦置き', horizontal: '横置き' }, 'vertical'),
@@ -204,6 +237,8 @@ export const hangerRack = defineAsset({
   category: 'storage',
   description: '服をかけるラック。服をかけた状態も表示できる',
   placement: 'floor',
+  // Nothing is meant to stand on it.
+  surfaces: () => [],
   params: {
     width: p.mm('幅', 600, 1600, 1000),
     height: p.mm('高さ', 1300, 1900, 1650),

@@ -15,7 +15,7 @@ export default function App() {
   const jsonOpen = useUi((s) => s.jsonOpen)
   const [newOpen, setNewOpen] = useState(false)
   const [aiOpen, setAiOpen] = useState(false)
-  const hasSelection = useUi((s) => s.selection !== null)
+  const hasSelection = useUi((s) => s.selection.length > 0)
   const view = useUi((s) => s.view)
   const photo = useUi((s) => s.photo)
 
