@@ -179,3 +179,70 @@ describe('dropping near solid bodies', () => {
     expect(stack.pickAlongRay(surfaces, low, toward(low, { x: 1000, y: 200, z: 1000 }), { x: 0, z: 0 }, { solids: [body] })?.y).toBe(200)
   })
 })
+
+describe('delete with or without riders, pose fields', () => {
+  // A bench carrying a plate with a rack on it, a second rack on the bench, and a rack on the floor.
+  const world = () =>
+    layout(
+      item('bench', 'bench', [1000, 0, 1000]),
+      item('plate', 'plate', [1000, 900, 1000]),
+      item('onPlate', 'rack', [1100, 910, 1050]),
+      item('onBench', 'rack', [600, 900, 1000]),
+      item('floor', 'rack', [3000, 0, 2000]),
+    )
+  const ids = (l: Layout) => l.items.map((i) => i.id).sort()
+
+  it('counts what stands on a selection without the selection itself', () => {
+    const l = world()
+    expect(stack.ridersOf(l, ['bench']).sort()).toEqual(['onBench', 'onPlate', 'plate'])
+    expect(stack.ridersOf(l, ['bench', 'plate']).sort()).toEqual(['onBench', 'onPlate'])
+    expect(stack.ridersOf(l, ['floor', 'onPlate'])).toEqual([])
+  })
+
+  it('drops riders by default and removes them on request', () => {
+    const l = world()
+    const kept = stack.removeItems(l, ['plate'])
+    expect(ids(kept.layout)).toEqual(['bench', 'floor', 'onBench', 'onPlate'])
+    expect(pos(kept.layout, 'onPlate')[1]).toBe(900)
+    const all = stack.removeItems(l, ['plate'], { withRiders: true })
+    expect(ids(all.layout)).toEqual(['bench', 'floor', 'onBench'])
+    expect(all.removed.sort()).toEqual(['onPlate', 'plate'])
+    // Deleting the bench with everything on it leaves only the rack on the floor.
+    expect(ids(stack.removeItems(l, ['bench'], { withRiders: true }).layout)).toEqual(['floor'])
+    // Without riders the whole pile comes down in order: plate on the floor, its rack on the plate.
+    const pile = stack.removeItems(l, ['bench']).layout
+    expect(pos(pile, 'plate')[1]).toBe(0)
+    expect(pos(pile, 'onPlate')[1]).toBe(10)
+    expect(pos(pile, 'onBench')[1]).toBe(0)
+    expect(stack.removeItems(l, ['gone']).removed).toEqual([])
+  })
+
+  it('sets one coordinate of every root and carries riders', () => {
+    const l = world()
+    // Same height for a rack on the bench and one on the floor; x and z stay.
+    const lifted = applyPoses(l, stack.setAxis(l, ['onBench', 'floor'], 1, 1200))
+    expect(pos(lifted, 'onBench')).toEqual([600, 1200, 1000])
+    expect(pos(lifted, 'floor')).toEqual([3000, 1200, 2000])
+    // The plate moves in x; its rack keeps its offset. The rack is also selected but is not a root.
+    const slid = applyPoses(l, stack.setAxis(l, ['plate', 'onPlate'], 0, 1200))
+    expect(pos(slid, 'plate')).toEqual([1200, 900, 1000])
+    expect(pos(slid, 'onPlate')).toEqual([1300, 910, 1050])
+    // Relative: each root shifts from where it is.
+    const shifted = applyPoses(l, stack.setAxis(l, ['onBench', 'floor'], 2, -50, true))
+    expect(pos(shifted, 'onBench')[2]).toBe(950)
+    expect(pos(shifted, 'floor')[2]).toBe(1950)
+    // Nothing to do when the value is already there.
+    expect(stack.setAxis(l, ['floor'], 1, 0).size).toBe(0)
+  })
+
+  it('turns every root on the spot', () => {
+    const l = world()
+    const turned = applyPoses(l, stack.faceTo(l, ['plate', 'floor'], 90))
+    expect(turned.items.find((i) => i.id === 'floor')!.rotation).toBe(90)
+    expect(pos(turned, 'floor')).toEqual([3000, 0, 2000])
+    expect(pos(turned, 'plate')).toEqual([1000, 900, 1000])
+    // The rack on the plate orbits the plate: 100 east / 50 south becomes 50 east / 100 north.
+    expect(pos(turned, 'onPlate')).toEqual([1050, 910, 900])
+    expect(stack.faceTo(l, ['floor'], 360).size).toBe(0)
+  })
+})

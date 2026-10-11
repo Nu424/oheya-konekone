@@ -10,6 +10,7 @@ import { flushToWall, footprint, nearestWall, snapPosition, type Footprint2D, ty
 import { roundY, surfaceBounds, surfaceContains } from '../editor/stacking'
 import type { Item } from '../model/schema'
 import { beginGesture, endGesture, useDoc, useUi } from '../store/useStore'
+import { DeleteButton } from '../ui/DeleteButton'
 import { Icon } from '../ui/icons'
 import { ItemObject } from './ItemObject'
 
@@ -243,7 +244,7 @@ function GroupFrame({ ids, fps, top, showToolbar }: { ids: string[]; fps: Footpr
     [(minX - pad) * S, y, (maxZ + pad) * S],
     [(minX - pad) * S, y, (minZ - pad) * S],
   ]
-  const { rotate, duplicate, remove, toggleLock } = itemCommands
+  const { rotate, duplicate, toggleLock } = itemCommands
   return (
     <>
       <Line points={pts} color={ACCENT} lineWidth={1.5} dashed dashSize={0.02} gapSize={0.012} transparent opacity={0.9} depthTest={false} renderOrder={10} />
@@ -265,9 +266,7 @@ function GroupFrame({ ids, fps, top, showToolbar }: { ids: string[]; fps: Footpr
             <button title="まとめてロック／解除 (L)" onClick={() => toggleLock(ids)}>
               <Icon.lock />
             </button>
-            <button title="まとめて削除 (Delete)" className="danger" onClick={() => remove(ids)}>
-              <Icon.trash />
-            </button>
+            <DeleteButton ids={ids} title="まとめて削除 (Delete)" />
           </div>
         </Html>
       )}
@@ -317,7 +316,7 @@ function Guides({ f, room }: { f: Footprint2D; room: { width: number; depth: num
 }
 
 function Toolbar({ item, f, top }: { item: Item; f: Footprint2D; top: number }) {
-  const { rotate, duplicate, remove, toggleLock } = itemCommands
+  const { rotate, duplicate, toggleLock } = itemCommands
   const asset = getAsset(item.type)
   const w = Math.round(f.maxX - f.minX)
   const d = Math.round(f.maxZ - f.minZ)
@@ -339,9 +338,7 @@ function Toolbar({ item, f, top }: { item: Item; f: Footprint2D; top: number }) 
         <button title={item.locked ? 'ロック解除' : 'ロック（動かないようにする）'} className={item.locked ? 'on' : ''} onClick={() => toggleLock(item.id)}>
           <Icon.lock />
         </button>
-        <button title="削除 (Delete)" className="danger" onClick={() => remove(item.id)}>
-          <Icon.trash />
-        </button>
+        <DeleteButton ids={item.id} />
       </div>
     </Html>
   )

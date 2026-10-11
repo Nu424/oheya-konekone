@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { useUi } from './store/useStore'
 import { Viewport } from './three/Viewport'
 import { DropZone, FlowPanel, Hud, PhotoBar, Toast, TopBar, useShortcuts } from './ui/Chrome'
-import { AiDialog, JsonDialog, TemplateDialog } from './ui/dialogs'
+import { AiDialog, HelpDialog, JsonDialog, TemplateDialog } from './ui/dialogs'
 import { RoomPanel } from './ui/RoomPanel'
 import { Catalog, DRAG_MIME } from './ui/Catalog'
 import { Inspector } from './ui/Inspector'
@@ -13,6 +13,7 @@ export default function App() {
   const panel = useUi((s) => s.panel)
   const setPanel = useUi((s) => s.setPanel)
   const jsonOpen = useUi((s) => s.jsonOpen)
+  const helpOpen = useUi((s) => s.helpOpen)
   const [newOpen, setNewOpen] = useState(false)
   const [aiOpen, setAiOpen] = useState(false)
   const hasSelection = useUi((s) => s.selection.length > 0)
@@ -69,7 +70,7 @@ export default function App() {
           <>
             <kbd>ドラッグ</kbd> 回転 ・ <kbd>右ドラッグ</kbd> 移動 ・ <kbd>ホイール</kbd> ズーム
             <br />
-            <kbd>1</kbd>/<kbd>2</kbd>/<kbd>3</kbd> 視点 ・ <kbd>F</kbd> 動線 ・ <kbd>J</kbd> JSON
+            <kbd>1</kbd>/<kbd>2</kbd>/<kbd>3</kbd> 視点 ・ <kbd>F</kbd> 動線 ・ <kbd>?</kbd> 操作一覧
           </>
         )}
       </div>
@@ -77,6 +78,7 @@ export default function App() {
       <Toast />
       <DropZone />
       {jsonOpen && <JsonDialog />}
+      {helpOpen && <HelpDialog onClose={() => useUi.getState().setHelpOpen(false)} />}
       {newOpen && <TemplateDialog onClose={() => setNewOpen(false)} />}
       {aiOpen && <AiDialog onClose={() => setAiOpen(false)} />}
     </div>

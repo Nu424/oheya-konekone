@@ -214,6 +214,7 @@ interface UiState {
   photoSamples: number
   panel: 'room' | 'catalog' | null
   jsonOpen: boolean
+  helpOpen: boolean
   toast: { id: number; text: string; tone?: 'info' | 'error' } | null
   setView(v: ViewMode): void
   select(ids: string | string[] | null, mode?: SelectMode): void
@@ -225,6 +226,7 @@ interface UiState {
   setPhotoSamples(n: number): void
   setPanel(p: UiState['panel']): void
   setJsonOpen(v: boolean): void
+  setHelpOpen(v: boolean): void
   notify(text: string, tone?: 'info' | 'error'): void
 }
 
@@ -240,6 +242,7 @@ export const useUi = create<UiState>()((set) => ({
   // Start with the panel closed on phones so the room is visible.
   panel: typeof window !== 'undefined' && window.innerWidth < 760 ? null : 'room',
   jsonOpen: false,
+  helpOpen: false,
   toast: null,
   setView: (view) => set({ view }),
   select: (ids, mode = 'replace') =>
@@ -262,6 +265,7 @@ export const useUi = create<UiState>()((set) => ({
   setPhotoSamples: (photoSamples) => set({ photoSamples }),
   setPanel: (panel) => set({ panel }),
   setJsonOpen: (jsonOpen) => set({ jsonOpen }),
+  setHelpOpen: (helpOpen) => set({ helpOpen }),
   notify: (text, tone = 'info') => set({ toast: { id: Date.now(), text, tone } }),
 }))
 

@@ -175,19 +175,36 @@ export const itemCommands = {
       copiedRoots.length > 1 ? `${copiedRoots.length}点を複製したよ${riders ? `（上に載ってる${riders}点も一緒）` : ''}` : riders ? `上に載ってる${riders}点と一緒に複製したよ` : '複製したよ',
     )
   },
-  /** Remove the items; whatever stood on them (and is not removed too) drops onto the surface below. */
-  remove(ids: string | readonly string[]) {
+  /**
+   * Remove the items. Whatever stood on them (and is not removed too) drops onto the surface below,
+   * or goes with them when `withRiders` is set (docs/EDITING-EXTRAS.md).
+   */
+  remove(ids: string | readonly string[], o: { withRiders?: boolean } = {}) {
     const s = useDoc.getState()
     const L = s.layout
-    const gone = new Set(list(ids).filter((id) => find(L, id)))
-    if (!gone.size) return
-    const first = find(L, [...gone][0])
-    const sup = stack.supports(L)
-    const orphans = [...sup].filter(([rid, sf]) => gone.has(sf.itemId) && !gone.has(rid)).map(([rid]) => rid)
-    const without = { ...L, items: L.items.filter((i) => !gone.has(i.id)) }
-    s.setLayout(applyPoses(without, stack.settle(without, orphans)))
+    const picked = list(ids).filter((id) => find(L, id))
+    if (!picked.length) return
+    const riders = stack.ridersOf(L, picked).length
+    const r = stack.removeItems(L, picked, o)
+    s.setLayout(r.layout)
     useUi.getState().select(null)
-    useUi.getState().notify(`${gone.size > 1 ? `${gone.size}点` : labelOf(first)}を削除したよ（Ctrl+Zで戻せる）`)
+    const what = picked.length > 1 ? `${picked.length}点` : labelOf(find(L, picked[0]))
+    const done = !riders ? `${what}を削除したよ` : o.withRiders ? `${what}と、上に載ってた${riders}点を削除したよ` : `${what}を削除して、上の${riders}点は下に降ろしたよ`
+    useUi.getState().notify(`${done}（Ctrl+Zで戻せる）`)
+  },
+  /** How many items stand on the given ones without being among them (what "delete with riders" would add). */
+  riderCount(ids: string | readonly string[]) {
+    return stack.ridersOf(useDoc.getState().layout, list(ids)).length
+  },
+  /** Set (or shift, when `relative`) one coordinate of every selected root; 0 = x, 1 = y, 2 = z. */
+  setAxis(ids: string | readonly string[], axis: 0 | 1 | 2, value: number, relative = false) {
+    const s = useDoc.getState()
+    s.patchItems(stack.setAxis(s.layout, movable(s.layout, ids), axis, value, relative))
+  },
+  /** Turn every selected root on the spot to face `rotation`. */
+  faceTo(ids: string | readonly string[], rotation: number) {
+    const s = useDoc.getState()
+    s.patchItems(stack.faceTo(s.layout, movable(s.layout, ids), rotation))
   },
   /** Lock everything if anything is unlocked, otherwise unlock everything. */
   toggleLock(ids: string | readonly string[]) {

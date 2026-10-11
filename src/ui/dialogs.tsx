@@ -8,6 +8,7 @@ import { itemFootprint } from '../three/ItemObject'
 import { useDoc, useUi } from '../store/useStore'
 import { FloorPlan } from './FloorPlan'
 import { Icon } from './icons'
+import { HELP } from './shortcuts'
 
 export function Modal({ title, sub, onClose, children, foot, width }: { title: ReactNode; sub?: ReactNode; onClose: () => void; children: ReactNode; foot?: ReactNode; width?: number }) {
   useEffect(() => {
@@ -187,6 +188,37 @@ export function JsonDialog() {
             Ctrl+Enter で反映。単位はmm、原点は北西の床の角。
           </div>
         </div>
+      </div>
+    </Modal>
+  )
+}
+
+/** "操作方法とショートカット": everything the mouse and keyboard do, drawn from one list (shortcuts.ts). */
+export function HelpDialog({ onClose }: { onClose: () => void }) {
+  return (
+    <Modal title="操作方法とショートカット" sub="マウスとキーボードでできること。? キーでいつでも開けるよ" onClose={onClose} width={920}>
+      <div className="help-grid">
+        {HELP.map((g) => (
+          <section key={g.title} className="help-group">
+            <h3>{g.title}</h3>
+            <dl>
+              {g.rows.map((r) => (
+                <div key={r.text} className="help-row">
+                  <dt>
+                    {r.keys.map((k, i) => (
+                      <span key={k}>
+                        {i > 0 && <i>／</i>}
+                        <kbd>{k}</kbd>
+                      </span>
+                    ))}
+                  </dt>
+                  <dd>{r.text}</dd>
+                </div>
+              ))}
+            </dl>
+            {g.note && <p className="field-hint">{g.note}</p>}
+          </section>
+        ))}
       </div>
     </Modal>
   )

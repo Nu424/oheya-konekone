@@ -5,7 +5,7 @@ Vite + React + TypeScript + react-three-fiber。GitHub Pages に静的デプロ�
 
 くわしい知見（モデリング・レンダリング・検証の罠）は [docs/KNOWLEDGE.md](docs/KNOWLEDGE.md)、
 計画と進捗は [docs/PLAN.md](docs/PLAN.md)、レイアウト JSON のルールとカタログは [docs/AI_GUIDE.md](docs/AI_GUIDE.md)。
-積み重ね・コピペ・複数選択の設計は [docs/STACKING.md](docs/STACKING.md)・[docs/CLIPBOARD.md](docs/CLIPBOARD.md)・[docs/MULTISELECT.md](docs/MULTISELECT.md)。
+積み重ね・コピペ・複数選択・削除や数値入力の追加の設計は [docs/STACKING.md](docs/STACKING.md)・[docs/CLIPBOARD.md](docs/CLIPBOARD.md)・[docs/MULTISELECT.md](docs/MULTISELECT.md)・[docs/EDITING-EXTRAS.md](docs/EDITING-EXTRAS.md)。
 
 ## このプロジェクトの前提（迷ったらここに立ち返る）
 
@@ -50,13 +50,14 @@ npx tsx scripts/check-layout.ts [id | file.json]   # 重なり・浮き・何に
 ## 守ること
 
 - **単位と座標**：JSON もアセットも mm。原点は北西の床の角、+X 東・+Z 南・+Y 上。`rotation` 0 で正面が南(+Z)、90 で東。three.js のシーンは m（アセットのルートを 0.001 倍）。
-- **アセットの規約**：`build(params)` は mm で組み、底面中心が原点、正面が +Z。マテリアルは `mat(kind, color)` で共有キャッシュから取る（直接 `new` しない）。新しいアセットは `registry.ts` の `ALL` に足し、`/?gallery&type=<type>` で最小・最大・各プリセットを目で確認する。
+- **アセットの規約**：`build(params)` は mm で組み、底面中心が原点、正面が +Z。マテリアルは `mat(kind, color)` で共有キャッシュから取る（直接 `new` しない）。新しいアセットは `registry.ts` の `ALL` に足し、`/?gallery&type=<type>` で最小・最大・各プリセットを目で確認する。長さのパラメータは直接入力ならスライダーの上限の 1.5 倍まで通る（`numberLimits`）ので、`/?gallery&limits=max&types=<type>` でもその端の形を見る。崩れるなら `hardMax` を付ける。
 - **上に物を置ける面はアセットが宣言する**（`surfaces`）。省略すると本体の上面が面になる。上に何も置かない家具（ベッド・椅子・ラグなど）は `surfaces: () => []`。段のある家具は段ごとに返し、**返す順番の意味をパラメータで変えない**（0 番は天板）。見た目より小さい本体があるときは `body` を書く。
 - **マテリアル配列を持つメッシュを作らない**（撮影モードのパストレーサーで以降の全マテリアルがずれる）。色違いの面は別メッシュにする。
 - **ブラウザ外でも組み立てられるように**：テクスチャ生成は `textures.ts` の `HEADLESS` ガードを通す。`document` を直接触る処理をアセットに書かない（テストと `scripts/` が node で寸法を測っている）。
 - **アイテムの編集は `itemCommands`（`src/editor/commands.ts`）経由**。上に載っている物がついてくる・落ちる・高さを追う処理がここに入っている。`updateItem` で位置を直接書き換えると、載っている物が置いていかれる。ドラッグのような連続操作は `beginGesture()` / `endGesture()` で 1 回の undo にまとめる。
 - **JSON の仕様を変えたら** `src/ai/prompt.ts` の RULES、`docs/AI_GUIDE.md`（再生成）、README を合わせて更新する。
 - **テンプレートを足したら** `src/__tests__/templates.test.ts` が自動で重なりと動線を検査する。通るように配置を直す。
+- **操作やショートカットを変えたら** `src/ui/shortcuts.ts`（`?` で開く操作一覧）と README の操作表も直す。
 - UI の文言は日本語で、やわらかい口調（「〜したよ」）。コードのコメントは英語。
 
 ## よくあるハマりどころ（詳細は KNOWLEDGE.md）

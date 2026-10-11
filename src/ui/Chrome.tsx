@@ -132,6 +132,10 @@ export function TopBar({ onNew, onAi }: { onNew: () => void; onAi: () => void })
               >
                 <Icon.paste /> クリップボードから読み込み
               </button>
+              <hr />
+              <button onClick={() => useUi.getState().setHelpOpen(true)}>
+                <Icon.help /> 操作方法とショートカット <kbd>?</kbd>
+              </button>
             </div>
           )}
         </div>
@@ -271,6 +275,9 @@ export function useShortcuts() {
       } else if (mod && e.key.toLowerCase() === 'a' && !typing && !ui.jsonOpen) {
         e.preventDefault()
         ui.select(useDoc.getState().layout.items.map((i) => i.id))
+      } else if (ui.helpOpen) {
+        // The help dialog is on top: leave the layout alone (Esc is handled by the dialog).
+        if (e.key === '?' && !typing) ui.setHelpOpen(false)
       } else if (!typing && !mod && !ui.jsonOpen) {
         const sel = ui.selection.length ? ui.selection : null
         if (e.key === '1') ui.setView('orbit')
@@ -279,6 +286,7 @@ export function useShortcuts() {
         if (e.key.toLowerCase() === 'j') ui.setJsonOpen(true)
         if (e.key.toLowerCase() === 'f') ui.setFlow(!ui.flow)
         if (e.key.toLowerCase() === 'p') ui.setPhoto(!ui.photo)
+        if (e.key === '?') ui.setHelpOpen(true)
         if (e.key === 'Escape') {
           if (ui.photo) ui.setPhoto(false)
           else if (ui.selection.length) ui.select(null)
@@ -287,7 +295,8 @@ export function useShortcuts() {
         if (sel) {
           if (e.key === 'Delete' || e.key === 'Backspace') {
             e.preventDefault()
-            itemCommands.remove(sel)
+            // Shift+Delete also removes what stands on the items (docs/EDITING-EXTRAS.md).
+            itemCommands.remove(sel, { withRiders: e.shiftKey })
           }
           if (e.key.toLowerCase() === 'r') itemCommands.rotate(sel, e.shiftKey ? 15 : 90)
           if (e.key.toLowerCase() === 'l') itemCommands.toggleLock(sel)

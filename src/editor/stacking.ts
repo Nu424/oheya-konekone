@@ -393,7 +393,80 @@ export function createStacking(host: StackingHost) {
     return out
   }
 
-  return { placedSurfaces, surfaceUnder, supports, riders, restsOn, moveWithRiders, settle, reseat, pickAlongRay, floating, roots, moveGroup, rotateGroup, landGroup }
+  // ---- Delete with or without riders, pose fields (docs/EDITING-EXTRAS.md) --------------------
+
+  /** Everything standing on any of `ids` that is not in `ids` itself. */
+  function ridersOf(layout: Layout, ids: readonly string[]): string[] {
+    const sup = supports(layout)
+    const picked = new Set(ids)
+    const out = new Set<string>()
+    for (const id of ids) for (const r of riders(layout, id, sup)) if (!picked.has(r)) out.add(r)
+    return [...out]
+  }
+
+  /**
+   * Remove items. By default whatever stood on them drops onto the surface below;
+   * with `withRiders` it is removed too.
+   */
+  function removeItems(layout: Layout, ids: readonly string[], o: { withRiders?: boolean } = {}): { layout: Layout; removed: string[] } {
+    const present = new Set(layout.items.map((i) => i.id))
+    const gone = new Set(ids.filter((id) => present.has(id)))
+    if (o.withRiders) for (const r of ridersOf(layout, [...gone])) gone.add(r)
+    if (!gone.size) return { layout, removed: [] }
+    const orphans = [...supports(layout)].filter(([rid, s]) => gone.has(s.itemId) && !gone.has(rid)).map(([rid]) => rid)
+    const without = { ...layout, items: layout.items.filter((i) => !gone.has(i.id)) }
+    return { layout: applyPoses(without, settle(without, orphans)), removed: [...gone] }
+  }
+
+  /**
+   * Set one coordinate (0 = x, 1 = y, 2 = z) of every root to `value`, or shift it by `value`
+   * when `relative`. Riders keep their place on their support.
+   */
+  function setAxis(layout: Layout, ids: readonly string[], axis: 0 | 1 | 2, value: number, relative = false): Map<string, Pose> {
+    const out = new Map<string, Pose>()
+    for (const id of roots(layout, ids)) {
+      const it = layout.items.find((i) => i.id === id)!
+      const position: [number, number, number] = [...it.position]
+      const v = relative ? it.position[axis] + value : value
+      position[axis] = axis === 1 ? roundY(v) : Math.round(v)
+      if (position[axis] === it.position[axis]) continue
+      for (const [k, p] of moveWithRiders(layout, id, { position })) out.set(k, p)
+    }
+    return out
+  }
+
+  /** Turn every root on the spot to face `rotation` (unlike `rotateGroup`, positions stay). */
+  function faceTo(layout: Layout, ids: readonly string[], rotation: number): Map<string, Pose> {
+    const out = new Map<string, Pose>()
+    const r = ((rotation % 360) + 360) % 360
+    for (const id of roots(layout, ids)) {
+      const it = layout.items.find((i) => i.id === id)!
+      if ((((it.rotation % 360) + 360) % 360) === r) continue
+      for (const [k, p] of moveWithRiders(layout, id, { rotation: r })) out.set(k, p)
+    }
+    return out
+  }
+
+  return {
+    placedSurfaces,
+    surfaceUnder,
+    supports,
+    riders,
+    restsOn,
+    moveWithRiders,
+    settle,
+    reseat,
+    pickAlongRay,
+    floating,
+    roots,
+    moveGroup,
+    rotateGroup,
+    landGroup,
+    ridersOf,
+    removeItems,
+    setAxis,
+    faceTo,
+  }
 }
 
 const area = (s: Surface) => (s.maxX - s.minX) * (s.maxZ - s.minZ)

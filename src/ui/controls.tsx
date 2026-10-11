@@ -10,6 +10,8 @@ export function NumberSlider({
   hint,
   onChange,
   format,
+  hardMin = min,
+  hardMax = max,
 }: {
   label: ReactNode
   value: number
@@ -20,20 +22,31 @@ export function NumberSlider({
   hint?: ReactNode
   onChange: (v: number) => void
   format?: (v: number) => string
+  /** Limits for typed values when they may go past the slider range (docs/EDITING-EXTRAS.md). */
+  hardMin?: number
+  hardMax?: number
 }) {
-  const [text, setText] = useState(String(value))
-  useEffect(() => setText(String(Math.round(value * 100) / 100)), [value])
-  const pct = max > min ? ((value - min) / (max - min)) * 100 : 0
+  const shown = String(Math.round(value * 100) / 100)
+  const [text, setText] = useState(shown)
+  useEffect(() => setText(shown), [shown])
+  const pct = max > min ? Math.min(100, Math.max(0, ((value - min) / (max - min)) * 100)) : 0
+  const outside = value < min || value > max
+  const clampHard = (n: number) => Math.min(hardMax, Math.max(hardMin, n))
   const commit = () => {
     const n = Number(text)
-    if (Number.isFinite(n)) onChange(Math.min(max, Math.max(min, n)))
-    else setText(String(value))
+    const v = text.trim() !== '' && Number.isFinite(n) ? clampHard(n) : value
+    // Put the text back when nothing changes (not a number, or clamped to the current value).
+    if (v === value) setText(shown)
+    else onChange(v)
   }
   return (
     <div className="field">
       <div className="field-row">
         <span className="field-label">{label}</span>
-        <span className="num" title={format?.(value)}>
+        <span
+          className={`num${outside ? ' num-outside' : ''}`}
+          title={outside ? `スライダーの範囲（${min}〜${max}）の外の値だよ。スライダーを動かすと範囲内に戻る` : format?.(value)}
+        >
           <input
             inputMode="decimal"
             value={text}
@@ -44,11 +57,12 @@ export function NumberSlider({
               if (e.key === 'ArrowUp' || e.key === 'ArrowDown') {
                 e.preventDefault()
                 const d = (e.key === 'ArrowUp' ? 1 : -1) * step * (e.shiftKey ? 10 : 1)
-                onChange(Math.min(max, Math.max(min, value + d)))
+                onChange(clampHard(value + d))
               }
             }}
           />
           <span className="unit">{unit}</span>
+          {outside && <span className="num-flag">範囲外</span>}
         </span>
       </div>
       <input
@@ -56,7 +70,7 @@ export function NumberSlider({
         min={min}
         max={max}
         step={step}
-        value={value}
+        value={Math.min(max, Math.max(min, value))}
         style={{ ['--pct' as string]: `${pct}%` }}
         onChange={(e) => onChange(Number(e.target.value))}
       />

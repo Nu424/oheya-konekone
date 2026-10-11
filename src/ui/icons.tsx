@@ -80,6 +80,12 @@ export const Icon = {
   ),
   trash: make(<path d="M4 7h16M10 11v6M14 11v6M6 7l1 12a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2l1-12M9 7V4h6v3" />),
   chevron: make(<path d="m6 9 6 6 6-6" />),
+  help: make(
+    <>
+      <circle cx="12" cy="12" r="9" />
+      <path d="M9.6 9.3a2.5 2.5 0 1 1 3.6 2.3c-.8.5-1.2 1-1.2 1.9M12 16.8v.2" />
+    </>,
+  ),
   ruler: make(
     <>
       <path d="m3 15 12-12 6 6L9 21l-6-6Z" />

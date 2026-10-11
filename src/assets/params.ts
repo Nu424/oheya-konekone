@@ -21,6 +21,12 @@ export interface NumberParam extends Base {
   step: number
   default: number
   unit?: string
+  /**
+   * Limits for values typed in directly or written in JSON, when they should differ from the
+   * slider range (`min` / `max`). See `numberLimits` for the defaults.
+   */
+  hardMin?: number
+  hardMax?: number
 }
 
 export interface ColorParam extends Base {
@@ -107,10 +113,33 @@ export const p = {
   }),
 }
 
+/**
+ * How far past the slider range a length may go when typed in. Furniture is built from parts with
+ * fixed sizes (cushions, sinks, clothes on a rail), so shrinking below the slider minimum breaks
+ * shapes quickly; growing is what people ask for ("a slightly longer desk"). The lab-layout fork
+ * uses 1/4〜4×; this app keeps the minimum and allows 1.5× the maximum.
+ */
+const GROW = 1.5
+
+/**
+ * The range a number parameter accepts (docs/EDITING-EXTRAS.md). The slider stops at `min` / `max`;
+ * typed values and JSON may go further for lengths (unit mm). Counts, angles and ratios keep the
+ * slider range: assets rely on it. An asset can set `hardMin` / `hardMax` to widen or narrow this.
+ */
+export function numberLimits(spec: NumberParam): { min: number; max: number } {
+  const loose = spec.unit === 'mm'
+  return {
+    min: spec.hardMin ?? spec.min,
+    max: spec.hardMax ?? (loose && spec.max > 0 ? Math.round(spec.max * GROW) : spec.max),
+  }
+}
+
 function zodFor(spec: ParamSpec): z.ZodType {
   switch (spec.kind) {
-    case 'number':
-      return z.number().min(spec.min).max(spec.max).default(spec.default)
+    case 'number': {
+      const lim = numberLimits(spec)
+      return z.number().min(lim.min).max(lim.max).default(spec.default)
+    }
     case 'color':
       return z
         .string()
@@ -148,9 +177,11 @@ export function resolveParams<S extends ParamSpecs>(specs: S, raw: Record<string
     const v = raw[k]
     if (v === undefined) continue
     switch (s.kind) {
-      case 'number':
-        if (typeof v === 'number' && Number.isFinite(v)) out[k] = Math.min(s.max, Math.max(s.min, v))
+      case 'number': {
+        const lim = numberLimits(s)
+        if (typeof v === 'number' && Number.isFinite(v)) out[k] = Math.min(lim.max, Math.max(lim.min, v))
         break
+      }
       case 'color':
         if (typeof v === 'string' && /^#[0-9a-fA-F]{6}$/.test(v)) out[k] = v
         break
@@ -171,8 +202,11 @@ export function resolveParams<S extends ParamSpecs>(specs: S, raw: Record<string
 /** Human/AI readable one-line description of a parameter. */
 export function describeParam(key: string, s: ParamSpec): string {
   switch (s.kind) {
-    case 'number':
-      return `${key}: number ${s.min}〜${s.max}${s.unit ?? ''} (既定 ${s.default}) — ${s.label}`
+    case 'number': {
+      const lim = numberLimits(s)
+      const wider = lim.min < s.min || lim.max > s.max ? `、${lim.min}〜${lim.max} まで指定可` : ''
+      return `${key}: number ${s.min}〜${s.max}${s.unit ?? ''} (既定 ${s.default}${wider}) — ${s.label}`
+    }
     case 'color':
       return `${key}: "#rrggbb" (既定 ${s.default}) — ${s.label}`
     case 'select':

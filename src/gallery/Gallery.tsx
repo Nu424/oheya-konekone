@@ -3,7 +3,7 @@ import { Canvas, useFrame } from '@react-three/fiber'
 import { useEffect, useMemo } from 'react'
 import * as THREE from 'three'
 import { assetList, getAsset } from '../assets/registry'
-import { defaultParams, type ParamSpecs } from '../assets/params'
+import { defaultParams, numberLimits, type ParamSpecs } from '../assets/params'
 import { Effects } from '../three/Effects'
 import { buildItemObject } from '../three/ItemObject'
 import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js'
@@ -12,6 +12,8 @@ import { useThree } from '@react-three/fiber'
 /**
  * Asset gallery for visual QA: `?gallery` shows every asset with its default parameters,
  * `?gallery&type=desk` shows one asset at min / default / max and each preset.
+ * `?gallery&limits=min` (or `max`, optionally with `&types=`) shows every asset at the edge of what can be typed in
+ * (`numberLimits`, past the slider range), to catch shapes that break there.
  */
 
 interface Cell {
@@ -26,7 +28,17 @@ function extremes(specs: ParamSpecs, which: 'min' | 'max') {
   return out
 }
 
-function cellsFor(type: string | null, types: string[] | null): Cell[] {
+function hardExtremes(specs: ParamSpecs, which: 'min' | 'max') {
+  const out: Record<string, unknown> = defaultParams(specs)
+  for (const [k, s] of Object.entries(specs)) if (s.kind === 'number') out[k] = numberLimits(s)[which]
+  return out
+}
+
+function cellsFor(type: string | null, types: string[] | null, limits: 'min' | 'max' | null): Cell[] {
+  if (limits)
+    return assetList
+      .filter((a) => !types || types.includes(a.type))
+      .map((a) => ({ label: `${a.label} ${limits === 'min' ? '下限' : '上限'}`, type: a.type, params: hardExtremes(a.params, limits) }))
   if (types) return types.flatMap((t) => (getAsset(t) ? [{ label: getAsset(t)!.label, type: t, params: {} }] : []))
   if (!type) return assetList.map((a) => ({ label: a.label, type: a.type, params: {} }))
   const a = getAsset(type)
@@ -119,7 +131,8 @@ export default function Gallery() {
   const type = q.get('type')
   const only = q.get('only')
   const cells = useMemo(() => {
-    const all = cellsFor(type, q.get('types')?.split(',') ?? null)
+    const lim = q.get('limits')
+    const all = cellsFor(type, q.get('types')?.split(',') ?? null, lim === 'min' || lim === 'max' ? lim : null)
     return only !== null ? all.filter((_, i) => String(i) === only || all[i].label === only) : all
   }, [type, only])
   const objs = useMemo(

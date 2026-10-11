@@ -602,7 +602,8 @@ input[type='range']:active::-webkit-slider-thumb { transform: scale(1.2); }
   box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
 }
 
-.viewport-wrap { position: absolute; inset: 0; }
+/* Own stacking context: labels and toolbars drawn in the 3D view stay under the side panels. */
+.viewport-wrap { position: absolute; inset: 0; z-index: 0; }
 
 /* ---------- catalog ---------- */
 .catalog { padding-top: 8px; }
@@ -848,3 +849,76 @@ input[type='range']:focus-visible::-webkit-slider-thumb { box-shadow: 0 0 0 4px 
 .align-grid .preset:disabled { opacity: 0.45; cursor: default; }
 .param-mixed { border-left: 3px solid var(--warn); padding-left: 8px; margin-left: -11px; }
 .mixed-tag { display: block; font-size: 10px; color: var(--warn); font-weight: 700; margin-bottom: 2px; }
+
+/* ---------- number typed past the slider range (docs/EDITING-EXTRAS.md) ---------- */
+.num.num-outside { border-color: var(--warn); background: #fff8ea; }
+.num .num-flag { margin-left: 6px; padding: 1px 6px; border-radius: 999px; background: var(--warn); color: #fff; font-size: 9px; font-weight: 900; white-space: nowrap; }
+
+/* ---------- position fields for several items ---------- */
+.xyz label.xyz-mixed { border-style: dashed; background: var(--panel-solid); }
+.xyz input::placeholder { color: var(--ink-3); font-weight: 500; font-size: 11px; }
+
+/* ---------- delete button with "also what stands on it" ---------- */
+.del-wrap { position: relative; display: inline-flex; align-items: center; }
+.del-wrap .del-more { width: 18px; min-width: 18px; padding: 0; margin-left: -4px; }
+.del-wrap .del-more svg { width: 13px; height: 13px; }
+.item-toolbar .del-wrap .del-more { width: 18px; }
+.del-menu {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  min-width: 250px;
+  padding: 6px;
+  z-index: 40;
+  animation: pop 0.2s cubic-bezier(0.2, 0.9, 0.3, 1.25);
+  transform-origin: top right;
+}
+.del-wrap.labelled .del-menu { top: auto; bottom: calc(100% + 6px); transform-origin: bottom right; }
+.del-menu button,
+.item-toolbar .del-menu button {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  height: auto;
+  border: none;
+  background: transparent;
+  padding: 8px 10px;
+  border-radius: 10px;
+  text-align: left;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--ink);
+  place-items: initial;
+}
+.del-menu button span { flex: 1; }
+.del-menu button small { display: block; font-size: 10px; font-weight: 500; color: var(--ink-3); }
+.del-menu button kbd { font-size: 10px; color: var(--ink-3); font-family: inherit; white-space: nowrap; }
+.del-menu button:hover:not(:disabled) { background: var(--err-soft); color: var(--err); }
+.del-menu button:disabled { opacity: 0.5; cursor: default; }
+
+/* ---------- help dialog ---------- */
+.help-grid { columns: 2; column-gap: 28px; }
+.help-group { break-inside: avoid; margin: 0 0 18px; }
+.help-group h3 { margin: 0 0 6px; font-size: 13px; font-weight: 900; letter-spacing: 0.06em; color: var(--ink-2); }
+.help-group dl { margin: 0; }
+.help-row { display: flex; align-items: baseline; gap: 12px; padding: 5px 0; border-bottom: 1px solid var(--line); }
+.help-row dt { flex: none; width: 46%; display: flex; flex-wrap: wrap; align-items: center; gap: 3px; }
+.help-row dt i { font-style: normal; color: var(--ink-3); font-size: 10px; margin-right: 3px; }
+.help-row dd { margin: 0; font-size: 12.5px; color: var(--ink); line-height: 1.5; }
+.help-row kbd {
+  display: inline-block;
+  padding: 1px 7px;
+  border-radius: 6px;
+  background: #fff;
+  border: 1px solid var(--line-2);
+  border-bottom-width: 2px;
+  font-family: inherit;
+  font-size: 11px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+.help-group .field-hint { margin-top: 6px; }
+@media (max-width: 760px) {
+  .help-grid { columns: 1; }
+}

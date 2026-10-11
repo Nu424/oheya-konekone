@@ -17,6 +17,7 @@ JSONはアプリの「JSON」ダイアログに貼り付けるか、ファイル
   - 例: 北の壁に背をつけて置く家具は rotation 0、西の壁に背をつけるなら 90、東の壁なら 270、南の壁なら 180。
   - 回転しても position（中心）は変わらない。90°や270°のときは、幅と奥行きが入れ替わった形で場所をとる。
 - params を省略すると各アセットのデフォルト値になる。範囲外の値はエラーになる。
+  - カタログの数値の範囲は、ふつうに使う範囲（アプリのスライダーの範囲）。「〜まで指定可」と書いてある長さは、その値まで直接指定できる（大きめの家具を置きたいときだけ使う）。
 
 ## 積み重ね（家具の上に置く）
 - アイテムは、ほかのアイテムの「載せられる面」（天板・棚板など）の上に置ける（デスクの上のモニター、本棚の段に置く小物など）。何段でも重ねられる。
@@ -41,11 +42,11 @@ JSONはアプリの「JSON」ダイアログに貼り付けるか、ファイル
 ベッド。サイズ（シングル〜クイーン）、フレームの種類、脚の高さ、ヘッドボードの有無、寝具の色を変えられる。足元が正面(+Z)、頭側が背面
 - 上には何も載せられない
 - size: "single"(シングル) | "semiDouble"(セミダブル) | "double"(ダブル) | "queen"(クイーン) (既定 "single") — サイズ
-- length: number 1950〜2150mm (既定 1950) — 長さ
+- length: number 1950〜2150mm (既定 1950、1950〜3225 まで指定可) — 長さ
 - frame: "wood"(木製・脚つき) | "steel"(スチール) | "storage"(収納付き) | "low"(ローベッド) | "none"(マットレスのみ) (既定 "wood") — フレーム
-- legHeight: number 0〜400mm (既定 180) — 脚の高さ
+- legHeight: number 0〜400mm (既定 180、0〜600 まで指定可) — 脚の高さ
 - headboard: "none"(なし) | "panel"(パネル) | "shelf"(棚付き) (既定 "panel") — ヘッドボード
-- mattress: number 100〜300mm (既定 200) — マットレス厚
+- mattress: number 100〜300mm (既定 200、100〜450 まで指定可) — マットレス厚
 - frameColor: "#rrggbb" (既定 #b8875a) — フレーム
 - beddingColor: "#rrggbb" (既定 #c9d6df) — 掛け布団
 - sheetColor: "#rrggbb" (既定 #f4f1ec) — シーツ・枕
@@ -55,9 +56,9 @@ JSONはアプリの「JSON」ダイアログに貼り付けるか、ファイル
 ### futon — 敷布団（寝具 / placement: floor）
 床に敷く布団。たたんだ状態にもできる
 - 上には何も載せられない
-- width: number 900〜1500mm (既定 1000) — 幅
-- length: number 1900〜2200mm (既定 2100) — 長さ
-- thickness: number 40〜150mm (既定 80) — 厚み
+- width: number 900〜1500mm (既定 1000、900〜2250 まで指定可) — 幅
+- length: number 1900〜2200mm (既定 2100、1900〜3300 まで指定可) — 長さ
+- thickness: number 40〜150mm (既定 80、40〜225 まで指定可) — 厚み
 - folded: boolean (既定 false) — 三つ折りにたたむ
 - color: "#rrggbb" (既定 #f1ede6) — 布団の色
 - coverColor: "#rrggbb" (既定 #c9d6df) — 掛け布団
@@ -65,9 +66,9 @@ JSONはアプリの「JSON」ダイアログに貼り付けるか、ファイル
 ### sofa — ソファ（くつろぎ / placement: floor）
 ソファ。幅で1〜3人掛けを表現。ひじ掛けや脚の形、布の色を変えられる。座る側が正面
 - 上には何も載せられない
-- width: number 700〜2400mm (既定 1600) — 幅
-- depth: number 650〜1000mm (既定 800) — 奥行き
-- seatHeight: number 250〜480mm (既定 400) — 座面の高さ
+- width: number 700〜2400mm (既定 1600、700〜3600 まで指定可) — 幅
+- depth: number 650〜1000mm (既定 800、650〜1500 まで指定可) — 奥行き
+- seatHeight: number 250〜480mm (既定 400、250〜720 まで指定可) — 座面の高さ
 - arms: "square"(角型) | "round"(丸型) | "thin"(細め) | "none"(なし) (既定 "square") — ひじ掛け
 - legs: "wood"(木の脚) | "metal"(金属の脚) | "none"(脚なし) (既定 "wood") — 脚
 - fabric: "#rrggbb" (既定 #b9b0a3) — 布の色
@@ -79,7 +80,7 @@ JSONはアプリの「JSON」ダイアログに貼り付けるか、ファイル
 ### floorChair — 座椅子（くつろぎ / placement: floor）
 床に置く座椅子。背もたれの角度を変えられる
 - 上には何も載せられない
-- width: number 450〜700mm (既定 550) — 幅
+- width: number 450〜700mm (既定 550、450〜1050 まで指定可) — 幅
 - recline: number 95〜160° (既定 110) — 背もたれの角度
 - arms: boolean (既定 false) — ひじ掛け
 - fabric: "#rrggbb" (既定 #4d4f53) — 布の色
@@ -87,24 +88,24 @@ JSONはアプリの「JSON」ダイアログに貼り付けるか、ファイル
 ### beanbag — ビーズクッション（くつろぎ / placement: floor）
 体が沈み込む大きなビーズクッション
 - 上には何も載せられない
-- size: number 500〜1100mm (既定 750) — 直径
-- height: number 300〜700mm (既定 450) — 高さ
+- size: number 500〜1100mm (既定 750、500〜1650 まで指定可) — 直径
+- height: number 300〜700mm (既定 450、300〜1050 まで指定可) — 高さ
 - color: "#rrggbb" (既定 #d8a48f) — 布の色
 
 ### cushion — クッション（雑貨 / placement: floor）
 床やソファに置くクッション・座布団
 - 上には何も載せられない
 - kind: "square"(四角クッション) | "zabuton"(座布団) | "round"(丸クッション) (既定 "zabuton") — 種類
-- size: number 350〜650mm (既定 550) — 大きさ
+- size: number 350〜650mm (既定 550、350〜975 まで指定可) — 大きさ
 - color: "#rrggbb" (既定 #e8c76a) — 色
 
 ### lowTable — ローテーブル（テーブル / placement: floor）
 床に座って使う低いテーブル。四角・丸・楕円
 - 載せられる面（既定の寸法のとき）: 上面 高さ 360（906×506）
 - shape: "rect"(四角) | "round"(丸) | "oval"(楕円) (既定 "rect") — 天板の形
-- width: number 500〜1400mm (既定 900) — 幅
-- depth: number 400〜900mm (既定 500) — 奥行き
-- height: number 280〜500mm (既定 360) — 高さ
+- width: number 500〜1400mm (既定 900、500〜2100 まで指定可) — 幅
+- depth: number 400〜900mm (既定 500、400〜1350 まで指定可) — 奥行き
+- height: number 280〜500mm (既定 360、280〜750 まで指定可) — 高さ
 - legs: "wood"(木の脚) | "hairpin"(ヘアピン) | "folding"(折りたたみ) | "box"(箱型) (既定 "wood") — 脚
 - shelf: boolean (既定 false) — 下段の棚
 - topColor: "#rrggbb" (既定 #d2ad7c) — 天板
@@ -114,8 +115,8 @@ JSONはアプリの「JSON」ダイアログに貼り付けるか、ファイル
 ### kotatsu — こたつ（テーブル / placement: floor）
 こたつ布団付きのこたつ。布団なし（夏モード）にもできる
 - 載せられる面（既定の寸法のとき）: 天板 高さ 395（840×640）
-- width: number 600〜1200mm (既定 800) — 幅
-- depth: number 600〜900mm (既定 600) — 奥行き
+- width: number 600〜1200mm (既定 800、600〜1800 まで指定可) — 幅
+- depth: number 600〜900mm (既定 600、600〜1350 まで指定可) — 奥行き
 - futon: boolean (既定 true) — こたつ布団
 - futonColor: "#rrggbb" (既定 #9a7b6a) — 布団の色
 - topColor: "#rrggbb" (既定 #8f5f3d) — 天板
@@ -124,9 +125,9 @@ JSONはアプリの「JSON」ダイアログに貼り付けるか、ファイル
 椅子で使うテーブル。カフェテーブルからダイニングまで
 - 載せられる面（既定の寸法のとき）: 上面 高さ 720（1106×706）
 - shape: "rect"(四角) | "round"(丸) (既定 "rect") — 天板の形
-- width: number 600〜1600mm (既定 1100) — 幅
-- depth: number 600〜900mm (既定 700) — 奥行き
-- height: number 650〜1000mm (既定 720) — 高さ
+- width: number 600〜1600mm (既定 1100、600〜2400 まで指定可) — 幅
+- depth: number 600〜900mm (既定 700、600〜1350 まで指定可) — 奥行き
+- height: number 650〜1000mm (既定 720、650〜1500 まで指定可) — 高さ
 - legs: "four"(4本脚) | "center"(1本脚) | "trestle"(コの字) (既定 "four") — 脚
 - topColor: "#rrggbb" (既定 #b8875a) — 天板
 - legColor: "#rrggbb" (既定 #b8875a) — 脚
@@ -136,16 +137,16 @@ JSONはアプリの「JSON」ダイアログに貼り付けるか、ファイル
 ダイニングチェアやスツール。座る人が正面(+Z)を向く
 - 上には何も載せられない
 - style: "wood"(木製) | "cafe"(カフェ（金属）) | "stool"(スツール) (既定 "wood") — スタイル
-- seatHeight: number 380〜750mm (既定 440) — 座面の高さ
+- seatHeight: number 380〜750mm (既定 440、380〜1125 まで指定可) — 座面の高さ
 - frameColor: "#rrggbb" (既定 #b8875a) — フレーム
 - seatColor: "#rrggbb" (既定 #d9d2c5) — 座面
 
 ### desk — デスク（作業 / placement: floor）
 作業机。I字。天板サイズ・脚の形・色を変えられる
 - 載せられる面（既定の寸法のとき）: 上面 高さ 720（1000×600）
-- width: number 600〜1800mm (既定 1000) — 幅
-- depth: number 400〜900mm (既定 600) — 奥行き
-- height: number 600〜1200mm (既定 720) — 高さ
+- width: number 600〜1800mm (既定 1000、600〜2700 まで指定可) — 幅
+- depth: number 400〜900mm (既定 600、400〜1350 まで指定可) — 奥行き
+- height: number 600〜1200mm (既定 720、600〜1800 まで指定可) — 高さ
 - legStyle: "panel"(パネル) | "steel"(スチール角脚) | "round"(丸脚) (既定 "steel") — 脚
 - topColor: "#rrggbb" (既定 #c8a27a) — 天板
 - legColor: "#rrggbb" (既定 #2f2f31) — 脚
@@ -155,7 +156,7 @@ JSONはアプリの「JSON」ダイアログに貼り付けるか、ファイル
 ### officeChair — オフィスチェア（作業 / placement: floor）
 キャスター付きのデスクチェア。座る人が正面(+Z)を向く
 - 上には何も載せられない
-- seatHeight: number 380〜520mm (既定 450) — 座面の高さ
+- seatHeight: number 380〜520mm (既定 450、380〜780 まで指定可) — 座面の高さ
 - back: "mesh"(メッシュ) | "fabric"(ファブリック) | "high"(ハイバック) (既定 "mesh") — 背もたれ
 - arms: boolean (既定 true) — ひじ掛け
 - color: "#rrggbb" (既定 #3a3b3e) — 座面・背もたれ
@@ -181,9 +182,9 @@ PCモニター。デスクの上(y=デスクの高さ)に置く。2枚並べる�
 ### bookshelf — 本棚（収納 / placement: floor）
 オープンシェルフ・本棚。段数・サイズを変えられ、本を並べた状態も表示できる
 - 載せられる面（既定の寸法のとき）: 天板 高さ 1800（800×300） / 1段目 高さ 18（764×294、上の空き 338） / 2段目 高さ 374.4（764×294、上の空き 338） / 3段目 高さ 730.8（764×294、上の空き 338） / 4段目 高さ 1087.2（764×294、上の空き 338） / 5段目 高さ 1443.6（764×294、上の空き 338）
-- width: number 300〜1800mm (既定 800) — 幅
-- height: number 400〜2100mm (既定 1800) — 高さ
-- depth: number 200〜450mm (既定 300) — 奥行き
+- width: number 300〜1800mm (既定 800、300〜2700 まで指定可) — 幅
+- height: number 400〜2100mm (既定 1800、400〜3150 まで指定可) — 高さ
+- depth: number 200〜450mm (既定 300、200〜675 まで指定可) — 奥行き
 - shelves: number 1〜8 (既定 5) — 段数
 - columns: number 1〜4 (既定 1) — 列数
 - back: boolean (既定 true) — 背板
@@ -203,9 +204,9 @@ PCモニター。デスクの上(y=デスクの高さ)に置く。2枚並べる�
 ### chest — チェスト（収納 / placement: floor）
 引き出しの収納家具。段数と列数を変えられる
 - 載せられる面（既定の寸法のとき）: 上面 高さ 900（800×446）
-- width: number 350〜1400mm (既定 800) — 幅
-- height: number 400〜1300mm (既定 900) — 高さ
-- depth: number 300〜550mm (既定 420) — 奥行き
+- width: number 350〜1400mm (既定 800、350〜2100 まで指定可) — 幅
+- height: number 400〜1300mm (既定 900、400〜1950 まで指定可) — 高さ
+- depth: number 300〜550mm (既定 420、300〜825 まで指定可) — 奥行き
 - rows: number 2〜7 (既定 4) — 段数
 - columns: number 1〜3 (既定 1) — 列数
 - handle: "bar"(バー) | "knob"(つまみ) | "groove"(溝) (既定 "bar") — 取っ手
@@ -216,9 +217,9 @@ PCモニター。デスクの上(y=デスクの高さ)に置く。2枚並べる�
 ### hangerRack — ハンガーラック（収納 / placement: floor）
 服をかけるラック。服をかけた状態も表示できる
 - 上には何も載せられない
-- width: number 600〜1600mm (既定 1000) — 幅
-- height: number 1300〜1900mm (既定 1650) — 高さ
-- depth: number 350〜600mm (既定 450) — 奥行き
+- width: number 600〜1600mm (既定 1000、600〜2400 まで指定可) — 幅
+- height: number 1300〜1900mm (既定 1650、1300〜2850 まで指定可) — 高さ
+- depth: number 350〜600mm (既定 450、350〜900 まで指定可) — 奥行き
 - clothes: number 0〜20 (既定 9) — 服の数
 - shelf: boolean (既定 true) — 下段の棚
 - color: "#rrggbb" (既定 #2b2b2b) — フレーム
@@ -226,9 +227,9 @@ PCモニター。デスクの上(y=デスクの高さ)に置く。2枚並べる�
 ### tvStand — テレビ台（AV / placement: floor）
 テレビを置く低い台。テレビ（tv）を上に載せて使う
 - 載せられる面（既定の寸法のとき）: 上面 高さ 400（1200×400）
-- width: number 600〜2000mm (既定 1200) — 幅
-- height: number 250〜600mm (既定 400) — 高さ
-- depth: number 280〜500mm (既定 400) — 奥行き
+- width: number 600〜2000mm (既定 1200、600〜3000 まで指定可) — 幅
+- height: number 250〜600mm (既定 400、250〜900 まで指定可) — 高さ
+- depth: number 280〜500mm (既定 400、280〜750 まで指定可) — 奥行き
 - style: "open"(オープン) | "drawers"(引き出し) | "doors"(扉付き) (既定 "open") — スタイル
 - legs: boolean (既定 true) — 脚付き
 - color: "#rrggbb" (既定 #8f5f3d) — 本体
@@ -257,14 +258,14 @@ PCモニター。デスクの上(y=デスクの高さ)に置く。2枚並べる�
 
 ### aircon — エアコン（家電 / placement: wall / 既定の高さ y=1950）
 壁掛けエアコン。壁に背面をつけ、position yは本体の下端（通常1900〜2000）
-- width: number 700〜950mm (既定 800) — 幅
+- width: number 700〜950mm (既定 800、700〜1425 まで指定可) — 幅
 - color: "#rrggbb" (既定 #f6f5f2) — 色
 
 ### miniKitchen — ミニキッチン（キッチン / placement: floor）
 1K/ワンルームによくある備え付けキッチン。シンク・コンロ・吊り戸棚。背面を壁につけて置く（locked推奨）
 - 載せられる面（既定の寸法のとき）: カウンター 高さ 850（1500×550、上の空き 690）
-- width: number 900〜2400mm (既定 1500) — 幅
-- depth: number 450〜650mm (既定 550) — 奥行き
+- width: number 900〜2400mm (既定 1500、900〜3600 まで指定可) — 幅
+- depth: number 450〜650mm (既定 550、450〜975 まで指定可) — 奥行き
 - stove: "ih1"(IH 1口) | "ih2"(IH 2口) | "gas2"(ガス 2口) | "none"(なし) (既定 "ih1") — コンロ
 - sinkSide: "left"(左) | "right"(右) (既定 "left") — シンクの位置
 - upper: boolean (既定 true) — 吊り戸棚
@@ -275,9 +276,9 @@ PCモニター。デスクの上(y=デスクの高さ)に置く。2枚並べる�
 ### rangeRack — レンジ台（キッチン / placement: floor）
 電子レンジや炊飯器を載せるキッチンラック
 - 載せられる面（既定の寸法のとき）: 天板 高さ 1200（600×420）
-- width: number 450〜900mm (既定 600) — 幅
-- height: number 800〜1800mm (既定 1200) — 高さ
-- depth: number 350〜500mm (既定 420) — 奥行き
+- width: number 450〜900mm (既定 600、450〜1350 まで指定可) — 幅
+- height: number 800〜1800mm (既定 1200、800〜2700 まで指定可) — 高さ
+- depth: number 350〜500mm (既定 420、350〜750 まで指定可) — 奥行き
 - microwave: boolean (既定 true) — 電子レンジ
 - riceCooker: boolean (既定 true) — 炊飯器
 - kettle: boolean (既定 true) — 電気ケトル
@@ -287,8 +288,8 @@ PCモニター。デスクの上(y=デスクの高さ)に置く。2枚並べる�
 床に敷くラグ。家具の下に敷いてよい（重なってもOK）
 - 上には何も載せられない
 - shape: "rect"(四角) | "round"(丸) (既定 "rect") — 形
-- width: number 600〜3000mm (既定 1400) — 幅
-- depth: number 600〜3000mm (既定 2000) — 奥行き
+- width: number 600〜3000mm (既定 1400、600〜4500 まで指定可) — 幅
+- depth: number 600〜3000mm (既定 2000、600〜4500 まで指定可) — 奥行き
 - pattern: "plain"(無地) | "border"(ボーダー枠) | "stripe"(ストライプ) | "check"(チェック) | "kilim"(キリム風) (既定 "border") — 柄
 - pile: "flat"(薄手) | "shaggy"(シャギー) (既定 "flat") — 毛足
 - color: "#rrggbb" (既定 #e7dfd2) — ベース色
@@ -296,8 +297,8 @@ PCモニター。デスクの上(y=デスクの高さ)に置く。2枚並べる�
 
 ### curtain — カーテン（雑貨 / placement: wall / 既定の高さ y=15）
 窓にかけるカーテンとレール。背面を窓のある壁につけ、position yはカーテンの下端（掃き出し窓なら10〜20、腰窓なら窓の下端-150くらい）
-- width: number 800〜3600mm (既定 1900) — 幅（レール）
-- height: number 800〜2600mm (既定 2100) — 丈
+- width: number 800〜3600mm (既定 1900、800〜5400 まで指定可) — 幅（レール）
+- height: number 800〜2600mm (既定 2100、800〜3900 まで指定可) — 丈
 - open: number 0〜100% (既定 70) — 開き具合
 - lace: boolean (既定 true) — レースカーテン
 - color: "#rrggbb" (既定 #9fb5a5) — ドレープの色
@@ -307,7 +308,7 @@ PCモニター。デスクの上(y=デスクの高さ)に置く。2枚並べる�
 鉢植えの観葉植物。種類と高さを変えられる
 - 上には何も載せられない
 - kind: "monstera"(モンステラ) | "umbellata"(ウンベラータ) | "sansevieria"(サンスベリア) | "olive"(オリーブ) (既定 "monstera") — 種類
-- height: number 300〜1900mm (既定 900) — 高さ
+- height: number 300〜1900mm (既定 900、300〜2850 まで指定可) — 高さ
 - potColor: "#rrggbb" (既定 #e9e4dc) — 鉢の色
 - potStyle: "round"(丸) | "cylinder"(円筒) | "basket"(バスケット) (既定 "round") — 鉢
 - プリセット例: 小さめ {"height":450,"kind":"sansevieria","potColor":"#c87f5c"} / 大きめ {"height":1700,"kind":"umbellata","potStyle":"basket"}
@@ -315,8 +316,8 @@ PCモニター。デスクの上(y=デスクの高さ)に置く。2枚並べる�
 ### mirror — 姿見（雑貨 / placement: floor）
 全身が映る鏡。壁に立てかけるかスタンド式
 - 上には何も載せられない
-- width: number 300〜900mm (既定 450) — 幅
-- height: number 1000〜1900mm (既定 1500) — 高さ
+- width: number 300〜900mm (既定 450、300〜1350 まで指定可) — 幅
+- height: number 1000〜1900mm (既定 1500、1000〜2850 まで指定可) — 高さ
 - style: "lean"(立てかけ) | "stand"(スタンド) (既定 "lean") — 置き方
 - frame: "thin"(細い) | "wide"(太い) | "none"(なし) (既定 "thin") — フレーム
 - frameColor: "#rrggbb" (既定 #b8875a) — フレームの色
@@ -325,20 +326,20 @@ PCモニター。デスクの上(y=デスクの高さ)に置く。2枚並べる�
 ゴミ箱
 - 上には何も載せられない
 - shape: "round"(丸) | "square"(角) | "slim"(スリム（分別）) (既定 "round") — 形
-- height: number 250〜700mm (既定 380) — 高さ
+- height: number 250〜700mm (既定 380、250〜1050 まで指定可) — 高さ
 - lid: boolean (既定 true) — フタ
 - color: "#rrggbb" (既定 #f2efe9) — 色
 
 ### pendantLight — ペンダントライト（照明 / placement: ceiling）
 天井から吊るす照明。position yは無視され天井から吊るされる。x,zで位置を決める
 - style: "dome"(ドーム) | "globe"(ガラス球) | "cone"(コーン) | "paper"(提灯（和紙）) (既定 "dome") — シェード
-- diameter: number 200〜600mm (既定 350) — 直径
-- drop: number 300〜1400mm (既定 800) — 吊り下げの長さ
+- diameter: number 200〜600mm (既定 350、200〜900 まで指定可) — 直径
+- drop: number 300〜1400mm (既定 800、300〜2100 まで指定可) — 吊り下げの長さ
 - color: "#rrggbb" (既定 #f2efe9) — シェードの色
 
 ### ceilingLight — シーリングライト（照明 / placement: ceiling）
 天井に直付けする丸い照明。日本の賃貸の定番
-- diameter: number 400〜900mm (既定 600) — 直径
+- diameter: number 400〜900mm (既定 600、400〜1350 まで指定可) — 直径
 - frame: "none"(なし) | "wood"(木枠) (既定 "none") — 縁
 - frameColor: "#rrggbb" (既定 #b8875a) — 縁の色
 
@@ -346,7 +347,7 @@ PCモニター。デスクの上(y=デスクの高さ)に置く。2枚並べる�
 床置きの照明。スタンド・アーチ・三脚
 - 上には何も載せられない
 - style: "stick"(スタンド) | "arc"(アーチ) | "tripod"(三脚) (既定 "stick") — 形
-- height: number 1000〜2000mm (既定 1500) — 高さ
+- height: number 1000〜2000mm (既定 1500、1000〜3000 まで指定可) — 高さ
 - shadeColor: "#rrggbb" (既定 #f2ebe0) — シェード
 - frameColor: "#rrggbb" (既定 #2b2b2b) — フレーム
 

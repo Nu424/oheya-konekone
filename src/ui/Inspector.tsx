@@ -1,30 +1,123 @@
+import { useEffect, useState } from 'react'
 import { getAsset } from '../assets/registry'
-import type { ParamSpec } from '../assets/params'
+import { numberLimits, type ParamSpec } from '../assets/params'
 import { CATEGORY_LABELS, type AssetDef } from '../assets/types'
 import type { AlignMode } from '../editor/commands'
+import { parseNumberEntry, sharedValue } from '../editor/fields'
 import type { Item } from '../model/schema'
-import { collisions } from '../editor/placement'
+import { collisions, stack } from '../editor/placement'
 import { itemCommands } from '../three/EditLayer'
 import { useThumbnail } from '../three/thumbnails'
 import { useDoc, useUi } from '../store/useStore'
 import { ColorSwatches, Field, NumberSlider, Segmented } from './controls'
+import { DeleteButton } from './DeleteButton'
 import { Icon } from './icons'
+
+const norm = (deg: number) => ((Math.round(deg) % 360) + 360) % 360
+
+/** One coordinate of one or several items: empty when they differ, and typing sets them all. */
+function AxisInput({ label, values, step, onCommit }: { label: string; values: number[]; step: number; onCommit: (value: number, relative: boolean) => void }) {
+  const shared = sharedValue(values)
+  const shown = shared === null ? '' : String(Math.round(shared * 10) / 10)
+  const [text, setText] = useState(shown)
+  useEffect(() => setText(shown), [shown])
+  const commit = () => {
+    const e = text === shown ? null : parseNumberEntry(text)
+    setText(shown)
+    if (e) onCommit(e.value, e.relative)
+  }
+  return (
+    <label className={shared === null ? 'xyz-mixed' : ''}>
+      <span>{label}</span>
+      <input
+        inputMode="decimal"
+        value={text}
+        placeholder={shared === null ? 'ばらばら' : ''}
+        aria-label={`${label} 座標`}
+        onChange={(e) => setText(e.target.value)}
+        // Typing replaces the value, as in a spreadsheet cell.
+        onFocus={(e) => e.target.select()}
+        onBlur={commit}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter') (e.target as HTMLInputElement).blur()
+          if (e.key === 'Escape') setText(shown)
+          if (e.key === 'ArrowUp' || e.key === 'ArrowDown') {
+            e.preventDefault()
+            onCommit((e.key === 'ArrowUp' ? 1 : -1) * step * (e.shiftKey ? 10 : 1), true)
+          }
+        }}
+      />
+    </label>
+  )
+}
+
+/**
+ * Position and facing of the selection (docs/EDITING-EXTRAS.md). With several items each axis is
+ * compared on its own: a shared value is shown, a differing one is left empty, and a typed value
+ * goes to every item. Items standing on another selected item follow their support instead.
+ */
+function PoseFields({ items }: { items: Item[] }) {
+  const layout = useDoc.getState().layout
+  const ids = items.map((i) => i.id)
+  const rootIds = new Set(stack.roots(layout, ids))
+  const roots = items.filter((i) => rootIds.has(i.id))
+  const many = items.length > 1
+  const facing = sharedValue(roots.map((i) => norm(i.rotation)))
+  return (
+    <div className="section">
+      <div className="section-title">位置・向き{many ? '（まとめて変える）' : ''}</div>
+      <div className="xyz">
+        {(['X', 'Y', 'Z'] as const).map((label, axis) => (
+          <AxisInput
+            key={label}
+            label={label}
+            values={roots.map((i) => i.position[axis])}
+            step={10}
+            onCommit={(v, relative) => itemCommands.setAxis(ids, axis as 0 | 1 | 2, v, relative)}
+          />
+        ))}
+      </div>
+      <Field label="向き">
+        <Segmented
+          value={facing === null ? '' : String(facing)}
+          options={[
+            { value: '0', label: '南', title: '正面が南(手前)' },
+            { value: '90', label: '東' },
+            { value: '180', label: '北' },
+            { value: '270', label: '西' },
+          ]}
+          onChange={(v) => itemCommands.faceTo(ids, Number(v))}
+        />
+      </Field>
+      <div className="field-hint">
+        {many
+          ? '値がそろってる欄だけ数字が出るよ。「ばらばら」の欄に数字を入れると全部その値にそろう（同じ高さにする、一列に並べる）。「+50」なら、それぞれ今の位置から50mmずらす。向きは、それぞれがその場で向きを変えるよ。'
+          : 'Y は床からの高さ（家具の上にドラッグすると勝手に合うよ）。「+50」と入れると今の位置から50mmずらせる。R で90°、Shift+R で15°回転。矢印キーで10mm、Shift+矢印で100mm動く。上に載っているものも一緒に動くよ。'}
+        {roots.length < items.length && ' 選んだ家具の上に載ってるものは、下の家具と一緒に動くよ。'}
+      </div>
+    </div>
+  )
+}
 
 function ParamControl({ k, spec, value, onChange }: { k: string; spec: ParamSpec; value: unknown; onChange: (v: unknown) => void }) {
   switch (spec.kind) {
-    case 'number':
+    case 'number': {
+      const lim = numberLimits(spec)
       return (
         <NumberSlider
           label={spec.label}
           value={Number(value)}
           min={spec.min}
           max={spec.max}
+          hardMin={lim.min}
+          hardMax={lim.max}
           step={spec.step}
           unit={spec.unit ?? ''}
           hint={spec.hint}
           onChange={onChange}
         />
       )
+    }
     case 'color':
       return (
         <div className="field">
@@ -155,6 +248,7 @@ function MultiInspector({ items }: { items: Item[] }) {
             </button>
           </div>
         </div>
+        <PoseFields items={items} />
         {sameType && asset ? (
           <>
             {asset.presets && asset.presets.length > 0 && (
@@ -196,9 +290,7 @@ function MultiInspector({ items }: { items: Item[] }) {
             <Icon.lock /> {allLocked ? 'ロック中' : 'ロック'}
           </button>
           <span className="spacer" />
-          <button className="icon-btn danger" onClick={() => itemCommands.remove(ids)}>
-            <Icon.trash /> 削除
-          </button>
+          <DeleteButton ids={ids} label="削除" />
         </div>
       </div>
     </aside>
@@ -258,39 +350,7 @@ export function Inspector() {
             ))}
           </div>
         ))}
-        <div className="section">
-          <div className="section-title">位置・向き</div>
-          <div className="xyz">
-            {(['x', 'y', 'z'] as const).map((axis, i) => (
-              <label key={axis}>
-                <span>{axis.toUpperCase()}</span>
-                <input
-                  type="number"
-                  step={10}
-                  value={item.position[i]}
-                  onChange={(e) => {
-                    const p = [...item.position] as [number, number, number]
-                    p[i] = Number(e.target.value) || 0
-                    itemCommands.move(item.id, { position: p })
-                  }}
-                />
-              </label>
-            ))}
-          </div>
-          <Field label="向き">
-            <Segmented
-              value={String(((Math.round(item.rotation) % 360) + 360) % 360)}
-              options={[
-                { value: '0', label: '南', title: '正面が南(手前)' },
-                { value: '90', label: '東' },
-                { value: '180', label: '北' },
-                { value: '270', label: '西' },
-              ]}
-              onChange={(v) => itemCommands.move(item.id, { rotation: Number(v) })}
-            />
-          </Field>
-          <div className="field-hint">Y は床からの高さ（家具の上にドラッグすると勝手に合うよ）。R で90°、Shift+R で15°回転。矢印キーで10mm、Shift+矢印で100mm動く。上に載っているものも一緒に動くよ。</div>
-        </div>
+        <PoseFields items={[item]} />
         <div className="insp-actions">
           <button className="icon-btn" onClick={() => itemCommands.duplicate(item.id)}>
             <Icon.copy /> 複製
@@ -299,9 +359,7 @@ export function Inspector() {
             <Icon.lock /> {item.locked ? 'ロック中' : 'ロック'}
           </button>
           <span className="spacer" />
-          <button className="icon-btn danger" onClick={() => itemCommands.remove(item.id)}>
-            <Icon.trash /> 削除
-          </button>
+          <DeleteButton ids={item.id} label="削除" />
         </div>
       </div>
     </aside>
