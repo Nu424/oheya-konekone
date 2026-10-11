@@ -28,6 +28,7 @@ npm run typecheck    # tsc -b
 npm run build        # dist/
 npm run ai-guide     # docs/AI_GUIDE.md を再生成（アセットやルールを変えたら必ず）
 node scripts/shot.mjs '<path?query>' shots/x.png [w] [h] [waitMs] [actions...]   # スクショ（dev サーバー起動中に）
+node scripts/sheet.mjs shots/x.png 4 'type=desk&only=1' 'type=shelf&only=3&az=-30' ...   # ギャラリーの寄りを並べた一覧
 npx tsx scripts/check-layout.ts [id | file.json]   # 重なり・浮き・何に載っているかを一覧（ブラウザ不要）
 ```
 
@@ -39,7 +40,7 @@ npx tsx scripts/check-layout.ts [id | file.json]   # 重なり・浮き・何に
 | パス | 役割 |
 |---|---|
 | `src/model/` | レイアウト JSON の zod スキーマ（`schema.ts`）、検証と入出力（`io.ts`）、テンプレート |
-| `src/assets/` | パラメトリック家具。`params.ts`（パラメータ DSL）、`kit.ts`（モデリング道具）、`items/*.ts`（各アセット）、`registry.ts`（一覧） |
+| `src/assets/` | パラメトリック家具。`params.ts`（パラメータ DSL）、`kit.ts`（形の道具：`panel`・`merged` など）、`parts.ts`（取っ手・扉・引き出し・キャスターなどの部品）、`storageKit.ts`（棚・収納の組み立て）、`items/*.ts`（各アセット）、`registry.ts`（一覧） |
 | `src/three/` | 描画。部屋（`RoomMesh`）、照明（`Lighting`）、ポストエフェクト、テクスチャ・マテリアル、編集レイヤー、動線オーバーレイ、撮影モード、サムネイル |
 | `src/editor/` | 描画に依存しない編集ロジック。2D の当たり判定と吸い付き（`space.ts`）、積み重ね（`stacking.ts`）、配置（`placement.ts`）、編集操作（`commands.ts` の `itemCommands`）、コピペ（`clipboard.ts`）、動線解析（`flow.ts`） |
 | `src/store/` | Zustand。`useDoc`（レイアウト本体、zundo で undo）と `useUi`（選択 `string[]`・視点・時間帯など） |
@@ -51,6 +52,7 @@ npx tsx scripts/check-layout.ts [id | file.json]   # 重なり・浮き・何に
 
 - **単位と座標**：JSON もアセットも mm。原点は北西の床の角、+X 東・+Z 南・+Y 上。`rotation` 0 で正面が南(+Z)、90 で東。three.js のシーンは m（アセットのルートを 0.001 倍）。
 - **アセットの規約**：`build(params)` は mm で組み、底面中心が原点、正面が +Z。マテリアルは `mat(kind, color)` で共有キャッシュから取る（直接 `new` しない）。新しいアセットは `registry.ts` の `ALL` に足し、`/?gallery&type=<type>` で最小・最大・各プリセットを目で確認する。長さのパラメータは直接入力ならスライダーの上限の 1.5 倍まで通る（`numberLimits`）ので、`/?gallery&limits=max&types=<type>` でもその端の形を見る。崩れるなら `hardMax` を付ける。
+- **形は実物の作りで**：木や金属の部品は `panel`（角 1〜5mm）、扉と引き出しは `parts.ts` の部品（すき間と継ぎ目つき）を使う。大きく丸めた `rbox` はクッション・布団・家電の外装だけ。棚・収納は `storageKit` を通す。中に入れる物はパラメータにせず、別のアセットとして積み重ねる。
 - **上に物を置ける面はアセットが宣言する**（`surfaces`）。省略すると本体の上面が面になる。上に何も置かない家具（ベッド・椅子・ラグなど）は `surfaces: () => []`。段のある家具は段ごとに返し、**返す順番の意味をパラメータで変えない**（0 番は天板）。見た目より小さい本体があるときは `body` を書く。
 - **マテリアル配列を持つメッシュを作らない**（撮影モードのパストレーサーで以降の全マテリアルがずれる）。色違いの面は別メッシュにする。
 - **ブラウザ外でも組み立てられるように**：テクスチャ生成は `textures.ts` の `HEADLESS` ガードを通す。`document` を直接触る処理をアセットに書かない（テストと `scripts/` が node で寸法を測っている）。

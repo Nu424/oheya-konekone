@@ -13,7 +13,7 @@ npm test           # JSONスキーマ・検証まわりのテスト
 npm run build      # dist/ に静的ファイルを出力
 ```
 
-- `/?template=one-8` … テンプレートを指定して開く（`1k-6` / `one-8` / `compact-45` / `wide-7` / `work-7`）
+- `/?template=one-8` … テンプレートを指定して開く（`1k-6` / `one-8` / `compact-45` / `wide-7` / `work-7` / `office-10`）
 - `/?gallery` … 全アセットの一覧（目視チェック用）
 - `/?gallery&type=desk` … 1つのアセットを最小・デフォルト・最大・プリセット・形のバリエーションで並べる
 
