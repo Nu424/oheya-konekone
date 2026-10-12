@@ -1,12 +1,13 @@
 import { EffectComposer, N8AO, SMAA, ToneMapping, Vignette } from '@react-three/postprocessing'
 import { ToneMappingMode } from 'postprocessing'
+import { registerComposer } from './perf'
 
 export type Quality = 'low' | 'medium' | 'high'
 
 /** Post-processing chain: ambient occlusion → AgX tone mapping → subtle vignette → SMAA. */
 export function Effects({ quality = 'high' }: { quality?: Quality }) {
   return (
-    <EffectComposer multisampling={0} enableNormalPass={false}>
+    <EffectComposer ref={registerComposer} multisampling={0} enableNormalPass={false}>
       <N8AO
         aoRadius={1.0}
         distanceFalloff={0.8}

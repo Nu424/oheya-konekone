@@ -61,10 +61,22 @@ export const useCameraMotion = create<{ moving: boolean }>()(() => ({ moving: fa
 const SETTLE_MS = 250
 
 /**
- * Lighter frames while the camera moves: on high-DPI screens the pixel ratio drops to 1 (a quarter of
- * the pixels at 2×). Once the camera rests, one full-quality frame is drawn, so a still view looks
- * exactly as before. (Switching N8AO to half resolution instead was tried: it rebuilds its passes and
- * stalls for a long frame at every switch, so screens already at 1× keep full quality.)
+ * Pixel budget while the camera moves. Frame cost is mostly per pixel (AO, SMAA, lighting), so a big
+ * canvas is drawn smaller while it moves: about a 1920×940 canvas worth of pixels.
+ */
+const MOTION_PIXELS = 1.8e6
+
+/** Pixel ratio to use while moving: at most 1×, lower when the canvas is bigger than the budget. */
+export function motionDpr(cssWidth: number, cssHeight: number) {
+  const fit = Math.sqrt(MOTION_PIXELS / Math.max(1, cssWidth * cssHeight))
+  return Math.max(0.5, Math.min(1, Math.floor(fit * 20) / 20))
+}
+
+/**
+ * Lighter frames while the camera moves: the pixel ratio drops to `motionDpr` (1× on high-DPI laptops,
+ * below 1× on big canvases such as a maximised window on a WQHD / 4K monitor). Once the camera rests,
+ * one full-quality frame is drawn, so a still view looks exactly as before. (Switching N8AO to half
+ * resolution instead was tried: it rebuilds its passes and stalls for a long frame at every switch.)
  *
  * "Rests" means the on-demand frame loop went idle (nothing invalidated it) and stayed so for SETTLE_MS.
  * A wall-clock timeout alone would flip quality back and forth on every frame on slow machines,
@@ -74,6 +86,7 @@ export function MotionQuality() {
   const camera = useThree((s) => s.camera)
   const setDpr = useThree((s) => s.setDpr)
   const invalidate = useThree((s) => s.invalidate)
+  const get = useThree((s) => s.get)
   const lastCam = useRef(new THREE.Matrix4())
   const lastProj = useRef(new THREE.Matrix4())
   const moves = useRef(0)
@@ -96,7 +109,10 @@ export function MotionQuality() {
       }, SETTLE_MS)
     })
     const unsub = useCameraMotion.subscribe((s, p) => {
-      if (s.moving && !p.moving && base() > 1) setDpr(1)
+      if (!s.moving || p.moving) return
+      const { size } = get()
+      const d = motionDpr(size.width, size.height)
+      if (d < base() - 0.01) setDpr(d)
     })
     return () => {
       offTail()
@@ -104,7 +120,7 @@ export function MotionQuality() {
       clearTimeout(timer)
       if (useCameraMotion.getState().moving) rest()
     }
-  }, [setDpr, invalidate])
+  }, [setDpr, invalidate, get])
 
   useFrame(() => {
     camera.updateMatrixWorld()
