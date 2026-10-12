@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { OPT, PERF_PANEL, usePerf } from '../three/perf'
-import { useUi } from '../store/useStore'
+import { beginGesture, endGesture, useDoc, useUi } from '../store/useStore'
+import { itemCommands } from '../editor/commands'
 import { Modal } from './dialogs'
 import { Icon } from './icons'
 
@@ -11,6 +12,9 @@ function optUrl(on: boolean) {
   else q.set('opt', 'none')
   return `${location.pathname}?${q.toString().replace(/=(?=&|$)/g, '')}`
 }
+
+// `?perf` only: lets scripted benchmarks drive edits in production builds (no /src imports there).
+if (PERF_PANEL) (window as unknown as Record<string, unknown>).__oheyaPerf = { useDoc, useUi, itemCommands, beginGesture, endGesture }
 
 /** `?perf`: record a few seconds of frames and get a log to compare before / after. */
 export function PerfPanel() {

@@ -69,4 +69,5 @@ npx tsx scripts/check-layout.ts [id | file.json]   # 重なり・浮き・何に
 - 描画は `frameloop="demand"`。`useFrame` で動かし続けるもの（アニメ・キー移動）は自分で `invalidate()` する。
 - ヘッドレス Chromium（SwiftShader）は遅い。スクショの `waitMs` は 3〜6 秒、複数並列で撮ると ready が間に合わない。撮影モードは 1 分で数サンプルしか進まない。
 - 床に半透明で色を重ねると日なたで色が飛ぶ（HDR）。オーバーレイは `MultiplyBlending` で乗算する。
+- 3D の線は `src/three/Line.tsx` を使う（drei の `<Line>` は点が動くたびにシェーダーを作り直して、ドラッグが引っかかる）。
 - CSS のクラス名が衝突しやすい（`.compass` の前例あり）。新しいクラスは用途がわかる接頭辞を付ける。

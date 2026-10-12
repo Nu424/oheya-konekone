@@ -55,8 +55,12 @@ export function ShadowOnDemand() {
   return null
 }
 
-/** True while the camera is moving (orbit, zoom, pan, walk, view transitions). */
-export const useCameraMotion = create<{ moving: boolean }>()(() => ({ moving: false }))
+/**
+ * True while the camera is moving (orbit, zoom, pan, walk, view transitions) or furniture is dragged,
+ * and the pixel ratio to draw with meanwhile (null = the Canvas default). The Viewport passes `dpr` to
+ * the Canvas: calling setDpr directly would be undone whenever the Viewport re-renders (every drag step).
+ */
+export const useCameraMotion = create<{ moving: boolean; dpr: number | null }>()(() => ({ moving: false, dpr: null }))
 
 /** How long the frame loop must stay idle after the camera stops before the full-quality frame is drawn. */
 const SETTLE_MS = 250
@@ -85,7 +89,6 @@ export function motionDpr(cssWidth: number, cssHeight: number) {
  */
 export function MotionQuality() {
   const camera = useThree((s) => s.camera)
-  const setDpr = useThree((s) => s.setDpr)
   const invalidate = useThree((s) => s.invalidate)
   const get = useThree((s) => s.get)
   const lastCam = useRef(new THREE.Matrix4())
@@ -97,8 +100,7 @@ export function MotionQuality() {
     const base = () => Math.min(2, Math.max(1, window.devicePixelRatio || 1))
     let timer: ReturnType<typeof setTimeout> | undefined
     const rest = () => {
-      useCameraMotion.setState({ moving: false })
-      setDpr(base())
+      useCameraMotion.setState({ moving: false, dpr: null })
       invalidate()
     }
     const offTail = addTail(() => {
@@ -113,7 +115,7 @@ export function MotionQuality() {
       if (!s.moving || p.moving) return
       const { size } = get()
       const d = motionDpr(size.width, size.height)
-      if (d < base() - 0.01) setDpr(d)
+      if (d < base() - 0.01) useCameraMotion.setState({ dpr: d })
     })
     return () => {
       offTail()
@@ -121,7 +123,7 @@ export function MotionQuality() {
       clearTimeout(timer)
       if (useCameraMotion.getState().moving) rest()
     }
-  }, [setDpr, invalidate, get])
+  }, [invalidate, get])
 
   useFrame(() => {
     camera.updateMatrixWorld()

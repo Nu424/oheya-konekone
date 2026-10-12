@@ -10,6 +10,10 @@ export function PerfProbe() {
   const get = useThree((s) => s.get)
   const status = usePerf((s) => s.status)
   const mode = usePerf((s) => s.mode)
+  useEffect(() => {
+    const w = window as unknown as { __oheyaPerf?: Record<string, unknown> }
+    if (w.__oheyaPerf) w.__oheyaPerf.three = get
+  }, [get])
   const auto = useRef<{ pos: [number, number, number]; target: [number, number, number] } | null>(null)
 
   useEffect(() => {

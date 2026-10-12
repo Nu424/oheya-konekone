@@ -1,4 +1,5 @@
-import { Html, Line } from '@react-three/drei'
+import { Html } from '@react-three/drei'
+import { Line } from './Line'
 import { useFrame, useThree, type ThreeEvent } from '@react-three/fiber'
 import type CameraControlsImpl from 'camera-controls'
 import { useMemo, useRef } from 'react'
@@ -278,45 +279,83 @@ function GroupFrame({ ids, fps, top, showToolbar }: { ids: string[]; fps: Footpr
   )
 }
 
-function Dim({ a, b, label }: { a: [number, number, number]; b: [number, number, number]; label: string }) {
+const HIDDEN_PTS: [number, number, number][] = [
+  [0, 0, 0],
+  [0, 0, 0],
+]
+
+function Dim({ a, b, label, show }: { a: [number, number, number]; b: [number, number, number]; label: string; show: boolean }) {
   const mid: [number, number, number] = [(a[0] + b[0]) / 2, (a[1] + b[1]) / 2, (a[2] + b[2]) / 2]
   return (
     <>
-      <Line points={[a, b]} color="#3b2f28" lineWidth={1.5} dashed dashSize={0.04} gapSize={0.025} depthTest={false} renderOrder={11} />
-      <Html position={mid} center zIndexRange={[15, 0]} style={{ pointerEvents: 'none' }}>
-        <div className="dim-chip">{label}</div>
-      </Html>
+      <Line visible={show} points={show ? [a, b] : HIDDEN_PTS} color="#3b2f28" lineWidth={1.5} dashed dashSize={0.04} gapSize={0.025} depthTest={false} renderOrder={11} />
+      {show && (
+        <Html position={mid} center zIndexRange={[15, 0]} style={{ pointerEvents: 'none' }}>
+          <div className="dim-chip">{label}</div>
+        </Html>
+      )}
     </>
   )
 }
 
-/** Distances from the dragged item to the edges of the level it is on (table top, shelf or room). */
-function Guides({ f, room }: { f: Footprint2D; room: { width: number; depth: number } }) {
+/**
+ * Distances from the dragged item to the edges of the level it is on (table top, shelf or room), and
+ * the snap lines. The lines stay mounted (hidden) between drags, in fixed slots: when the last
+ * LineMaterial of a kind is disposed, three.js drops its shader, and the next drag (or every drag step,
+ * with keys that change) recompiled it on the main thread.
+ */
+function Guides({ f, room }: { f: Footprint2D | null; room: { width: number; depth: number } }) {
   const b = lastFrame ?? surfaceFrame(null, room)
-  const g = { west: f.minX - b.minX, east: b.maxX - f.maxX, north: f.minZ - b.minZ, south: b.maxZ - f.maxZ }
-  const y = (f.minY + 8) * S
-  const midZ = ((f.minZ + f.maxZ) / 2) * S
-  const midX = ((f.minX + f.maxX) / 2) * S
-  const ext = Math.min(300, Math.max(40, (f.maxX - f.minX + f.maxZ - f.minZ) / 2))
-  const parts = []
-  if (g.west <= g.east) parts.push(<Dim key="x" a={[b.minX * S, y, midZ]} b={[f.minX * S, y, midZ]} label={String(Math.round(g.west))} />)
-  else parts.push(<Dim key="x" a={[f.maxX * S, y, midZ]} b={[b.maxX * S, y, midZ]} label={String(Math.round(g.east))} />)
-  if (g.north <= g.south) parts.push(<Dim key="z" a={[midX, y, b.minZ * S]} b={[midX, y, f.minZ * S]} label={String(Math.round(g.north))} />)
-  else parts.push(<Dim key="z" a={[midX, y, f.maxZ * S]} b={[midX, y, b.maxZ * S]} label={String(Math.round(g.south))} />)
-  for (const s of lastSnap) {
-    const pts: [number, number, number][] =
-      s.axis === 'x'
-        ? [
-            [s.value * S, y, (f.minZ - ext) * S],
-            [s.value * S, y, (f.maxZ + ext) * S],
-          ]
-        : [
-            [(f.minX - ext) * S, y, s.value * S],
-            [(f.maxX + ext) * S, y, s.value * S],
-          ]
-    parts.push(<Line key={`s${s.axis}${s.value}`} points={pts} color={ACCENT} lineWidth={1.5} depthTest={false} renderOrder={11} />)
+  const snaps = f ? lastSnap.slice(0, 2) : []
+  let dims: { a: [number, number, number]; b: [number, number, number]; label: string }[] = []
+  const lines: [number, number, number][][] = []
+  if (f) {
+    const g = { west: f.minX - b.minX, east: b.maxX - f.maxX, north: f.minZ - b.minZ, south: b.maxZ - f.maxZ }
+    const y = (f.minY + 8) * S
+    const midZ = ((f.minZ + f.maxZ) / 2) * S
+    const midX = ((f.minX + f.maxX) / 2) * S
+    const ext = Math.min(300, Math.max(40, (f.maxX - f.minX + f.maxZ - f.minZ) / 2))
+    dims = [
+      g.west <= g.east
+        ? { a: [b.minX * S, y, midZ], b: [f.minX * S, y, midZ], label: String(Math.round(g.west)) }
+        : { a: [f.maxX * S, y, midZ], b: [b.maxX * S, y, midZ], label: String(Math.round(g.east)) },
+      g.north <= g.south
+        ? { a: [midX, y, b.minZ * S], b: [midX, y, f.minZ * S], label: String(Math.round(g.north)) }
+        : { a: [midX, y, f.maxZ * S], b: [midX, y, b.maxZ * S], label: String(Math.round(g.south)) },
+    ]
+    for (const s of snaps)
+      lines.push(
+        s.axis === 'x'
+          ? [
+              [s.value * S, y, (f.minZ - ext) * S],
+              [s.value * S, y, (f.maxZ + ext) * S],
+            ]
+          : [
+              [(f.minX - ext) * S, y, s.value * S],
+              [(f.maxX + ext) * S, y, s.value * S],
+            ],
+      )
   }
-  return <>{parts}</>
+  return (
+    <>
+      {[0, 1].map((i) => (
+        <Dim key={`dim${i}`} show={!!dims[i]} a={dims[i]?.a ?? [0, 0, 0]} b={dims[i]?.b ?? [0, 0, 0]} label={dims[i]?.label ?? ''} />
+      ))}
+      {[0, 1].map((i) => (
+        <Line
+          key={`snap${i}`}
+          visible={!!lines[i]}
+          points={lines[i] ?? HIDDEN_PTS}
+          color={ACCENT}
+          lineWidth={1.5}
+          transparent
+          opacity={0.95}
+          depthTest={false}
+          renderOrder={11}
+        />
+      ))}
+    </>
+  )
 }
 
 function Toolbar({ item, f, top }: { item: Item; f: Footprint2D; top: number }) {
@@ -377,7 +416,7 @@ export function EditLayer({ cutaway }: { cutaway: boolean }) {
       {picked.map((it, i) => (
         <Outline key={`s${it.id}`} f={fps[i]} color={colliding.has(it.id) ? DANGER : ACCENT} width={it === primary ? 2.8 : 1.8} />
       ))}
-      {lead && <Guides f={itemFootprint2D(lead, layout)} room={layout.room} />}
+      <Guides f={lead ? itemFootprint2D(lead, layout) : null} room={layout.room} />
       {picked.length === 1 && !dragging && view !== 'walk' && <Toolbar item={primary} f={fps[0]} top={primary.position[1] + visualBox(primary).max.y} />}
       {picked.length > 1 && (
         <GroupFrame
