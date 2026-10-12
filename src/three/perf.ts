@@ -20,6 +20,12 @@ export const OPT: Record<OptKey, boolean> = Object.fromEntries(
   ALL_OPTS.map((k) => [k, optParam === null || optParam === 'all' ? true : optParam.split(',').includes(k)]),
 ) as Record<OptKey, boolean>
 
+/** N8AO quality (samples / denoise). `?aoq=high` etc. overrides it for comparisons. */
+export type AoQuality = 'performance' | 'low' | 'medium' | 'high' | 'ultra'
+const AO_LEVELS: AoQuality[] = ['performance', 'low', 'medium', 'high', 'ultra']
+const aoParam = query.get('aoq') as AoQuality | null
+export const AO_QUALITY: AoQuality = aoParam && AO_LEVELS.includes(aoParam) ? aoParam : 'high'
+
 export type PerfMode = 'manual' | 'auto'
 
 export interface PerfReport {

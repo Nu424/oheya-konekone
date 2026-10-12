@@ -215,7 +215,7 @@ export default function Gallery() {
         })}
         <CameraControls makeDefault />
         <AimCamera pos={cam.pos} ty={cam.ty} />
-        <Effects quality="medium" />
+        <Effects ao="medium" />
         <Probe />
       </Canvas>
     </div>

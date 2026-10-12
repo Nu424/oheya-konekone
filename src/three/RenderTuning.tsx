@@ -2,6 +2,7 @@ import { addTail, useFrame, useThree } from '@react-three/fiber'
 import { useEffect, useRef } from 'react'
 import * as THREE from 'three'
 import { create } from 'zustand'
+import { useUi } from '../store/useStore'
 
 /**
  * Re-renders the shadow map only when something that casts shadows changed, instead of every frame.
@@ -127,7 +128,8 @@ export function MotionQuality() {
     const moved = !camera.matrixWorld.equals(lastCam.current) || !camera.projectionMatrix.equals(lastProj.current)
     lastCam.current.copy(camera.matrixWorld)
     lastProj.current.copy(camera.projectionMatrix)
-    if (!moved) return
+    // Dragging furniture redraws every frame too (and re-renders the shadow map), so it counts as motion.
+    if (!moved && useUi.getState().dragging === null) return
     moves.current++
     if (!useCameraMotion.getState().moving) useCameraMotion.setState({ moving: true })
   })

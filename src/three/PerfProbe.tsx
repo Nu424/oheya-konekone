@@ -3,7 +3,7 @@ import type CameraControlsImpl from 'camera-controls'
 import { useEffect, useRef } from 'react'
 import * as THREE from 'three'
 import { useUi } from '../store/useStore'
-import { Recorder, usePerf } from './perf'
+import { AO_QUALITY, Recorder, usePerf } from './perf'
 
 /** Runs a recording started from the diagnostics panel; in "auto" mode it also turns the camera once around. */
 export function PerfProbe() {
@@ -31,7 +31,7 @@ export function PerfProbe() {
       const ui = useUi.getState()
       const report = await rec.stop({
         mode,
-        settings: { view: ui.view, hour: ui.hour, photo: ui.photo, flow: ui.flow, overlaps: ui.overlaps, selected: ui.selection.length, panel: ui.panel },
+        settings: { aoQuality: AO_QUALITY, view: ui.view, hour: ui.hour, photo: ui.photo, flow: ui.flow, overlaps: ui.overlaps, selected: ui.selection.length, panel: ui.panel },
       })
       if (a && controls) controls.setLookAt(...a.pos, ...a.target, false)
       get().invalidate()
