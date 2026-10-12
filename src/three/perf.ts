@@ -24,7 +24,7 @@ export const OPT: Record<OptKey, boolean> = Object.fromEntries(
 export type AoQuality = 'performance' | 'low' | 'medium' | 'high' | 'ultra'
 const AO_LEVELS: AoQuality[] = ['performance', 'low', 'medium', 'high', 'ultra']
 const aoParam = query.get('aoq') as AoQuality | null
-export const AO_QUALITY: AoQuality = aoParam && AO_LEVELS.includes(aoParam) ? aoParam : 'high'
+export const AO_QUALITY: AoQuality = aoParam && AO_LEVELS.includes(aoParam) ? aoParam : 'medium'
 
 export type PerfMode = 'manual' | 'auto'
 
