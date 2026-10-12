@@ -129,7 +129,10 @@ export class Recorder {
   private ext: TimerExt | null
   private undo: (() => void)[] = []
 
-  constructor(private get: () => RootState) {
+  constructor(
+    private get: () => RootState,
+    private renderScale: () => number = () => 1,
+  ) {
     const { gl } = get()
     const ctx = gl.getContext()
     this.gl2 = typeof WebGL2RenderingContext !== 'undefined' && ctx instanceof WebGL2RenderingContext ? ctx : null
@@ -236,7 +239,7 @@ export class Recorder {
       shadow: this.shadowCalls,
       moving: this.samples.length > 0 && moving,
       cont: !this.idled,
-      dpr: gl.getPixelRatio(),
+      dpr: gl.getPixelRatio() * this.renderScale(),
     }
     this.lastFrame = this.frameStart
     this.idled = false

@@ -4,6 +4,7 @@ import { useEffect, useRef } from 'react'
 import * as THREE from 'three'
 import { useUi } from '../store/useStore'
 import { AO_QUALITY, Recorder, usePerf } from './perf'
+import { motionInput, useCameraMotion } from './RenderTuning'
 
 /** Runs a recording started from the diagnostics panel; in "auto" mode it also turns the camera once around. */
 export function PerfProbe() {
@@ -19,7 +20,8 @@ export function PerfProbe() {
   useEffect(() => {
     if (status !== 'recording') return
     const { duration, mode } = usePerf.getState()
-    const rec = new Recorder(get)
+    const rec = new Recorder(get, () => useCameraMotion.getState().scale ?? 1)
+    motionInput.auto = mode === 'auto'
     const controls = get().controls as unknown as CameraControlsImpl | null
     if (mode === 'auto' && controls) {
       const p = controls.getPosition(new THREE.Vector3())
@@ -30,6 +32,7 @@ export function PerfProbe() {
     let done = false
     const id = setTimeout(async () => {
       done = true
+      motionInput.auto = false
       const a = auto.current
       auto.current = null
       const ui = useUi.getState()
@@ -43,6 +46,7 @@ export function PerfProbe() {
     }, duration)
     return () => {
       clearTimeout(id)
+      motionInput.auto = false
       if (!done) rec.stop({ mode, settings: {} })
     }
   }, [status, get])

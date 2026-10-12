@@ -17,7 +17,7 @@ import { FlowOverlay } from './FlowOverlay'
 import { PhotoMode } from './PhotoMode'
 import { registerScreenToFloor } from '../editor/commands'
 import { OPT, PERF_PANEL } from './perf'
-import { MotionQuality, ShadowOnDemand, useCameraMotion } from './RenderTuning'
+import { MotionQuality, ShadowOnDemand } from './RenderTuning'
 import { PerfProbe } from './PerfProbe'
 
 const S = 0.001
@@ -436,7 +436,6 @@ export function Viewport() {
   const photo = useUi((s) => s.photo)
   const items = useDoc((s) => s.layout.items)
   const lamps = useMemo(() => collectLamps(items, room), [items, room])
-  const motionDpr = useCameraMotion((s) => s.dpr)
   // The ceiling is cut away in every view except walking around inside the room.
   const cutaway = view !== 'walk'
 
@@ -445,7 +444,7 @@ export function Viewport() {
       className="viewport"
       frameloop="demand"
       shadows={{ type: THREE.PCFShadowMap }}
-      dpr={motionDpr ?? [1, 2]}
+      dpr={[1, 2]}
       gl={{ antialias: false, powerPreference: 'high-performance', stencil: false, preserveDrawingBuffer: true }}
       onPointerMissed={(e) => {
         // Shift / Ctrl + click on nothing keeps the selection (the user is adding to it), as does the end of a rubber band.

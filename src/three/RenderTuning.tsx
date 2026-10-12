@@ -56,18 +56,21 @@ export function ShadowOnDemand() {
 }
 
 /**
- * True while the camera is moving (orbit, zoom, pan, walk, view transitions) or furniture is dragged,
- * and the pixel ratio to draw with meanwhile (null = the Canvas default). The Viewport passes `dpr` to
- * the Canvas: calling setDpr directly would be undone whenever the Viewport re-renders (every drag step).
+ * Lighter rendering while the view changes. `scale` is the fraction of the drawing buffer the composer
+ * renders at (null = full). Only the composer's internal buffers shrink; the canvas keeps its size and the
+ * final pass stretches the image over it. (Resizing the canvas instead, via the pixel ratio, cleared it
+ * and flashed an empty frame at every switch.)
  */
-export const useCameraMotion = create<{ moving: boolean; dpr: number | null }>()(() => ({ moving: false, dpr: null }))
+export const useCameraMotion = create<{ moving: boolean; scale: number | null }>()(() => ({ moving: false, scale: null }))
 
-/** How long the frame loop must stay idle after the camera stops before the full-quality frame is drawn. */
-const SETTLE_MS = 250
+/** Fallback: if input is held but nothing redraws for this long, draw the full-quality frame anyway. */
+const IDLE_MS = 400
+/** Wheel zoom has no "release"; it counts as held for this long after the last tick. */
+const WHEEL_MS = 160
 
 /**
- * Pixel budget while the camera moves. Frame cost is mostly per pixel (AO, SMAA, lighting), so a big
- * canvas is drawn smaller while it moves: about a 1920×940 canvas worth of pixels.
+ * Pixel budget while the view changes. Frame cost is mostly per pixel (AO, SMAA, lighting), so a big
+ * canvas is drawn smaller meanwhile: about a 1920×940 canvas worth of pixels.
  */
 const MOTION_PIXELS = 1.8e6
 
@@ -77,15 +80,16 @@ export function motionDpr(cssWidth: number, cssHeight: number) {
   return Math.max(0.5, Math.min(1, Math.floor(fit * 20) / 20))
 }
 
+/** Extra signal for scripted camera motion (the ?perf auto turn) that has no pointer held. */
+export const motionInput = { auto: false }
+
 /**
- * Lighter frames while the camera moves: the pixel ratio drops to `motionDpr` (1× on high-DPI laptops,
- * below 1× on big canvases such as a maximised window on a WQHD / 4K monitor). Once the camera rests,
- * one full-quality frame is drawn, so a still view looks exactly as before. (Switching N8AO to half
- * resolution instead was tried: it rebuilds its passes and stalls for a long frame at every switch.)
- *
- * "Rests" means the on-demand frame loop went idle (nothing invalidated it) and stayed so for SETTLE_MS.
- * A wall-clock timeout alone would flip quality back and forth on every frame on slow machines,
- * where one frame can take longer than the timeout.
+ * Lighter frames while the user is moving the view or dragging furniture: the composer renders at
+ * `motionDpr` (1× on high-DPI laptops, below 1× on big canvases). The full-quality frame comes back the
+ * moment the input ends (pointer released, keys up, wheel paused, drag finished), not after the camera
+ * has eased out: the last bit of easing is slow enough to draw at full quality, and waiting for it made
+ * the switch back feel late. (Switching N8AO to half resolution instead was tried: it rebuilds its
+ * passes and stalls for a long frame at every switch.)
  */
 export function MotionQuality() {
   const camera = useThree((s) => s.camera)
@@ -93,47 +97,92 @@ export function MotionQuality() {
   const get = useThree((s) => s.get)
   const lastCam = useRef(new THREE.Matrix4())
   const lastProj = useRef(new THREE.Matrix4())
-  const moves = useRef(0)
+  const input = useRef({ pointers: 0, keys: new Set<string>(), wheel: 0 })
+  const lastFrame = useRef(0)
 
   useEffect(() => {
-    // Same range as the Canvas `dpr={[1, 2]}`.
-    const base = () => Math.min(2, Math.max(1, window.devicePixelRatio || 1))
-    let timer: ReturnType<typeof setTimeout> | undefined
+    const i = input.current
+    const held = () => i.pointers > 0 || i.keys.size > 0 || performance.now() - i.wheel < WHEEL_MS || useUi.getState().dragging !== null || motionInput.auto
     const rest = () => {
-      useCameraMotion.setState({ moving: false, dpr: null })
+      if (!useCameraMotion.getState().moving) return
+      useCameraMotion.setState({ moving: false, scale: null })
       invalidate()
     }
+    const maybeRest = () => {
+      if (!held()) rest()
+    }
+    const down = () => i.pointers++
+    const up = () => {
+      i.pointers = Math.max(0, i.pointers - 1)
+      // A drag ends in the same pointerup; let it clear `dragging` first.
+      setTimeout(maybeRest, 0)
+    }
+    const keyDown = (e: KeyboardEvent) => i.keys.add(e.key.toLowerCase())
+    const keyUp = (e: KeyboardEvent) => {
+      i.keys.delete(e.key.toLowerCase())
+      maybeRest()
+    }
+    let wheelTimer: ReturnType<typeof setTimeout> | undefined
+    const wheel = () => {
+      i.wheel = performance.now()
+      clearTimeout(wheelTimer)
+      wheelTimer = setTimeout(maybeRest, WHEEL_MS + 10)
+    }
+    const blur = () => {
+      i.pointers = 0
+      i.keys.clear()
+      maybeRest()
+    }
+    // Fallback for input that is held still: nothing redraws, so draw the full-quality frame.
+    let idleTimer: ReturnType<typeof setTimeout> | undefined
     const offTail = addTail(() => {
-      if (!useCameraMotion.getState().moving) return
-      const seen = moves.current
-      clearTimeout(timer)
-      timer = setTimeout(() => {
-        if (seen === moves.current && useCameraMotion.getState().moving) rest()
-      }, SETTLE_MS)
+      clearTimeout(idleTimer)
+      const seen = lastFrame.current
+      idleTimer = setTimeout(() => {
+        if (seen === lastFrame.current && !motionInput.auto) rest()
+      }, IDLE_MS)
     })
-    const unsub = useCameraMotion.subscribe((s, p) => {
-      if (!s.moving || p.moving) return
-      const { size } = get()
-      const d = motionDpr(size.width, size.height)
-      if (d < base() - 0.01) useCameraMotion.setState({ dpr: d })
+    window.addEventListener('pointerdown', down, true)
+    window.addEventListener('pointerup', up, true)
+    window.addEventListener('pointercancel', up, true)
+    window.addEventListener('keydown', keyDown)
+    window.addEventListener('keyup', keyUp)
+    window.addEventListener('wheel', wheel, { capture: true, passive: true })
+    window.addEventListener('blur', blur)
+    const unsubUi = useUi.subscribe((s, p) => {
+      if (p.dragging !== null && s.dragging === null) maybeRest()
     })
     return () => {
+      window.removeEventListener('pointerdown', down, true)
+      window.removeEventListener('pointerup', up, true)
+      window.removeEventListener('pointercancel', up, true)
+      window.removeEventListener('keydown', keyDown)
+      window.removeEventListener('keyup', keyUp)
+      window.removeEventListener('wheel', wheel, true)
+      window.removeEventListener('blur', blur)
+      unsubUi()
       offTail()
-      unsub()
-      clearTimeout(timer)
-      if (useCameraMotion.getState().moving) rest()
+      clearTimeout(wheelTimer)
+      clearTimeout(idleTimer)
+      rest()
     }
-  }, [invalidate, get])
+  }, [invalidate])
 
   useFrame(() => {
+    lastFrame.current++
     camera.updateMatrixWorld()
     const moved = !camera.matrixWorld.equals(lastCam.current) || !camera.projectionMatrix.equals(lastProj.current)
     lastCam.current.copy(camera.matrixWorld)
     lastProj.current.copy(camera.projectionMatrix)
+    const i = input.current
+    const held = i.pointers > 0 || i.keys.size > 0 || performance.now() - i.wheel < WHEEL_MS || motionInput.auto
     // Dragging furniture redraws every frame too (and re-renders the shadow map), so it counts as motion.
-    if (!moved && useUi.getState().dragging === null) return
-    moves.current++
-    if (!useCameraMotion.getState().moving) useCameraMotion.setState({ moving: true })
+    const active = (moved && held) || useUi.getState().dragging !== null
+    if (!active || useCameraMotion.getState().moving) return
+    const { size } = get()
+    const base = Math.min(2, Math.max(1, window.devicePixelRatio || 1))
+    const scale = motionDpr(size.width, size.height) / base
+    useCameraMotion.setState({ moving: true, scale: scale < 0.99 ? scale : null })
   })
   return null
 }
