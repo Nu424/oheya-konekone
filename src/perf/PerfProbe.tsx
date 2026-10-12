@@ -2,26 +2,38 @@ import { useFrame, useThree } from '@react-three/fiber'
 import type CameraControlsImpl from 'camera-controls'
 import { useEffect, useRef } from 'react'
 import * as THREE from 'three'
-import { useUi } from '../store/useStore'
-import { AO_QUALITY, Recorder, usePerf } from './perf'
-import { motionInput, useCameraMotion } from './RenderTuning'
+import { itemCommands } from '../editor/commands'
+import { beginGesture, endGesture, useDoc, useUi } from '../store/useStore'
+import { setScriptedMotion } from '../three/render/MotionQuality'
+import { AO_QUALITY } from '../three/render/quality'
+import { composerRef, useRenderScale } from '../three/render/renderScale'
+import { Recorder } from './recorder'
+import { usePerf } from './store'
 
-/** Runs a recording started from the diagnostics panel; in "auto" mode it also turns the camera once around. */
+/**
+ * Inside the Canvas with `?perf`: runs a recording started from the panel (in "auto" mode it also turns
+ * the camera once around), and exposes the renderer and edit commands to scripted checks
+ * (`window.__oheya.perf`, used by scripts/perf-check.mjs; production builds have no /src imports).
+ */
 export function PerfProbe() {
   const get = useThree((s) => s.get)
   const status = usePerf((s) => s.status)
   const mode = usePerf((s) => s.mode)
-  useEffect(() => {
-    const w = window as unknown as { __oheyaPerf?: Record<string, unknown> }
-    if (w.__oheyaPerf) w.__oheyaPerf.three = get
-  }, [get])
   const auto = useRef<{ pos: [number, number, number]; target: [number, number, number] } | null>(null)
+
+  useEffect(() => {
+    const o = (window.__oheya ??= { frames: 0, ready: false })
+    o.perf = { three: get, composer: composerRef, useDoc, useUi, useRenderScale, itemCommands, beginGesture, endGesture }
+    return () => {
+      delete o.perf
+    }
+  }, [get])
 
   useEffect(() => {
     if (status !== 'recording') return
     const { duration, mode } = usePerf.getState()
-    const rec = new Recorder(get, () => useCameraMotion.getState().scale ?? 1)
-    motionInput.auto = mode === 'auto'
+    const rec = new Recorder(get, () => useRenderScale.getState().scale ?? 1)
+    setScriptedMotion(mode === 'auto')
     const controls = get().controls as unknown as CameraControlsImpl | null
     if (mode === 'auto' && controls) {
       const p = controls.getPosition(new THREE.Vector3())
@@ -32,7 +44,7 @@ export function PerfProbe() {
     let done = false
     const id = setTimeout(async () => {
       done = true
-      motionInput.auto = false
+      setScriptedMotion(false)
       const a = auto.current
       auto.current = null
       const ui = useUi.getState()
@@ -46,7 +58,7 @@ export function PerfProbe() {
     }, duration)
     return () => {
       clearTimeout(id)
-      motionInput.auto = false
+      setScriptedMotion(false)
       if (!done) rec.stop({ mode, settings: {} })
     }
   }, [status, get])

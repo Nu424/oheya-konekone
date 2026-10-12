@@ -1,20 +1,8 @@
 import { useEffect, useState } from 'react'
-import { OPT, PERF_PANEL, usePerf } from '../three/perf'
-import { beginGesture, endGesture, useDoc, useUi } from '../store/useStore'
-import { itemCommands } from '../editor/commands'
-import { Modal } from './dialogs'
-import { Icon } from './icons'
-
-/** Reloads with the optimisations on or off, keeping the rest of the URL. */
-function optUrl(on: boolean) {
-  const q = new URLSearchParams(location.search)
-  if (on) q.delete('opt')
-  else q.set('opt', 'none')
-  return `${location.pathname}?${q.toString().replace(/=(?=&|$)/g, '')}`
-}
-
-// `?perf` only: lets scripted benchmarks drive edits in production builds (no /src imports there).
-if (PERF_PANEL) (window as unknown as Record<string, unknown>).__oheyaPerf = { useDoc, useUi, itemCommands, beginGesture, endGesture }
+import { useUi } from '../store/useStore'
+import { Modal } from '../ui/dialogs'
+import { Icon } from '../ui/icons'
+import { PERF_PANEL, usePerf } from './store'
 
 /** `?perf`: record a few seconds of frames and get a log to compare before / after. */
 export function PerfPanel() {
@@ -32,18 +20,12 @@ export function PerfPanel() {
   if (!PERF_PANEL) return null
   const recording = status === 'recording'
   const left = Math.max(0, (startedAt + duration - performance.now()) / 1000)
-  const optOn = Object.values(OPT).every(Boolean)
-  const optOff = Object.values(OPT).every((v) => !v)
 
   return (
     <>
       <div className="perf-panel glass">
         <div className="perf-head">
           <b>動作診断</b>
-          <span className="perf-opt">
-            軽量化: {optOn ? 'オン' : optOff ? 'オフ' : Object.entries(OPT).filter(([, v]) => v).map(([k]) => k).join('+')}
-            <a href={optUrl(!optOn)}>{optOn ? 'オフで比べる' : 'オンにする'}</a>
-          </span>
         </div>
         {recording ? (
           <div className="perf-rec">

@@ -16,9 +16,10 @@ import { clicksSuppressed, EditLayer, suppressClicks } from './EditLayer'
 import { FlowOverlay } from './FlowOverlay'
 import { PhotoMode } from './PhotoMode'
 import { registerScreenToFloor } from '../editor/commands'
-import { OPT, PERF_PANEL } from './perf'
-import { MotionQuality, ShadowOnDemand } from './RenderTuning'
-import { PerfProbe } from './PerfProbe'
+import { PERF_PANEL } from '../perf/store'
+import { PerfProbe } from '../perf/PerfProbe'
+import { MotionQuality } from './render/MotionQuality'
+import { ShadowOnDemand } from './render/ShadowOnDemand'
 
 const S = 0.001
 
@@ -29,6 +30,8 @@ declare global {
       ready: boolean
       /** Dev builds only: room point (mm) → client pixel, for scripted checks that need to aim the mouse. */
       project?: (x: number, y: number, z: number) => { x: number; y: number }
+      /** With ?perf: renderer state and edit commands for scripted checks (src/perf/PerfProbe.tsx). */
+      perf?: Record<string, unknown>
     }
   }
 }
@@ -464,8 +467,8 @@ export function Viewport() {
       <FloorPicker />
       <RubberBand />
       {PERF_PANEL && <PerfProbe />}
-      {OPT.shadow && <ShadowOnDemand />}
-      {OPT.motion && !photo && <MotionQuality />}
+      <ShadowOnDemand />
+      {!photo && <MotionQuality />}
     </Canvas>
   )
 }

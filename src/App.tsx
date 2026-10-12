@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useUi } from './store/useStore'
 import { Viewport } from './three/Viewport'
-import { PerfPanel } from './ui/PerfPanel'
+import { PerfPanel } from './perf/PerfPanel'
 import { DropZone, FlowPanel, Hud, PhotoBar, Toast, TopBar, useShortcuts } from './ui/Chrome'
 import { AiDialog, HelpDialog, JsonDialog, TemplateDialog } from './ui/dialogs'
 import { RoomPanel } from './ui/RoomPanel'

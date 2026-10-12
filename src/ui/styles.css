@@ -941,8 +941,6 @@ input[type='range']:focus-visible::-webkit-slider-thumb { box-shadow: 0 0 0 4px 
 .perf-panel { position: absolute; top: 76px; left: 50%; transform: translateX(-50%); z-index: 7; padding: 10px 12px; display: flex; flex-direction: column; gap: 8px; min-width: 300px; font-size: 12px; }
 .perf-head { display: flex; align-items: baseline; gap: 10px; }
 .perf-head b { font-weight: 900; font-size: 13px; }
-.perf-opt { margin-left: auto; color: var(--ink-2); display: flex; gap: 8px; }
-.perf-opt a { color: var(--accent-ink); font-weight: 700; }
 .perf-actions { display: flex; gap: 6px; }
 .perf-actions .icon-btn { gap: 6px; font-size: 12px; font-weight: 700; }
 .perf-dot { width: 9px; height: 9px; border-radius: 50%; background: var(--err); display: inline-block; }
