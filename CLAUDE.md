@@ -3,7 +3,7 @@
 一人暮らしサイズの部屋を3Dでデザインする Web アプリ「おへやこねこね」。
 Vite + React + TypeScript + react-three-fiber。GitHub Pages に静的デプロイ（`main` への push で自動）。
 
-くわしい知見（モデリング・レンダリング・検証の罠）は [docs/KNOWLEDGE.md](docs/KNOWLEDGE.md)、
+くわしい知見（モデリング・レンダリング・検証の罠）は [docs/KNOWLEDGE.md](docs/KNOWLEDGE.md)、描画の軽さの仕組みと測り方は [docs/PERFORMANCE.md](docs/PERFORMANCE.md)、
 計画と進捗は [docs/PLAN.md](docs/PLAN.md)、レイアウト JSON のルールとカタログは [docs/AI_GUIDE.md](docs/AI_GUIDE.md)。
 積み重ね・コピペ・複数選択・削除や数値入力の追加の設計は [docs/STACKING.md](docs/STACKING.md)・[docs/CLIPBOARD.md](docs/CLIPBOARD.md)・[docs/MULTISELECT.md](docs/MULTISELECT.md)・[docs/EDITING-EXTRAS.md](docs/EDITING-EXTRAS.md)。
 
@@ -30,7 +30,8 @@ npm run ai-guide     # docs/AI_GUIDE.md を再生成（アセットやルール�
 node scripts/shot.mjs '<path?query>' shots/x.png [w] [h] [waitMs] [actions...]   # スクショ（dev サーバー起動中に）
 node scripts/sheet.mjs shots/x.png 4 'type=desk&only=1' 'type=shelf&only=3&az=-30' ...   # ギャラリーの寄りを並べた一覧
 npx tsx scripts/check-layout.ts [id | file.json]   # 重なり・浮き・何に載っているかを一覧（ブラウザ不要）
-# /?perf で動作診断（記録してログを出す）。/?opt=none で描画の軽量化を切り、/?aoq=high で AO を高品質にして前と比べられる
+node scripts/perf-check.mjs   # 描画の軽量化の回帰チェック（dev サーバー起動中に。docs/PERFORMANCE.md）
+# /?perf で動作診断（記録してログを出す）
 ```
 
 - `npm install` は `.npmrc` の `legacy-peer-deps=true` 前提（drei が古い three-mesh-bvh を固定しているため）。
@@ -42,7 +43,8 @@ npx tsx scripts/check-layout.ts [id | file.json]   # 重なり・浮き・何に
 |---|---|
 | `src/model/` | レイアウト JSON の zod スキーマ（`schema.ts`）、検証と入出力（`io.ts`）、テンプレート |
 | `src/assets/` | パラメトリック家具。`params.ts`（パラメータ DSL）、`kit.ts`（形の道具：`panel`・`merged` など）、`parts.ts`（取っ手・扉・引き出し・キャスターなどの部品）、`storageKit.ts`（棚・収納の組み立て）、`items/*.ts`（各アセット）、`registry.ts`（一覧） |
-| `src/three/` | 描画。部屋（`RoomMesh`）、照明（`Lighting`）、ポストエフェクト、テクスチャ・マテリアル、編集レイヤー、動線オーバーレイ、撮影モード、サムネイル |
+| `src/three/` | 描画。部屋（`RoomMesh`）、照明（`Lighting`）、ポストエフェクト、テクスチャ・マテリアル、編集レイヤー、動線オーバーレイ、撮影モード、サムネイル。`render/` は軽さの調整（影の描き直し・動いている間の縮小・画質の定数） |
+| `src/perf/` | `?perf` の動作診断（記録・レポート・パネル） |
 | `src/editor/` | 描画に依存しない編集ロジック。2D の当たり判定と吸い付き（`space.ts`）、積み重ね（`stacking.ts`）、配置（`placement.ts`）、編集操作（`commands.ts` の `itemCommands`）、コピペ（`clipboard.ts`）、動線解析（`flow.ts`） |
 | `src/store/` | Zustand。`useDoc`（レイアウト本体、zundo で undo）と `useUi`（選択 `string[]`・視点・時間帯など） |
 | `src/ui/` | パネル・ダイアログ・HUD・スタイル（`styles.css` 1枚） |
