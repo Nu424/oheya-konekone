@@ -16,6 +16,8 @@ import { clicksSuppressed, EditLayer, suppressClicks } from './EditLayer'
 import { FlowOverlay } from './FlowOverlay'
 import { PhotoMode } from './PhotoMode'
 import { registerScreenToFloor } from '../editor/commands'
+import { PERF_PANEL } from './perf'
+import { PerfProbe } from './PerfProbe'
 
 const S = 0.001
 
@@ -460,6 +462,7 @@ export function Viewport() {
       <FrameProbe />
       <FloorPicker />
       <RubberBand />
+      {PERF_PANEL && <PerfProbe />}
     </Canvas>
   )
 }

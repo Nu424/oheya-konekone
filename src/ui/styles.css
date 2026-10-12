@@ -933,3 +933,23 @@ input[type='range']:focus-visible::-webkit-slider-thumb { box-shadow: 0 0 0 4px 
   .hud .clock input, .hud .clock input[type=range] { width: 44px; }
   .hud .seg button { padding: 8px 8px; }
 }
+
+/* ---------- performance diagnostics (?perf) ---------- */
+.perf-panel { position: absolute; top: 76px; left: 50%; transform: translateX(-50%); z-index: 7; padding: 10px 12px; display: flex; flex-direction: column; gap: 8px; min-width: 300px; font-size: 12px; }
+.perf-head { display: flex; align-items: baseline; gap: 10px; }
+.perf-head b { font-weight: 900; font-size: 13px; }
+.perf-opt { margin-left: auto; color: var(--ink-2); display: flex; gap: 8px; }
+.perf-opt a { color: var(--accent-ink); font-weight: 700; }
+.perf-actions { display: flex; gap: 6px; }
+.perf-actions .icon-btn { gap: 6px; font-size: 12px; font-weight: 700; }
+.perf-dot { width: 9px; height: 9px; border-radius: 50%; background: var(--err); display: inline-block; }
+.perf-rec { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.perf-rec .perf-dot { animation: perf-blink 1s infinite; }
+.perf-rec b { margin-left: auto; font-variant-numeric: tabular-nums; }
+.perf-track { flex-basis: 100%; height: 4px; border-radius: 4px; background: var(--line); overflow: hidden; }
+.perf-track div { height: 100%; background: var(--err); }
+@keyframes perf-blink { 50% { opacity: 0.25; } }
+.perf-summary { white-space: pre-wrap; font-size: 12.5px; line-height: 1.65; background: var(--bg-2, #f6f1ea); border-radius: 10px; padding: 12px 14px; margin: 0; }
+.perf-json { margin-top: 10px; font-size: 12px; }
+.perf-json pre { max-height: 300px; overflow: auto; font-size: 11px; background: #fbf8f4; border-radius: 8px; padding: 8px; }
+@media (max-width: 760px) { .perf-panel { top: 64px; min-width: 0; width: calc(100% - 16px); } }
