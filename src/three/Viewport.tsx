@@ -16,7 +16,8 @@ import { clicksSuppressed, EditLayer, suppressClicks } from './EditLayer'
 import { FlowOverlay } from './FlowOverlay'
 import { PhotoMode } from './PhotoMode'
 import { registerScreenToFloor } from '../editor/commands'
-import { PERF_PANEL } from './perf'
+import { OPT, PERF_PANEL } from './perf'
+import { MotionQuality, ShadowOnDemand } from './RenderTuning'
 import { PerfProbe } from './PerfProbe'
 
 const S = 0.001
@@ -463,6 +464,8 @@ export function Viewport() {
       <FloorPicker />
       <RubberBand />
       {PERF_PANEL && <PerfProbe />}
+      {OPT.shadow && <ShadowOnDemand />}
+      {OPT.motion && !photo && <MotionQuality />}
     </Canvas>
   )
 }

@@ -354,8 +354,11 @@ input[type='range']:active::-webkit-slider-thumb { transform: scale(1.2); }
   gap: 8px;
   padding: 6px;
   z-index: 6;
+  /* Centred with left: 50%, so without this it may only grow to half the screen and wraps. */
+  width: max-content;
+  max-width: calc(100% - 32px);
 }
-.hud .seg { background: transparent; }
+.hud .seg { background: transparent; flex-wrap: nowrap; }
 .hud .seg button { padding: 8px 14px; font-size: 13px; display: flex; align-items: center; gap: 6px; }
 .hud .seg button svg { width: 18px; height: 18px; }
 .hint {
@@ -540,7 +543,7 @@ input[type='range']:active::-webkit-slider-thumb { transform: scale(1.2); }
   .side { top: auto; height: 50vh; width: auto; left: 8px; right: 8px; bottom: 72px; }
   .side.hidden { transform: translateY(70vh); }
   .title-input, .hint, .icon-btn .label, .seg .label { display: none; }
-  .hud { left: 8px; right: 8px; bottom: 8px; transform: none; justify-content: space-between; gap: 2px; padding: 4px; }
+  .hud { left: 8px; right: 8px; bottom: 8px; transform: none; justify-content: space-between; gap: 2px; padding: 4px; width: auto; max-width: none; }
   .hud .seg button { padding: 8px 10px; }
   .clock { padding: 0 2px 0 6px; gap: 4px; }
   .clock input { width: 64px; }
@@ -953,3 +956,5 @@ input[type='range']:focus-visible::-webkit-slider-thumb { box-shadow: 0 0 0 4px 
 .perf-json { margin-top: 10px; font-size: 12px; }
 .perf-json pre { max-height: 300px; overflow: auto; font-size: 11px; background: #fbf8f4; border-radius: 8px; padding: 8px; }
 @media (max-width: 760px) { .perf-panel { top: 64px; min-width: 0; width: calc(100% - 16px); } }
+/* The centred HUD reaches the corner hint on mid-size screens; the ? help has the same keys. */
+@media (max-width: 1240px) { .hint { display: none; } }

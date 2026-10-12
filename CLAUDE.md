@@ -30,6 +30,7 @@ npm run ai-guide     # docs/AI_GUIDE.md を再生成（アセットやルール�
 node scripts/shot.mjs '<path?query>' shots/x.png [w] [h] [waitMs] [actions...]   # スクショ（dev サーバー起動中に）
 node scripts/sheet.mjs shots/x.png 4 'type=desk&only=1' 'type=shelf&only=3&az=-30' ...   # ギャラリーの寄りを並べた一覧
 npx tsx scripts/check-layout.ts [id | file.json]   # 重なり・浮き・何に載っているかを一覧（ブラウザ不要）
+# /?perf で動作診断（記録してログを出す）。/?opt=none で描画の軽量化を切って前と比べられる
 ```
 
 - `npm install` は `.npmrc` の `legacy-peer-deps=true` 前提（drei が古い three-mesh-bvh を固定しているため）。
