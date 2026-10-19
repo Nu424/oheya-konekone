@@ -344,3 +344,186 @@ export const aircon = defineAsset({
     return g
   },
 })
+
+// ---- Game consoles and speakers ------------------------------------------------------------------
+
+/** A gamepad lying flat, front facing +Z. Origin: bottom centre. */
+function gamepad(color: string, accent: string) {
+  const g = group()
+  const body = mat('plastic', color, { roughness: 0.35 })
+  g.add(rbox(150, 32, 70, 14, body, [0, 18, -5]))
+  for (const s of [-1, 1]) {
+    const grip = rbox(52, 30, 95, 22, body, [s * 52, 17, 18])
+    grip.rotation.y = s * 0.35
+    g.add(grip)
+    g.add(cyl(11, 9, 10, mat('rubber', '#2a2a2c'), [s * 26, 37, 8], { segments: 16 }))
+  }
+  for (const [x, z] of [[46, -18], [60, -6], [46, 6], [32, -6]] as const) g.add(cyl(5, 5, 4, mat('plastic', accent, { roughness: 0.3 }), [x, 35, z], { segments: 12 }))
+  g.add(panelOn(26, 4, 26, mat('plastic', '#2a2a2c'), -46, 33, -6, { edge: 1 }))
+  return g
+}
+
+export const gameConsole = defineAsset({
+  type: 'gameConsole',
+  label: 'ゲーム機',
+  category: 'av',
+  description: '家庭用ゲーム機とコントローラー。縦型の据え置き機・横置きの箱型・携帯機とドック。テレビ台やデスクに置く',
+  placement: 'onTop',
+  surfaces: () => [],
+  contactShadow: false,
+  params: {
+    style: p.select('形', { tower: '据え置き（縦長）', box: '箱型', hybrid: '携帯機＋ドック' }, 'tower', { group: '形' }),
+    upright: p.bool('縦置き', true, { hint: '据え置き・箱型のとき' }),
+    controllers: p.number({ label: 'コントローラーの数', min: 0, max: 2, step: 1, default: 1, group: '形' }),
+    color: p.color('本体', '#f4f4f2', { swatches: ['#f4f4f2', '#2b2b2e', '#8e9196', '#c9d6df'] }),
+    accent: p.color('差し色', '#2b2b2e', { swatches: ['#2b2b2e', '#e63946', '#1d6fd1', '#f4a300', '#1b998b', '#f4f4f2'] }),
+  },
+  presets: [
+    { name: '黒い箱型（横置き）', params: { style: 'box', upright: false, color: '#2b2b2e', accent: '#1d6fd1' } },
+    { name: '携帯機（ドック）', params: { style: 'hybrid', color: '#3a3b3e', accent: '#1b998b', controllers: 0 } },
+  ],
+  build({ style, upright, controllers, color, accent }) {
+    const g = group()
+    const shell = mat('plastic', color, { roughness: 0.3 })
+    const core = mat('gloss', '#18181a')
+    const lamp = mat('emissive', accent === '#2b2b2e' ? '#6fa8ff' : accent, { intensity: 1.4 })
+    let padZ = 170
+    if (style === 'tower') {
+      // A slim box on a small foot, a dark seam down one side and a light strip; lies flat when not upright.
+      const body = group()
+      body.add(panelOn(85, 340, 260, shell, 0, 0, 0, { edge: 8 }))
+      body.add(panelOn(87, 340 - 30, 6, core, 0, 15, 60, { edge: 1 }))
+      body.add(panelOn(3, 120, 2, lamp, 30, 200, 130.5, { edge: 0 }))
+      body.add(panelOn(60, 9, 3, core, -15, 300, 130.5, { edge: 1 }))
+      body.add(panelOn(110, 20, 140, mat('plastic', '#18181a'), 0, -20, 0, { edge: 4 }))
+      body.position.y = 20
+      if (!upright) {
+        body.rotation.z = Math.PI / 2
+        body.position.set(190, 50, 0)
+        padZ = 200
+      }
+      g.add(body)
+    } else if (style === 'box') {
+      const body = group()
+      body.add(panelOn(300, 70, 290, shell, 0, 0, 0, { edge: 4 }))
+      const vents: THREE.Mesh[] = []
+      for (let i = 0; i < 12; i++) vents.push(panelOn(3, 40, 1, core, -130 + i * 8, 15, 145.2, { edge: 0 }))
+      body.add(merged(vents, core, { castShadow: false }))
+      body.add(panelOn(140, 3, 1, lamp, 50, 33, 145.4, { edge: 0 }))
+      body.add(panelOn(260, 6, 250, mat('rubber', '#1a1a1a'), 0, -6, 0, { edge: 2 }))
+      body.position.y = 6
+      if (upright) {
+        body.rotation.z = Math.PI / 2
+        body.position.set(41, 150, 0)
+      }
+      g.add(body)
+    } else {
+      // Dock with the handheld sitting in it, a controller clipped on each side.
+      g.add(panelOn(175, 105, 52, mat('plastic', '#2b2b2e', { roughness: 0.4 }), 0, 0, -10, { edge: 6 }))
+      g.add(panelOn(180, 6, 70, mat('rubber', '#1a1a1a'), 0, 0, -10, { edge: 2 }))
+      const tablet = group()
+      tablet.add(panelOn(175, 102, 14, shell, 0, 0, 0, { edge: 5 }))
+      const sc = screenMesh(155, 88, 'wallpaper')
+      sc.position.set(0, 51, 7.2)
+      tablet.add(sc)
+      for (const s of [-1, 1]) tablet.add(panelOn(36, 102, 14, mat('plastic', accent, { roughness: 0.3 }), s * 106, 0, 0, { edge: 8 }))
+      tablet.position.set(0, 40, 22)
+      g.add(tablet)
+      padZ = 140
+    }
+    const pads = Math.round(controllers)
+    for (let i = 0; i < pads; i++) {
+      const pad = gamepad(color === '#f4f4f2' && style === 'tower' ? '#f4f4f2' : '#2b2b2e', accent)
+      pad.position.set((i - (pads - 1) / 2) * 190 + (style === 'tower' && upright ? 140 : 0), 0, padZ)
+      pad.rotation.y = (i ? -1 : 1) * 0.18
+      g.add(pad)
+    }
+    return g
+  },
+})
+
+/** One speaker cabinet with a woofer and a tweeter, front +Z, origin bottom centre. */
+function speakerBox(w: number, h: number, d: number, body: THREE.Material, grille: THREE.Material | null, woofers = 1) {
+  const g = group()
+  g.add(panelOn(w, h, d, body, 0, 0, 0, { edge: 4, grain: 'y' }))
+  const cone = mat('matte', '#1c1c1e', { roughness: 0.8 })
+  const ring = mat('plastic', '#2a2a2c', { roughness: 0.4 })
+  const wr = Math.min(w * 0.38, h * 0.2)
+  const units: [number, number][] = [[h * 0.86, Math.min(w * 0.13, 16)]]
+  for (let i = 0; i < woofers; i++) units.push([h * (woofers === 1 ? 0.42 : 0.62 - i * 0.32), wr])
+  for (const [y, r] of units) {
+    g.add(cyl(r + 6, r + 6, 6, ring, [0, y, d / 2 + 1], { rot: [Math.PI / 2, 0, 0], segments: 32 }))
+    const c = lathe([[0, -4], [r * 0.3, -4], [r, 2], [r, 4], [0, 4]], cone, [0, y, d / 2 + 2], { segments: 32 })
+    c.rotation.x = Math.PI / 2
+    g.add(c)
+  }
+  if (grille) g.add(panelOn(w - 10, h - 10, 8, grille, 0, 5, d / 2 + 6, { edge: 3 }))
+  return g
+}
+
+export const speaker = defineAsset({
+  type: 'speaker',
+  label: 'スピーカー',
+  category: 'av',
+  description: 'スピーカー。左右ペアのブックシェルフ型・トールボーイ型（床置き）・テレビ前のサウンドバー・小さなスマートスピーカー。ペアは間隔を変えられる（1 アイテムで 2 台）',
+  placement: 'onTop',
+  contactShadow: false,
+  params: {
+    style: p.select('形', { bookshelf: 'ブックシェルフ（ペア）', tower: 'トールボーイ（ペア・床置き）', soundbar: 'サウンドバー', smart: 'スマートスピーカー' }, 'bookshelf', { group: '形' }),
+    size: p.number({ label: '大きさ', min: 70, max: 140, step: 5, default: 100, unit: '%', group: 'サイズ' }),
+    spacing: p.mm('ペアの間隔', 250, 2400, 900, { hint: '左右のスピーカーの中心どうしの距離' }),
+    grille: p.bool('ネット', false, { hint: '前面の布のカバー' }),
+    color: p.color('本体', '#6b4a34', { swatches: ['#6b4a34', '#b8875a', '#f4f4f2', '#2b2b2e', '#8e9196'] }),
+    grilleColor: p.color('ネットの色', '#2f2f31', { swatches: ['#2f2f31', '#8c8a86', '#d9d2c5', '#3d4a5c'] }),
+  },
+  presets: [
+    { name: 'デスク用の小型ペア', params: { size: 75, spacing: 700, color: '#f4f4f2', grille: true, grilleColor: '#d9d2c5' } },
+    { name: 'トールボーイ', params: { style: 'tower', spacing: 1800, color: '#2b2b2e' } },
+    { name: 'サウンドバー', params: { style: 'soundbar', color: '#2b2b2e', grille: true } },
+    { name: 'スマートスピーカー', params: { style: 'smart', color: '#d9d2c5', grilleColor: '#8c8a86' } },
+  ],
+  surfaces: (q) => {
+    // Small things can stand on a pair's tops; the soundbar and smart speaker stay bare.
+    if (q.style !== 'bookshelf' && q.style !== 'tower') return []
+    const k = q.size / 100
+    const [w, h, d] = q.style === 'tower' ? [200 * k, 950 * k, 280 * k] : [170 * k, 280 * k, 220 * k]
+    return [-1, 1].map((s) => ({ y: h, minX: (s * q.spacing) / 2 - w / 2, maxX: (s * q.spacing) / 2 + w / 2, minZ: -d / 2, maxZ: d / 2, label: s < 0 ? '左の上面' : '右の上面' }))
+  },
+  solids: (q) => {
+    const k = q.size / 100
+    if (q.style === 'soundbar' || q.style === 'smart') return []
+    // A pair: two cabinets with free space between them (a TV or a monitor can sit there).
+    const [w, h, d] = q.style === 'tower' ? [200 * k, 950 * k, 280 * k] : [170 * k, 280 * k, 220 * k]
+    return [-1, 1].map((s) => ({ min: { x: (s * q.spacing) / 2 - w / 2, y: 0, z: -d / 2 }, max: { x: (s * q.spacing) / 2 + w / 2, y: h, z: d / 2 + (q.grille ? 10 : 6) } }))
+  },
+  build({ style, size, spacing, grille, color, grilleColor }) {
+    const g = group()
+    const k = size / 100
+    const wood = color === '#f4f4f2' || color === '#2b2b2e' || color === '#8e9196' ? mat('matte', color, { roughness: 0.5 }) : mat('wood', color)
+    const net = grille ? mat('fabric', grilleColor) : null
+    if (style === 'bookshelf' || style === 'tower') {
+      const [w, h, d] = style === 'tower' ? [200 * k, 950 * k, 280 * k] : [170 * k, 280 * k, 220 * k]
+      for (const s of [-1, 1]) {
+        const b = speakerBox(w, h, d, wood, net, style === 'tower' ? 2 : 1)
+        b.position.x = (s * spacing) / 2
+        g.add(b)
+        if (style === 'tower') for (const fx of [-1, 1]) for (const fz of [-1, 1]) g.add(cyl(8, 3, 14, mat('chrome', '#d9dcdf'), [(s * spacing) / 2 + fx * (w / 2 - 15), -14, fz * (d / 2 - 20)], { segments: 12 }))
+      }
+      if (style === 'tower') g.children.forEach((c) => (c.position.y += 14))
+    } else if (style === 'soundbar') {
+      const W = 900 * k
+      g.add(panelOn(W, 62 * k, 100 * k, mat('plastic', color, { roughness: 0.45 }), 0, 0, 0, { edge: 18 * k }))
+      g.add(panelOn(W - 30, 46 * k, 4, net ?? mat('matte', '#1c1c1e'), 0, 8 * k, 50 * k, { edge: 2 }))
+      g.add(panelOn(10, 3, 1, mat('emissive', '#f4f4f2', { intensity: 1 }), W / 2 - 80, 50 * k, 52 * k + 2, { edge: 0 }))
+    } else {
+      const r = 50 * k
+      g.add(cyl(r, r, 150 * k, mat('fabric', grilleColor), [0, 75 * k, 0], { segments: 40 }))
+      g.add(cyl(r - 2, r - 2, 6, mat('plastic', color, { roughness: 0.35 }), [0, 150 * k + 3, 0], { segments: 40 }))
+      const ring = new THREE.Mesh(new THREE.TorusGeometry(r * 0.7, 2, 6, 40), mat('emissive', '#7fc4ff', { intensity: 1.2 }))
+      ring.rotation.x = Math.PI / 2
+      ring.position.y = 150 * k + 6
+      g.add(ring)
+    }
+    return g
+  },
+})

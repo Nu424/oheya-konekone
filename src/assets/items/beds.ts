@@ -18,6 +18,27 @@ function duvet(width: number, length: number, topY: number, thickness: number, c
   return g
 }
 
+/** Mattress, pillows and duvet on a deck at `deck` (mm). Returns the height of the mattress top. */
+function bedding(g: THREE.Group, o: { mw: number; length: number; deck: number; mattress: number; sheetColor: string; beddingColor: string; duvet: boolean }) {
+  const { mw, length, deck, mattress: mt } = o
+  const sheet = mat('fabric', o.sheetColor)
+  g.add(rbox(mw, mt, length, Math.min(50, mt / 2 - 1), sheet, [0, deck + mt / 2, 0], { grain: 'z' }))
+  const top = deck + mt
+  const pillows = mw >= 1400 ? 2 : 1
+  const pw = Math.min(630, mw / pillows - 60)
+  for (let i = 0; i < pillows; i++) {
+    const x = pillows === 1 ? 0 : (i - 0.5) * (pw + 30)
+    g.add(rbox(pw, 120, 420, 55, sheet, [x, top + 50, -length / 2 + 260], { grain: 'x' }))
+  }
+  if (o.duvet) {
+    const dl = length * 0.74
+    const d = duvet(mw, dl, top, mt, o.beddingColor)
+    d.position.z = length / 2 - dl / 2 + 30
+    g.add(d)
+  }
+  return top
+}
+
 export const bed = defineAsset({
   type: 'bed',
   label: 'ベッド',
@@ -100,26 +121,7 @@ export const bed = defineAsset({
       }
     }
 
-    // Mattress
-    const sheet = mat('fabric', sheetColor)
-    const mY = deck
-    g.add(rbox(mw, mt, length, 50, sheet, [0, mY + mt / 2, 0], { grain: 'z' }))
-    const top = mY + mt
-
-    // Pillows
-    const pillows = mw >= 1400 ? 2 : 1
-    const pw = Math.min(630, mw / pillows - 60)
-    for (let i = 0; i < pillows; i++) {
-      const x = pillows === 1 ? 0 : (i - 0.5) * (pw + 30)
-      g.add(rbox(pw, 120, 420, 55, sheet, [x, top + 50, -length / 2 + 260], { grain: 'x' }))
-    }
-
-    if (hasDuvet) {
-      const dl = length * 0.74
-      const d = duvet(mw, dl, top, mt, beddingColor)
-      d.position.z = length / 2 - dl / 2 + 30
-      g.add(d)
-    }
+    const top = bedding(g, { mw, length, deck, mattress: mt, sheetColor, beddingColor, duvet: hasDuvet })
 
     // Headboard
     if (headboard !== 'none' && frame === 'steel') {
@@ -174,6 +176,158 @@ export const futon = defineAsset({
     g.add(rbox(width, thickness, length, thickness * 0.45, fab, [0, thickness / 2, 0], { grain: 'z' }))
     g.add(rbox(width + 40, 60, length * 0.72, 28, cover, [0, thickness + 25, length * 0.14], { grain: 'z' }))
     g.add(rbox(560, 110, 360, 50, fab, [0, thickness + 50, -length / 2 + 230]))
+    return g
+  },
+})
+
+type LoftParams = { size: 'single' | 'semiDouble'; length: number; deckHeight: number; frame: string; ladder: string; ladderSide: string; guard: number; mattress: number }
+
+/** Outer size, post size and where the ladder goes, shared by the geometry and the solid parts. */
+function loftLayout(q: LoftParams) {
+  const post = q.frame === 'wood' ? 60 : 40
+  const W = MATTRESS_W[q.size] + post * 2
+  const L = q.length + post * 2
+  const top = q.deckHeight + q.guard
+  const lw = 360
+  const slant = q.ladder === 'slant' ? Math.min(520, q.deckHeight * 0.32) : 0
+  // Ladder rectangle in the bed's frame (x across, z along), standing outside the frame.
+  const side = q.ladderSide
+  const along = side === 'end' ? 'x' : 'z'
+  const out = 50 + slant
+  const ladder =
+    side === 'end'
+      ? { minX: W / 2 - post - lw, maxX: W / 2 - post, minZ: L / 2, maxZ: L / 2 + out }
+      : side === 'right'
+        ? { minX: W / 2, maxX: W / 2 + out, minZ: L / 2 - post - lw - 150, maxZ: L / 2 - post - 150 }
+        : { minX: -W / 2 - out, maxX: -W / 2, minZ: L / 2 - post - lw - 150, maxZ: L / 2 - post - 150 }
+  return { post, W, L, top, lw, slant, ladder, along }
+}
+
+export const loftBed = defineAsset({
+  type: 'loftBed',
+  label: 'ロフトベッド',
+  category: 'bed',
+  description:
+    '床板が高いベッド。下の空いたところにデスク・ソファ・収納を置ける（柱・はしご以外はぶつからない）。ミドルは床板 800〜1000、ハイは 1400〜1600。天井とマットレスのあいだは 700 くらい空けると起き上がれる。足元が正面(+Z)',
+  placement: 'floor',
+  surfaces: () => [],
+  params: {
+    size: p.select('サイズ', { single: 'シングル', semiDouble: 'セミダブル' }, 'single', { group: 'サイズ' }),
+    length: p.mm('長さ', 1950, 2100, 1950, { hint: 'マットレスの長さ' }),
+    deckHeight: p.mm('床板の高さ', 700, 1700, 1450, { hint: '床から床板の上面まで。下に入れる物の高さ＋100 くらい' }),
+    frame: p.select('フレーム', { steel: 'スチールパイプ', wood: '木製' }, 'steel'),
+    ladder: p.select('はしご', { straight: 'まっすぐ', slant: 'ななめ（上りやすい）' }, 'straight'),
+    ladderSide: p.select('はしごの位置', { right: '右の側面', left: '左の側面', end: '足元' }, 'right', { hint: '足元側から見た左右' }),
+    guard: p.mm('柵の高さ', 200, 450, 320, { group: '形', hint: '床板の上面から' }),
+    mattress: p.mm('マットレス厚', 60, 200, 100),
+    frameColor: p.color('フレーム', '#f4f4f2', { swatches: ['#f4f4f2', '#2b2b2e', '#8e9196', ...SWATCHES.wood.slice(0, 5)] }),
+    beddingColor: p.color('掛け布団', '#9fb59a', { swatches: SWATCHES.fabric }),
+    sheetColor: p.color('シーツ・枕', '#f4f1ec', { swatches: SWATCHES.fabric }),
+    duvet: p.bool('掛け布団', true),
+  },
+  presets: [
+    { name: 'ハイ（黒）', params: { deckHeight: 1550, frameColor: '#2b2b2e', beddingColor: '#d9d2c5' } },
+    { name: 'ミドル', params: { deckHeight: 900, ladder: 'slant', ladderSide: 'end', beddingColor: '#c9d6df' } },
+    { name: '木製', params: { frame: 'wood', frameColor: '#b8875a', ladder: 'slant', deckHeight: 1400, beddingColor: '#e8c76a' } },
+    { name: 'セミダブル', params: { size: 'semiDouble', deckHeight: 1500, frameColor: '#8e9196' } },
+  ],
+  solids: (q) => {
+    const { post, W, L, top, ladder } = loftLayout(q)
+    const parts = []
+    for (const sx of [-1, 1])
+      for (const sz of [-1, 1]) {
+        const x = sx * (W / 2 - post / 2)
+        const z = sz * (L / 2 - post / 2)
+        parts.push({ min: { x: x - post / 2, y: 0, z: z - post / 2 }, max: { x: x + post / 2, y: top, z: z + post / 2 } })
+      }
+    // The deck with its rails and the bedding; the space under it is free.
+    parts.push({ min: { x: -W / 2, y: q.deckHeight - 90, z: -L / 2 }, max: { x: W / 2, y: top, z: L / 2 } })
+    parts.push({ min: { x: ladder.minX, y: 0, z: ladder.minZ }, max: { x: ladder.maxX, y: top, z: ladder.maxZ } })
+    return parts
+  },
+  build(q) {
+    const { post, W, L, top, lw, slant, ladder, along } = loftLayout(q)
+    const steel = q.frame === 'steel'
+    const fm = steel ? mat('powder', q.frameColor) : mat('wood', q.frameColor)
+    const e = steel ? 3 : 2
+    const g = group()
+    const deck = q.deckHeight
+    // Posts.
+    for (const sx of [-1, 1]) for (const sz of [-1, 1]) g.add(panelOn(post, top, post, fm, sx * (W / 2 - post / 2), 0, sz * (L / 2 - post / 2), { edge: e, grain: 'y' }))
+    // Deck frame and the board the mattress rests on.
+    const railH = steel ? 60 : 90
+    for (const sx of [-1, 1]) g.add(panelOn(post * 0.6, railH, L - post * 2, fm, sx * (W / 2 - post / 2), deck - railH, 0, { edge: e, grain: 'z' }))
+    for (const sz of [-1, 1]) g.add(panelOn(W - post * 2, railH, post * 0.6, fm, 0, deck - railH, sz * (L / 2 - post / 2), { edge: e, grain: 'x' }))
+    g.add(panelOn(W - post * 2, 12, L - post * 2, steel ? mat('powder', q.frameColor) : mat('wood', '#d9c3a0'), 0, deck - 12, 0, { edge: 1, grain: 'z' }))
+    // Slats show from below as a few cross bars.
+    const n = Math.max(4, Math.round(L / 350))
+    for (let i = 1; i < n; i++) g.add(panelOn(W - post * 2, 20, 30, fm, 0, deck - 32, -L / 2 + (L * i) / n, { edge: 1 }))
+    // Guard rails: two bars on every side, open over the ladder.
+    const bar = steel ? 25 : 40
+    const gap = { from: 0, to: 0, side: q.ladderSide }
+    if (along === 'z') {
+      gap.from = ladder.minZ
+      gap.to = ladder.maxZ
+    } else {
+      gap.from = ladder.minX
+      gap.to = ladder.maxX
+    }
+    for (const y of [deck + q.guard * 0.45, top - bar]) {
+      for (const sx of [-1, 1]) {
+        const open = (sx > 0 && q.ladderSide === 'right') || (sx < 0 && q.ladderSide === 'left')
+        const x = sx * (W / 2 - post / 2)
+        if (!open) g.add(panelOn(bar * 0.6, bar, L - post * 2, fm, x, y, 0, { edge: e, grain: 'z' }))
+        else {
+          const a = -L / 2 + post
+          const b = L / 2 - post
+          if (gap.from - a > 20) g.add(panelOn(bar * 0.6, bar, gap.from - a, fm, x, y, (a + gap.from) / 2, { edge: e, grain: 'z' }))
+          if (b - gap.to > 20) g.add(panelOn(bar * 0.6, bar, b - gap.to, fm, x, y, (gap.to + b) / 2, { edge: e, grain: 'z' }))
+        }
+      }
+      for (const sz of [-1, 1]) {
+        const z = sz * (L / 2 - post / 2)
+        if (sz > 0 && q.ladderSide === 'end') {
+          const a = -W / 2 + post
+          if (gap.from - a > 20) g.add(panelOn(gap.from - a, bar, bar * 0.6, fm, (a + gap.from) / 2, y, z, { edge: e, grain: 'x' }))
+        } else g.add(panelOn(W - post * 2, bar, bar * 0.6, fm, 0, y, z, { edge: e, grain: 'x' }))
+      }
+    }
+    // Head end: a cross brace (steel) or a panel (wood) below the deck keeps the frame square.
+    const hz = -L / 2 + post / 2
+    if (steel) {
+      const len = Math.hypot(W - post * 2, deck - railH - 150)
+      const ang = Math.atan2(W - post * 2, deck - railH - 150)
+      for (const s of [-1, 1]) {
+        const b = panelOn(16, len, 8, fm, 0, -len / 2, 0, { edge: 1 })
+        const pv = group(b)
+        pv.position.set(0, 150 + (deck - railH - 150) / 2, hz)
+        pv.rotation.z = s * ang
+        g.add(pv)
+      }
+    } else g.add(panelOn(W - post * 2, 300, 18, fm, 0, deck - railH - 300, hz, { edge: 1.5, grain: 'x' }))
+    // Ladder: two stiles and rungs every ~280 mm, leaning out by `slant` at the floor.
+    const rails: THREE.Mesh[] = []
+    const lm = fm
+    const cx = along === 'z' ? (q.ladderSide === 'right' ? W / 2 + 25 : -W / 2 - 25) : (ladder.minX + ladder.maxX) / 2
+    const cz = along === 'z' ? (ladder.minZ + ladder.maxZ) / 2 : L / 2 + 25
+    const outward = along === 'z' ? [q.ladderSide === 'right' ? 1 : -1, 0] : [0, 1]
+    const lean = Math.atan2(slant, top)
+    const stileLen = Math.hypot(slant, top)
+    const ladderG = group()
+    ladderG.position.set(cx + outward[0] * slant, 0, cz + outward[1] * slant)
+    for (const s of [-1, 1]) {
+      const off = (s * (lw - bar)) / 2
+      rails.push(panelOn(along === 'z' ? bar * 0.8 : bar, stileLen, along === 'z' ? bar : bar * 0.8, lm, along === 'x' ? off : 0, 0, along === 'z' ? off : 0, { edge: e, grain: 'y' }))
+    }
+    for (let y = 280; y < stileLen - 120; y += 280) rails.push(panelOn(along === 'x' ? lw - bar : steel ? 22 : 30, steel ? 22 : 30, along === 'z' ? lw - bar : steel ? 22 : 30, lm, 0, y, 0, { edge: e }))
+    for (const m of rails) ladderG.add(m)
+    // Lean the ladder back toward the frame so its top meets the deck.
+    if (along === 'z') ladderG.rotation.z = (q.ladderSide === 'right' ? 1 : -1) * lean
+    else ladderG.rotation.x = -lean
+    g.add(ladderG)
+    // Rubber feet under the posts.
+    for (const sx of [-1, 1]) for (const sz of [-1, 1]) g.add(panelOn(post + 4, 8, post + 4, mat('rubber', '#2a2a2a'), sx * (W / 2 - post / 2), 0, sz * (L / 2 - post / 2), { edge: 1 }))
+    bedding(g, { mw: MATTRESS_W[q.size], length: q.length, deck, mattress: q.mattress, sheetColor: q.sheetColor, beddingColor: q.beddingColor, duvet: q.duvet })
     return g
   },
 })

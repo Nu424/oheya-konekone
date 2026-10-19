@@ -1,16 +1,16 @@
-import { bed, futon } from './items/beds'
+import { bed, futon, loftBed } from './items/beds'
 import { desk } from './items/desk'
-import { cushion, curtain, mirror, plant, rug, trashCan } from './items/decor'
+import { cushion, curtain, mirror, plant, roomDivider, rug, trashCan } from './items/decor'
 import { coffeeMaker, kettle, microwave, riceCooker, toaster } from './items/appliances'
 import { bookRow, bookStack, fileBox } from './items/books'
 import { desktopPC, keyboardMouse, laptop, monitor } from './items/computing'
-import { aircon, fridge, tv, washer } from './items/electronics'
+import { aircon, fridge, gameConsole, speaker, tv, washer } from './items/electronics'
 import { cardboardBox, organizer, wallClock } from './items/small'
 import { copier, foldingChair, officeDesk, partition, printer, whiteboard } from './items/office'
 import { dishRack, miniKitchen } from './items/kitchen'
 import { ceilingLight, deskLamp, floorLamp, pendantLight } from './items/lights'
 import { beanbag, diningChair, floorChair, officeChair, sofa } from './items/seating'
-import { cabinet, hangerRack, metalRack, shelf, tvStand, wallStorage } from './items/storage'
+import { cabinet, ceilingDryer, hangerRack, metalRack, shelf, tvStand, wallStorage } from './items/storage'
 import { wallArt } from './items/wall'
 import { diningTable, kotatsu, lowTable } from './items/tables'
 import { defaultParams, describeParam, paramsSchema, resolveParams, type ParamSpecs } from './params'
@@ -20,6 +20,7 @@ import type { AssetDef } from './types'
 const ALL: AssetDef<any>[] = [
   bed,
   futon,
+  loftBed,
   sofa,
   floorChair,
   beanbag,
@@ -45,9 +46,12 @@ const ALL: AssetDef<any>[] = [
   cabinet,
   metalRack,
   hangerRack,
+  ceilingDryer,
   wallStorage,
   tvStand,
   tv,
+  gameConsole,
+  speaker,
   fridge,
   washer,
   aircon,
@@ -67,6 +71,7 @@ const ALL: AssetDef<any>[] = [
   wallArt,
   rug,
   curtain,
+  roomDivider,
   plant,
   mirror,
   trashCan,

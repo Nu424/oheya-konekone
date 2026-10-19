@@ -57,4 +57,50 @@ describe('passive things', () => {
   })
 })
 
-export { analyzeFlow, solids }
+describe('loft bed', () => {
+  // Single loft bed against the north wall: about 1050 wide, 2030 long, deck at 1450.
+  const loft = () => item('loft', 'loftBed', [600, 0, 1100], { ladderSide: 'right' })
+
+  it('lets a desk stand under the deck', () => {
+    const L = layout(loft(), item('desk', 'desk', [600, 0, 1100], { width: 800, depth: 500 }))
+    expect([...collisions(L)]).toEqual([])
+  })
+
+  it('still collides with what hits a post or the ladder', () => {
+    const L = layout(loft(), item('box', 'cabinet', [120, 0, 120], { width: 300, depth: 300 }))
+    expect([...collisions(L)].sort()).toEqual(['box', 'loft'])
+  })
+
+  it('leaves the floor under the deck free to drop things on', () => {
+    const L = layout(loft())
+    const buried = solids(L).some((b) => 600 >= b.minX && 600 <= b.maxX && 1100 >= b.minZ && 1100 <= b.maxZ && b.minY < 1)
+    expect(buried).toBe(false)
+  })
+
+  it('only blocks circulation at its posts and ladder when the deck is high', () => {
+    const f = analyzeFlow(layout(loft()))
+    const cell = (x: number, z: number) => f.cells[Math.floor(z / 50) * f.cols + Math.floor(x / 50)]
+    expect(cell(600, 1100)).not.toBe(0)
+    const mid = analyzeFlow(layout(item('loft', 'loftBed', [600, 0, 1100], { deckHeight: 900 })))
+    expect(mid.cells[Math.floor(1100 / 50) * mid.cols + Math.floor(600 / 50)]).toBe(0)
+  })
+})
+
+describe('ceiling drying pole', () => {
+  const dryer = () => item('dryer', 'ceilingDryer', [1800, 0, 600], { drop: 500, clothes: 6 })
+
+  it('hangs above a desk without colliding', () => {
+    expect([...collisions(layout(dryer(), item('desk', 'desk', [1800, 0, 500])))]).toEqual([])
+  })
+
+  it('bumps into a tall bookcase under it', () => {
+    expect([...collisions(layout(dryer(), item('case', 'shelf', [1800, 0, 500], { height: 1800 })))].sort()).toEqual(['case', 'dryer'])
+  })
+})
+
+describe('speaker pair', () => {
+  it('leaves room between the two cabinets', () => {
+    const L = layout(item('desk', 'desk', [1500, 0, 400], { width: 1400 }), item('spk', 'speaker', [1500, 720, 300], { spacing: 1000 }), item('mon', 'monitor', [1500, 720, 300]))
+    expect([...collisions(L)]).toEqual([])
+  })
+})

@@ -207,6 +207,84 @@ export const curtain = defineAsset({
   },
 })
 
+export const roomDivider = defineAsset({
+  type: 'roomDivider',
+  label: '間仕切りカーテン',
+  category: 'decor',
+  description:
+    '天井のレールや突っ張り棒から下げて、部屋を区切るカーテン・のれん。天井から吊るす（position y は無視）。丈は天井高から 100 くらい引いた長さで床すれすれ。やわらかいので家具と重なってもよい',
+  placement: 'ceiling',
+  contactShadow: false,
+  params: {
+    width: p.mm('幅', 600, 3600, 1800),
+    height: p.mm('丈', 300, 2600, 2300, { hint: '天井から裾まで。床まで下げるなら天井高 −100、のれんなら 600〜1000' }),
+    open: p.number({ label: '開き具合', min: 0, max: 100, step: 1, default: 0, unit: '%', group: '形' }),
+    gather: p.select('寄せる側', { both: '両側', left: '左', right: '右' }, 'both', { group: '形' }),
+    rail: p.select('レール', { ceiling: '天井のレール', rod: '突っ張り棒' }, 'ceiling', { group: '形' }),
+    fabric: p.select('生地', { drape: 'ドレープ', lace: 'レース（透ける）', noren: 'のれん（切れ目）' }, 'drape', { group: '色・素材' }),
+    color: p.color('色', '#d9d2c5', { swatches: SWATCHES.fabric }),
+  },
+  presets: [
+    { name: '間仕切りカーテン', params: {} },
+    { name: 'のれん', params: { width: 900, height: 900, fabric: 'noren', rail: 'rod', color: '#3d4a5c' } },
+    { name: 'レースで仕切る', params: { fabric: 'lace', color: '#fbfaf6', open: 30, gather: 'left' } },
+  ],
+  build({ width: W, height: H, open, gather, rail, fabric, color }) {
+    // Origin at the ceiling; everything hangs below it.
+    const g = group()
+    const metal = mat('metal', '#d7d9dc', { roughness: 0.35 })
+    const top = rail === 'rod' ? -120 : -30
+    if (rail === 'rod') {
+      g.add(cyl(14, 14, W + 60, metal, [0, top, 0], { rot: [0, 0, Math.PI / 2], segments: 16 }))
+      for (const s of [-1, 1]) g.add(cyl(22, 22, 30, mat('rubber', '#e9e6df'), [s * (W / 2 + 40), top, 0], { rot: [0, 0, Math.PI / 2], segments: 16 }))
+    } else {
+      g.add(panelOn(W + 40, 30, 40, metal, 0, -30, 0))
+    }
+    const hem = top - 15
+    const drop = Math.max(100, H + hem)
+    const lace = fabric === 'lace'
+    const m0 = mat('fabric', color, { side: THREE.DoubleSide, roughness: lace ? 0.95 : undefined })
+    let fab = m0
+    if (lace) {
+      const m = (m0 as THREE.MeshPhysicalMaterial).clone()
+      m.transparent = true
+      m.opacity = 0.55
+      m.depthWrite = false
+      fab = m
+    }
+    const o = open / 100
+    if (fabric === 'noren') {
+      // Flat panels with slits, slid aside by `open`.
+      const n = W > 1200 ? 4 : W > 600 ? 3 : 2
+      const pw = W / n - 8
+      for (let i = 0; i < n; i++) {
+        const x0 = -W / 2 + (W / n) * (i + 0.5)
+        const x = gather === 'right' ? x0 + o * (W / 2 - x0) * 0.8 : gather === 'left' ? x0 - o * (x0 + W / 2) * 0.8 : x0 * (1 + o * 0.6)
+        const panel = new THREE.Mesh(new THREE.PlaneGeometry(pw, drop), fab)
+        panel.position.set(Math.max(-W / 2 + pw / 2, Math.min(W / 2 - pw / 2, x)), hem - drop / 2, 0)
+        g.add(panel)
+      }
+      return g
+    }
+    const panels = gather === 'both' ? [-1, 1] : [gather === 'left' ? -1 : 1]
+    const share = W / panels.length + 20
+    const pw = Math.max(W * 0.1, share * (1 - o * 0.82))
+    const folds = Math.max(3, Math.round(share / 160))
+    const amp = 18 + (share / pw) * 14
+    for (const s of panels) {
+      const d = pleatPanel(pw, drop, folds, Math.min(amp, 70), fab)
+      const edge = panels.length === 2 ? s * (W / 2 + 10) : s * (W / 2 + 10)
+      d.position.set(edge - s * (pw / 2), hem - drop / 2, 0)
+      if (lace) {
+        d.castShadow = false
+        d.userData.noShadow = true
+      }
+      g.add(d)
+    }
+    return g
+  },
+})
+
 // ---------------------------------------------------------------------------
 // Plants
 

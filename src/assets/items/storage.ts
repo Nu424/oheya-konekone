@@ -326,12 +326,80 @@ export const metalRack = defineAsset({
 })
 
 const CLOTHES = ['#f2efe9', '#3d4a5c', '#8fa9bf', '#c5687a', '#e8c76a', '#4d4f53', '#9fb59a', '#d9cbb4', '#2f2f31']
+const LAUNDRY_KINDS = { clothes: '服（ハンガー）', laundry: '洗濯物（シャツ・タオル・ピンチハンガー）' } as const
+type LaundryKind = keyof typeof LAUNDRY_KINDS
+
+/**
+ * Things hanging from a horizontal rail at `railY` (mm), spread over `usable` mm along X: coats and
+ * shirts on hangers, or drying laundry (T-shirts, towels folded over the rail, a pinch hanger with socks).
+ * Shared by the hanger rack (and its indoor drying preset) and the ceiling drying pole.
+ */
+function hangOnRail(usable: number, railY: number, n: number, kind: LaundryKind, seed: number) {
+  const g = new THREE.Group()
+  const rr = rng(n * 17 + seed)
+  const hook = mat('metal', '#c9ccd0')
+  for (let i = 0; i < n; i++) {
+    const x = n === 1 ? 0 : -usable / 2 + (usable / (n - 1)) * i + (rr() - 0.5) * 20
+    const fab = mat('fabric', CLOTHES[Math.floor(rr() * CLOTHES.length)])
+    const hang = new THREE.Group()
+    const pick = kind === 'clothes' ? 'coat' : i % 4 === 1 ? 'towel' : i % 4 === 3 ? 'pinch' : 'shirt'
+    if (pick === 'coat') {
+      const long = rr() < 0.3
+      const ch = long ? 950 + rr() * 200 : 600 + rr() * 150
+      const cw = 420 + rr() * 80
+      hang.add(rbox(55, ch, cw, 22, fab, [0, -ch / 2 - 60, 0]))
+      // shoulders
+      hang.add(rbox(60, 60, cw + 60, 28, fab, [0, -80, 0]))
+      // hanger hook
+      hang.add(cyl(4, 4, 70, hook, [0, -30, 0]))
+    } else if (pick === 'shirt') {
+      // A T-shirt on a hanger: a thin body and short sleeves angled down.
+      const ch = 640 + rr() * 80
+      const cw = 470 + rr() * 50
+      hang.add(rbox(18, ch, cw, 8, fab, [0, -ch / 2 - 70, 0]))
+      for (const s of [-1, 1]) {
+        const sl = rbox(14, 170, 130, 6, fab)
+        sl.position.set(0, -140, s * (cw / 2 + 25))
+        sl.rotation.x = -s * 0.6
+        hang.add(sl)
+      }
+      hang.add(cyl(3, 3, 60, hook, [0, -30, 0]))
+      hang.add(cyl(3, 3, cw - 40, hook, [0, -62, 0], { rot: [Math.PI / 2, 0, 0], segments: 6 }))
+    } else if (pick === 'towel') {
+      // A bath towel folded over the rail: front and back halves.
+      const tl = 520 + rr() * 120
+      const tw = 340 + rr() * 60
+      for (const s of [-1, 1]) hang.add(rbox(tw, tl, 7, 3, fab, [0, -tl / 2, s * 11], { grain: 'y' }))
+      hang.add(cyl(15, 15, tw, fab, [0, 0, 0], { rot: [0, 0, Math.PI / 2], segments: 12 }))
+    } else {
+      // A pinch hanger: a square frame on a hook, with socks and hand towels clipped below.
+      const fw = 380
+      const s = (fw / 2) * Math.SQRT1_2
+      const plastic = mat('plastic', '#f2f2ef', { roughness: 0.4 })
+      for (const [a, b] of [[[-s, -s], [s, -s]], [[s, -s], [s, s]], [[s, s], [-s, s]], [[-s, s], [-s, -s]]] as const)
+        hang.add(cyl(5, 5, Math.hypot(b[0] - a[0], b[1] - a[1]), plastic, [(a[0] + b[0]) / 2, -170, (a[1] + b[1]) / 2], { rot: a[0] === b[0] ? [Math.PI / 2, 0, 0] : [0, 0, Math.PI / 2], segments: 6 }))
+      hang.add(cyl(3, 3, 170, hook, [0, -85, 0]))
+      for (let k = 0; k < 6; k++) {
+        const x = [-s, 0, s][k % 3]
+        const z = k < 3 ? -s : s
+        const sock = k % 3 !== 1
+        const c = mat('fabric', CLOTHES[(i + k * 3) % CLOTHES.length])
+        hang.add(rbox(sock ? 90 : 220, sock ? 230 : 280, 8, 3, c, [x, -180 - (sock ? 115 : 140), z]))
+        hang.add(boxOn(14, 22, 12, plastic, x, -192, z))
+      }
+    }
+    hang.position.set(x, railY, 0)
+    hang.rotation.y += (rr() - 0.5) * 0.25
+    g.add(hang)
+  }
+  return g
+}
 
 export const hangerRack = defineAsset({
   type: 'hangerRack',
   label: 'ハンガーラック',
   category: 'storage',
-  description: '服をかけるラック。服をかけた状態も表示できる',
+  description: '服をかけるラック。服をかけた状態も表示できる。洗濯物を干した室内物干しにもなる',
   placement: 'floor',
   // Nothing is meant to stand on it.
   surfaces: () => [],
@@ -340,10 +408,12 @@ export const hangerRack = defineAsset({
     height: p.mm('高さ', 1300, 1900, 1650),
     depth: p.mm('奥行き', 350, 600, 450),
     clothes: p.number({ label: '服の数', min: 0, max: 20, step: 1, default: 9, group: '形' }),
+    kind: p.select('かける物', LAUNDRY_KINDS, 'clothes', { group: '形' }),
     shelf: p.bool('下段の棚', true),
     color: p.color('フレーム', '#2b2b2b', { swatches: [...SWATCHES.metal, '#b8875a', '#f2efe9'] }),
   },
-  build({ width: W, height: H, depth: D, clothes, shelf, color }) {
+  presets: [{ name: '室内物干し', params: { width: 1300, height: 1600, depth: 550, clothes: 7, kind: 'laundry', shelf: false, color: '#d7d9dc' } }],
+  build({ width: W, height: H, depth: D, clothes, kind, shelf, color }) {
     const metal = mat('metal', color, { roughness: 0.35 })
     const g = group()
     const r = 13
@@ -359,30 +429,10 @@ export const hangerRack = defineAsset({
       g.add(rbox(320, 110, 260, 30, mat('fabric', '#d9cbb4'), [-W / 4, 275, 0]))
       g.add(rbox(280, 90, 300, 20, mat('leather', '#6b4a34'), [W / 5, 265, 0]))
     }
-    const n = Math.round(clothes)
-    const rr = rng(n * 17 + Math.round(W))
-    const usable = W - 160
-    for (let i = 0; i < n; i++) {
-      const x = -usable / 2 + (usable / Math.max(1, n - 1)) * i + (rr() - 0.5) * 20
-      const long = rr() < 0.3
-      const ch = long ? 950 + rr() * 200 : 600 + rr() * 150
-      const cw = 420 + rr() * 80
-      const col = CLOTHES[Math.floor(rr() * CLOTHES.length)]
-      const hang = new THREE.Group()
-      const body = rbox(55, ch, cw, 22, mat('fabric', col), [0, -ch / 2 - 60, 0])
-      hang.add(body)
-      // shoulders
-      hang.add(rbox(60, 60, cw + 60, 28, mat('fabric', col), [0, -80, 0]))
-      // hanger hook
-      hang.add(cyl(4, 4, 70, mat('metal', '#c9ccd0'), [0, -30, 0]))
-      hang.position.set(x, H - r, 0)
-      hang.rotation.y = (rr() - 0.5) * 0.25
-      g.add(hang)
-    }
+    g.add(hangOnRail(W - 160, H - r, Math.round(clothes), kind as LaundryKind, Math.round(W)))
     return g
   },
 })
-
 
 // ---- Wall-mounted storage ----------------------------------------------------------------------
 
@@ -540,6 +590,47 @@ export const wallStorage = defineAsset({
         }
       }
     })
+    return g
+  },
+})
+
+// ---- Ceiling drying pole -------------------------------------------------------------------------
+
+export const ceilingDryer = defineAsset({
+  type: 'ceilingDryer',
+  label: '天井の物干し',
+  category: 'storage',
+  description:
+    '天井から 2 本の支柱で竿を吊るす室内物干し。洗濯物は床から浮いているので下を通れる・物を置けるが、背の高い家具とはぶつかる。天井から吊るす（position y は無視）',
+  placement: 'ceiling',
+  // Laundry hangs low enough to bump into a bookcase.
+  blocks: true,
+  contactShadow: false,
+  surfaces: () => [],
+  params: {
+    length: p.mm('竿の長さ', 900, 2400, 1600),
+    drop: p.mm('吊り下げの長さ', 250, 1100, 500, { hint: '天井から竿まで' }),
+    clothes: p.number({ label: '洗濯物の数', min: 0, max: 14, step: 1, default: 6, group: '形' }),
+    kind: p.select('かける物', LAUNDRY_KINDS, 'laundry', { group: '形' }),
+    color: p.color('支柱と竿', '#f2f2ef', { swatches: ['#f2f2ef', '#d7d9dc', '#2b2b2e', '#c9a86a'] }),
+  },
+  presets: [
+    { name: '何もかけない', params: { clothes: 0, drop: 300 } },
+    { name: '窓ぎわに長く', params: { length: 2200, clothes: 10 } },
+  ],
+  build({ length: Lg, drop, clothes, kind, color }) {
+    // Origin at the ceiling; everything hangs below it.
+    const g = group()
+    const metal = color === '#d7d9dc' ? mat('stainless', color) : mat('powder', color)
+    for (const s of [-1, 1]) {
+      const x = s * (Lg / 2 - 120)
+      g.add(cyl(32, 32, 14, metal, [x, -7, 0], { segments: 24 }))
+      g.add(cyl(9, 9, drop, metal, [x, -drop / 2, 0], { segments: 12 }))
+      g.add(boxOn(30, 50, 24, metal, x, -drop - 22, 0))
+    }
+    g.add(cyl(13, 13, Lg, metal, [0, -drop, 0], { rot: [0, 0, Math.PI / 2], segments: 16 }))
+    for (const s of [-1, 1]) g.add(cyl(15, 15, 20, mat('plastic', '#3a3b3e'), [s * (Lg / 2 + 10), -drop, 0], { rot: [0, 0, Math.PI / 2], segments: 16 }))
+    g.add(hangOnRail(Lg - 300, -drop, Math.round(clothes), kind, Math.round(Lg)))
     return g
   },
 })
