@@ -206,7 +206,10 @@ function rackMetal(finish: string) {
   return finish === 'chrome' ? mat('chrome', '#d9dcdf', { roughness: 0.14 }) : finish === 'gold' ? mat('chrome', '#c9a86a', { roughness: 0.22 }) : mat('powder', finish === 'black' ? '#262729' : '#f1f1ef')
 }
 
-type RackParams = { width: number; depth: number; height: number; shelves: number; shelfType: string; finish: string; feet: string; pole: string; boardColor: string }
+type RackParams = { width: number; depth: number; height: number; shelves: number; shelfType: string; finish: string; feet: string; pole: string; boardColor: string; handle: boolean }
+
+/** Height of the wire guard around basket shelves. */
+const BASKET_RIM = 70
 
 /** Height (top face) of every shelf, bottom first. */
 function rackLevels(q: RackParams) {
@@ -228,9 +231,10 @@ export const metalRack = defineAsset({
     depth: p.mm('奥行き', 300, 650, 460, { hint: '定番は 350 / 460 / 610' }),
     height: p.mm('高さ', 600, 2000, 1790),
     shelves: p.number({ label: '棚の数', min: 2, max: 8, step: 1, default: 5, group: '形' }),
-    shelfType: p.select('棚板', { wire: 'ワイヤー', board: '木目の板をのせる', glass: 'ガラスをのせる' }, 'wire', { group: '形' }),
+    shelfType: p.select('棚板', { wire: 'ワイヤー', basket: 'かご（ふちのあるワイヤー）', board: '木目の板をのせる', glass: 'ガラスをのせる' }, 'wire', { group: '形' }),
     pole: p.select('ポール', { standard: '太い (25mm)', slim: '細い (19mm)' }, 'standard', { group: '形' }),
     feet: p.select('足もと', { adjuster: 'アジャスター', casters: 'キャスター' }, 'adjuster', { group: '形' }),
+    handle: p.bool('持ち手', false, { hint: '一番上の棚の横に付く押し手（ワゴンに）' }),
     finish: p.select('色', RACK_FINISH, 'chrome', { group: '色・素材' }),
     boardColor: p.color('棚板の色', '#b8875a', { swatches: SWATCHES.wood }),
   },
@@ -239,6 +243,7 @@ export const metalRack = defineAsset({
     { name: 'ブラック＋木目', params: { finish: 'black', shelfType: 'board', boardColor: '#8f5f3d' } },
     { name: 'ロー（3 段）', params: { width: 910, height: 900, shelves: 3, pole: 'slim', finish: 'white', shelfType: 'board', boardColor: '#e4cfa8' } },
     { name: 'すき間ラック', params: { width: 450, depth: 350, height: 1500, shelves: 5, pole: 'slim' } },
+    { name: 'キッチンワゴン', params: { width: 450, depth: 300, height: 820, shelves: 3, shelfType: 'basket', pole: 'slim', feet: 'casters', finish: 'white', handle: true } },
   ],
   surfaces: (q) => {
     const lv = rackLevels(q)
@@ -295,8 +300,25 @@ export const metalRack = defineAsset({
         wires.push(cyl(wireR, wireR, D - r * 2, metal, [x, y - wireR, 0], { rot: [Math.PI / 2, 0, 0], segments: 6 }))
       }
       for (const z of [-D / 6, D / 6]) wires.push(cyl(wireR, wireR, W - r * 2, metal, [0, y - wireR * 3, z], { rot: [0, 0, Math.PI / 2], segments: 6 }))
+      if (q.shelfType === 'basket') {
+        // Guard rails around the basket: a top wire and uprights every few centimetres.
+        const top = y + BASKET_RIM
+        for (const z of [-D / 2 + r, D / 2 - r]) wires.push(cyl(wireR, wireR, W - r * 2, metal, [0, top, z], { rot: [0, 0, Math.PI / 2], segments: 6 }))
+        for (const x of [-W / 2 + r, W / 2 - r]) wires.push(cyl(wireR, wireR, D - r * 2, metal, [x, top, 0], { rot: [Math.PI / 2, 0, 0], segments: 6 }))
+        const up = (x: number, z: number) => wires.push(cyl(1.6, 1.6, BASKET_RIM, metal, [x, y + BASKET_RIM / 2, z], { segments: 5 }))
+        for (let k = 1; k < n; k++) for (const z of [-D / 2 + r, D / 2 - r]) up(-W / 2 + r + ((W - r * 2) * k) / n, z)
+        const m = Math.max(3, Math.round((D - r * 2) / 24))
+        for (let k = 1; k < m; k++) for (const x of [-W / 2 + r, W / 2 - r]) up(x, -D / 2 + r + ((D - r * 2) * k) / m)
+      }
       if (q.shelfType === 'board') g.add(panelOn(W - r * 2 - 4, 9, D - r * 2 - 4, mat('wood', q.boardColor), 0, y, 0, { edge: 1.5 }))
       if (q.shelfType === 'glass') g.add(panelOn(W - r * 2 - 4, 6, D - r * 2 - 4, mat('glass', '#d9e8ea', { opacity: 0.3 }), 0, y, 0, { edge: 1 }))
+    }
+    if (q.handle) {
+      // Push handle on the right side, just under the pole tops.
+      const hx = W / 2 + 55
+      const hy = poleTop - 30
+      for (const z of [-D / 4, D / 4]) wires.push(cyl(5, 5, 55, metal, [W / 2 + 27, hy, z], { rot: [0, 0, Math.PI / 2], segments: 8 }))
+      wires.push(cyl(9, 9, D / 2 + 30, metal, [hx, hy, 0], { rot: [Math.PI / 2, 0, 0], segments: 12 }))
     }
     g.add(merged(poles, metal), merged(wires, metal), merged(grooves, metal, { castShadow: false }))
     return g
@@ -361,3 +383,163 @@ export const hangerRack = defineAsset({
   },
 })
 
+
+// ---- Wall-mounted storage ----------------------------------------------------------------------
+
+const WALL_STYLES = {
+  board: '1 枚板の棚',
+  open: '箱の棚（扉なし）',
+  hinged: '開き戸',
+  sliding: '引き戸',
+  flap: 'フラップ扉（下に開く）',
+  glass: 'ガラス開き戸',
+} as const
+type WallStyle = keyof typeof WALL_STYLES
+
+type WallStorageParams = {
+  style: WallStyle
+  width: number
+  height: number
+  depth: number
+  rows: number
+  cols: number
+  bracket: string
+  open: number
+  handle: string
+  finish: string
+  color: string
+}
+
+/** Thickness of a single wall board: floating shelves hide their fixing in a thicker board. */
+const wallBoardT = (q: WallStorageParams) => (q.bracket === 'hidden' ? 30 : 20)
+
+/** Top face of each board of a board shelf, bottom first. The brackets hang below the lowest one. */
+function wallBoardLevels(q: WallStorageParams) {
+  const n = Math.max(1, Math.round(q.rows))
+  return Array.from({ length: n }, (_, i) => ((i + 1) * q.height) / n)
+}
+
+function wallStorageSpec(q: WallStorageParams): StorageSpec {
+  return {
+    W: q.width,
+    H: q.height,
+    D: q.depth,
+    finish: q.finish as Finish,
+    color: q.color,
+    cols: q.cols,
+    sections: [{ kind: q.style as FrontKind, rows: q.rows, weight: 1 }],
+    span: q.style === 'hinged' || q.style === 'glass' ? 'column' : 'cell',
+    open: q.open,
+    handle: q.handle as HandleKind,
+    base: 'none',
+    back: true,
+  }
+}
+
+export const wallStorage = defineAsset({
+  type: 'wallStorage',
+  label: '壁付けの棚・吊り戸棚',
+  category: 'storage',
+  description:
+    '壁に取り付ける収納。1 枚板のウォールシェルフ・箱の飾り棚・吊り戸棚・天袋。床から浮いているので下に家具を置ける。棚の上や中に物を載せられ、物は棚と一緒に動く。奥行き 450 以上の扉付きは天井にぴったり付けて置く',
+  placement: 'wall',
+  // Shelves at about chest height; door cupboards above head height, deep ones (天袋) flush with the ceiling.
+  elevation: (q, room) => {
+    if (q.style === 'board' || q.style === 'open') return 1200
+    return Math.max(0, Math.min(room.height - q.height, q.depth >= 450 ? Infinity : 1500))
+  },
+  contactShadow: false,
+  params: {
+    style: p.select('形', WALL_STYLES, 'board', { group: '形' }),
+    width: p.mm('幅', 300, 2400, 800),
+    height: p.mm('高さ', 100, 1200, 200, { hint: '1 枚板の棚では、一番上の板までの高さ（段が増えると板の間隔になる）' }),
+    depth: p.mm('奥行き', 120, 650, 200),
+    rows: p.number({ label: '段数', min: 1, max: 5, step: 1, default: 1, group: '形' }),
+    cols: p.number({ label: '列数', min: 1, max: 4, step: 1, default: 1, group: '形', hint: '箱の棚・扉付きのとき' }),
+    bracket: p.select('棚受け', { hidden: '見えない（浮いて見える）', iron: 'アイアン', wood: '木' }, 'iron', { group: '形', hint: '1 枚板の棚のとき' }),
+    open: p.number({ label: '開き具合', min: 0, max: 1, step: 0.05, default: 0, group: '形' }),
+    handle: p.select('取っ手', HANDLE_LABELS, 'groove', { group: '形' }),
+    finish: p.select('素材', finishOptions(['wood', 'melamine', 'steel']), 'wood', { group: '色・素材' }),
+    color: p.color('色', '#b8875a', { swatches: BODY_SWATCHES }),
+  },
+  presets: [
+    { name: 'ウォールシェルフ', params: { style: 'board', width: 600, height: 180, depth: 180, bracket: 'hidden', color: '#d2ad7c' } },
+    { name: 'アイアンの 2 段棚', params: { style: 'board', width: 900, height: 700, depth: 220, rows: 2, bracket: 'iron', color: '#8f5f3d' } },
+    { name: '飾り棚（箱）', params: { style: 'open', width: 900, height: 300, depth: 220, cols: 3, finish: 'melamine', color: '#f4f4f2' } },
+    { name: '吊り戸棚', params: { style: 'hinged', width: 900, height: 600, depth: 350, cols: 2, rows: 2, handle: 'bar', finish: 'melamine', color: '#f1ece4' } },
+    { name: '天袋', params: { style: 'sliding', width: 1600, height: 450, depth: 600, finish: 'melamine', color: '#efe9df', handle: 'groove' } },
+    { name: 'フラップ扉の吊り戸棚', params: { style: 'flap', width: 1200, height: 380, depth: 330, cols: 3, finish: 'wood', color: '#6b4a34' } },
+  ],
+  surfaces: (q) => {
+    if (q.style !== 'board') return storageSurfaces(wallStorageSpec(q))
+    const lv = wallBoardLevels(q)
+    const t = wallBoardT(q)
+    return lv.map((y, i) => ({
+      y,
+      minX: -q.width / 2,
+      maxX: q.width / 2,
+      minZ: -q.depth / 2,
+      maxZ: q.depth / 2,
+      clearance: i < lv.length - 1 ? lv[i + 1] - y - t : undefined,
+      label: lv.length > 1 ? `${i + 1}段目` : '棚板',
+    }))
+  },
+  body: (q) => (q.style === 'board' ? { min: { x: -q.width / 2, y: 0, z: -q.depth / 2 }, max: { x: q.width / 2, y: q.height, z: q.depth / 2 } } : storageBody(wallStorageSpec(q))),
+  build(q) {
+    if (q.style !== 'board') {
+      const g = buildStorage(wallStorageSpec(q))
+      // A hanging rail along the top of the back, as on real wall cupboards.
+      g.add(boxOn(q.width - 60, 40, 8, mat('matte', '#3b3530'), 0, q.height - 60, -q.depth / 2 - 4))
+      return g
+    }
+    const g = group()
+    const wood = q.finish === 'steel' ? mat('powder', q.color) : q.finish === 'melamine' ? mat('matte', q.color, { roughness: 0.55 }) : mat('wood', q.color)
+    const t = wallBoardT(q)
+    const W = q.width
+    const D = q.depth
+    const iron = mat('powder', '#262729')
+    const n = W > 900 ? 3 : 2
+    const xs = Array.from({ length: n }, (_, i) => -W / 2 + W * 0.15 + ((W * 0.7) / (n - 1)) * i)
+    const lv = wallBoardLevels(q)
+    lv.forEach((top, i) => {
+      g.add(panelOn(W, t, D, wood, 0, top - t, 0, { edge: q.bracket === 'hidden' ? 2 : 1.5, grain: 'x' }))
+      if (q.bracket === 'hidden') return
+      // Brackets under each board: as tall as the gap below allows, up to about the board's depth.
+      const below = i === 0 ? top - t : top - t - lv[i - 1]
+      const h = Math.max(40, Math.min(below, D * 0.8, 220))
+      for (const x of xs) {
+        if (q.bracket === 'iron') {
+          const arm = Math.min(D - 20, h)
+          g.add(panelOn(4, h, 25, iron, x, top - t - h, -D / 2 + 12.5, { edge: 1 }))
+          g.add(panelOn(4, 4, arm, iron, x, top - t - 4, -D / 2 + arm / 2, { edge: 1 }))
+          // Diagonal brace.
+          const len = Math.hypot(arm * 0.8, h * 0.8)
+          const brace = panelOn(4, len, 4, iron, 0, -len, 0, { edge: 1 })
+          const pivot = group(brace)
+          pivot.position.set(x, top - t - 4, -D / 2 + arm * 0.8)
+          pivot.rotation.x = Math.atan2(arm * 0.8, h * 0.8)
+          g.add(pivot)
+        } else {
+          // Wooden triangular brace.
+          const sh = new THREE.Shape()
+          const arm = Math.min(D - 20, h)
+          sh.moveTo(0, 0)
+          sh.lineTo(0, h)
+          sh.lineTo(arm, h)
+          sh.lineTo(arm, h - 20)
+          sh.lineTo(20, 0)
+          sh.closePath()
+          const geo = new THREE.ExtrudeGeometry(sh, { depth: 18, bevelEnabled: false })
+          geo.translate(0, 0, -9)
+          geo.rotateY(-Math.PI / 2)
+          const m = new THREE.Mesh(geo, wood)
+          m.castShadow = true
+          m.receiveShadow = true
+          m.position.set(x, top - t - h, -D / 2)
+          g.add(m)
+        }
+      }
+    })
+    return g
+  },
+})

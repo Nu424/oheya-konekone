@@ -14,8 +14,10 @@ export interface Footprint {
   d: number
   /** Local bounding box of everything that is drawn, in mm. */
   box: THREE.Box3
-  /** The solid part used for collision and snapping (the asset's `body`, or the bounding box). */
+  /** The solid part used for snapping and the outline (the asset's `body`, or the bounding box). */
   body: THREE.Box3
+  /** Separate solid parts used for collision, when the asset declares them (see AssetDef.solids). */
+  solids?: THREE.Box3[]
 }
 
 const shadowMat = new THREE.MeshBasicMaterial({
@@ -66,10 +68,17 @@ export function buildItemObject(type: string, params: Record<string, unknown>): 
   const root = new THREE.Group()
   root.add(obj)
   const box = new THREE.Box3().setFromObject(obj)
+  const toBox3 = (b: { min: { x: number; y: number; z: number }; max: { x: number; y: number; z: number } }) =>
+    new THREE.Box3(new THREE.Vector3(b.min.x, b.min.y, b.min.z), new THREE.Vector3(b.max.x, b.max.y, b.max.z))
+  const solids = asset.solids?.(resolved as never).map(toBox3)
   const b = asset.body?.(resolved as never)
-  const body = b ? new THREE.Box3(new THREE.Vector3(b.min.x, b.min.y, b.min.z), new THREE.Vector3(b.max.x, b.max.y, b.max.z)) : box
-  root.userData.footprint = { w: box.max.x - box.min.x, h: box.max.y - box.min.y, d: box.max.z - box.min.z, box, body } satisfies Footprint
-  if ((asset.contactShadow ?? asset.placement === 'floor') && !body.isEmpty()) root.add(contactShadow(body))
+  const body = b ? toBox3(b) : solids?.length ? solids.reduce((u, s) => u.union(s), new THREE.Box3()) : box
+  root.userData.footprint = { w: box.max.x - box.min.x, h: box.max.y - box.min.y, d: box.max.z - box.min.z, box, body, solids } satisfies Footprint
+  if ((asset.contactShadow ?? asset.placement === 'floor') && !body.isEmpty()) {
+    // Parts standing on the floor each get their own blob; the floor under a loft bed's deck stays lit.
+    const feet = solids?.filter((s) => s.min.y < 1)
+    for (const f of feet?.length ? feet : [body]) root.add(contactShadow(f))
+  }
   root.scale.setScalar(S)
   return root
 }

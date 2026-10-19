@@ -1,7 +1,7 @@
 import { getAsset } from '../assets/registry'
 import type { Layout, Opening } from '../model/schema'
 import { isPassive, itemFootprint2D, SEATS, stack } from './placement'
-import { footprint, overlaps2D, type Footprint2D } from './space'
+import { footprint, overlaps2D, partsOf, type Footprint2D } from './space'
 
 /**
  * Circulation ("動線") analysis on a 50 mm floor grid:
@@ -13,6 +13,8 @@ export const CELL = 50
 /** Half of the clear width needed to walk comfortably (600 mm) and to squeeze through sideways (400 mm). */
 const COMFY = 300
 const SQUEEZE = 190
+/** Things whose bottom is higher than this are overhead (a loft bed's deck, a wall cupboard) and not in the way. */
+const HEADROOM = 1200
 
 export const enum Cell {
   Blocked = 0,
@@ -160,10 +162,15 @@ export function analyzeFlow(layout: Layout): FlowResult {
   const solid = layout.items
     // Chairs can be pulled out, so they do not block access to the desk / table they belong to.
     .filter((i) => !isPassive(i.type) && !SEATS.has(i.type) && !sup.has(i.id))
-    .map((i) => ({ i, f: itemFootprint2D(i, layout) }))
-    .filter(({ f }) => f.minY < 1200)
+    .map((i) => {
+      const f = itemFootprint2D(i, layout)
+      // Only the parts at body height are in the way (a loft bed's posts, not its deck).
+      return { i, f, parts: partsOf(f).filter((p) => p.minY < HEADROOM) }
+    })
+    .filter(({ parts }) => parts.length > 0)
+  const hits = (poly: Footprint2D, s: { parts: Footprint2D[] }) => s.parts.some((p) => overlaps2D(poly, p))
   const cols2 = room.columns.map((c) => footprint({ min: { x: -c.width / 2, y: 0, z: -c.depth / 2 }, max: { x: c.width / 2, y: room.height, z: c.depth / 2 } }, c.x, 0, c.z, 0))
-  for (const f of [...solid.map((s) => s.f), ...cols2]) {
+  for (const f of [...solid.flatMap((s) => s.parts), ...cols2]) {
     const c0 = Math.max(0, Math.floor(f.minX / CELL))
     const c1 = Math.min(cols - 1, Math.floor(f.maxX / CELL))
     const r0 = Math.max(0, Math.floor(f.minZ / CELL))
@@ -233,27 +240,28 @@ export function analyzeFlow(layout: Layout): FlowResult {
     const s = doorSwing(o, layout)
     if (!s) return
     const poly = sectorPoly(s)
-    for (const { i, f } of solid) {
-      if (!overlaps2D(poly, f)) continue
-      // Check against the true arc: any furniture corner within the radius & angle range, or the hinge inside the furniture.
-      const hitsArc = f.corners.some(([x, z]) => {
+    // Check against the true arc: any furniture corner within the radius & angle range.
+    const inArc = (f: Footprint2D) =>
+      f.corners.some(([x, z]) => {
         const dx = x - s.cx
         const dz = z - s.cz
         const a = Math.atan2(dz, dx)
         const inRange = [a, a + Math.PI * 2, a - Math.PI * 2].some((aa) => aa >= s.a0 - 0.01 && aa <= s.a1 + 0.01)
         return Math.hypot(dx, dz) < s.r && inRange
       })
+    for (const { i, parts } of solid) {
+      const hitsArc = parts.some((f) => overlaps2D(poly, f) && inArc(f))
       if (hitsArc) issues.push({ level: 'warn', message: `ドアを開けると「${label(i.id, layout)}」に当たるよ`, itemId: i.id, openingId: o.id })
     }
   })
   for (const o of room.openings) {
     if (o.type === 'closet' && o.doorStyle !== 'open') {
       const strip = frontStrip(o, layout, o.doorStyle === 'folding' ? 450 : 350)
-      for (const { i, f } of solid) if (overlaps2D(strip, f) && f.maxY > 200) issues.push({ level: 'warn', message: `クローゼットの前を「${label(i.id, layout)}」がふさいでるよ`, itemId: i.id, openingId: o.id })
+      for (const sd of solid) if (hits(strip, sd) && sd.f.maxY > 200) issues.push({ level: 'warn', message: `クローゼットの前を「${label(sd.i.id, layout)}」がふさいでるよ`, itemId: sd.i.id, openingId: o.id })
     }
     if (o.type === 'window' && o.sill < 300) {
       const strip = frontStrip(o, layout, 350)
-      for (const { i, f } of solid) if (overlaps2D(strip, f) && f.maxY > 900) issues.push({ level: 'info', message: `掃き出し窓の前に背の高い「${label(i.id, layout)}」があるよ（ベランダに出にくいかも）`, itemId: i.id, openingId: o.id })
+      for (const sd of solid) if (hits(strip, sd) && sd.f.maxY > 900) issues.push({ level: 'info', message: `掃き出し窓の前に背の高い「${label(sd.i.id, layout)}」があるよ（ベランダに出にくいかも）`, itemId: sd.i.id, openingId: o.id })
     }
   }
   // Furniture you cannot get to (e.g. a bed boxed in).

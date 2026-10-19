@@ -19,6 +19,8 @@ export interface Footprint2D {
   /** Vertical extent in room coordinates. */
   minY: number
   maxY: number
+  /** Separate solid parts (a loft bed's posts and deck); when present, collisions test these instead. */
+  parts?: Footprint2D[]
 }
 
 const rad = (d: number) => (d * Math.PI) / 180
@@ -83,9 +85,17 @@ export function overlaps2D(a: Footprint2D, b: Footprint2D, margin = 1): boolean 
   return true
 }
 
-export function overlaps3D(a: Footprint2D, b: Footprint2D) {
+export function overlaps3D(a: Footprint2D, b: Footprint2D): boolean {
   if (a.maxY <= b.minY + 1 || b.maxY <= a.minY + 1) return false
-  return overlaps2D(a, b)
+  if (!overlaps2D(a, b)) return false
+  if (a.parts) return a.parts.some((p) => overlaps3D(p, b))
+  if (b.parts) return b.parts.some((p) => overlaps3D(a, p))
+  return true
+}
+
+/** The solid parts of a footprint (itself when it is one block). */
+export function partsOf(f: Footprint2D): Footprint2D[] {
+  return f.parts ?? [f]
 }
 
 export interface SnapTarget {

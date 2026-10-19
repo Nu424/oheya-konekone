@@ -58,8 +58,11 @@ export interface AssetDef<S extends ParamSpecs = ParamSpecs> {
   /** Short description for the catalog and the AI prompt. */
   description: string
   placement: Placement
-  /** Default height (mm) of the item's bottom when added, for wall items. */
-  elevation?: number
+  /**
+   * Default height (mm) of the item's bottom when added, for wall items. A function can work it out
+   * from the parameters and the room (an overhead cupboard flush with the ceiling).
+   */
+  elevation?: number | ((p: ParamValues<S>, room: { height: number }) => number)
   /** Hide while the ceiling is cut away (flush ceiling fixtures would otherwise float). */
   hideWithCeiling?: boolean
   /** Whether to draw a soft contact shadow under the item (default true for floor items). */
@@ -82,6 +85,18 @@ export interface AssetDef<S extends ParamSpecs = ParamSpecs> {
    * the floor: a fridge without its open door.
    */
   body?(p: ParamValues<S>): LocalBox
+  /**
+   * The solid parts when the item is not one block (docs/OVERHEAD.md): a loft bed's posts, deck and
+   * ladder, with free space under the deck. Collisions, circulation and the "cannot drop here" test
+   * use the parts; snapping and the outline use their bounds (`body`, which may then be omitted).
+   */
+  solids?(p: ParamValues<S>): LocalBox[]
+  /**
+   * Whether the item takes part in collisions and circulation. Defaults to true, except for
+   * ceiling items (lights) which hang out of the way. Soft things you can push aside (rugs,
+   * curtains) say false; ceiling items that hang low enough to bump into (laundry) say true.
+   */
+  blocks?: boolean
   /**
    * Open frames: items whose footprint lies inside this item's footprint do not collide with it.
    */

@@ -143,7 +143,9 @@ function EditableItem({ item, ceiling }: { item: Item; ceiling: number }) {
         rot = nw.rotation
         ;({ x, z } = flushToWall(fp, x, z, L.room, nw.wall))
       }
-      const others = L.items.filter((o) => o.id !== it.id && !isPassive(o.type)).map((o) => itemFootprint2D(o, L))
+      // What stands on a wall shelf moves with it, so it is not something to snap to.
+      const carried = new Set([it.id, ...stack.riders(L, it.id)])
+      const others = L.items.filter((o) => !carried.has(o.id) && !isPassive(o.type)).map((o) => itemFootprint2D(o, L))
       const sn = snapPosition(fp, x, z, L.room, others, { free })
       x = sn.x
       z = sn.z

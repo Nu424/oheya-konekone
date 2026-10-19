@@ -10,7 +10,8 @@ import { copier, foldingChair, officeDesk, partition, printer, whiteboard } from
 import { miniKitchen } from './items/kitchen'
 import { ceilingLight, deskLamp, floorLamp, pendantLight } from './items/lights'
 import { beanbag, diningChair, floorChair, officeChair, sofa } from './items/seating'
-import { cabinet, hangerRack, metalRack, shelf, tvStand } from './items/storage'
+import { cabinet, hangerRack, metalRack, shelf, tvStand, wallStorage } from './items/storage'
+import { wallArt } from './items/wall'
 import { diningTable, kotatsu, lowTable } from './items/tables'
 import { defaultParams, describeParam, paramsSchema, resolveParams, type ParamSpecs } from './params'
 import type { AssetDef } from './types'
@@ -44,6 +45,7 @@ const ALL: AssetDef<any>[] = [
   cabinet,
   metalRack,
   hangerRack,
+  wallStorage,
   tvStand,
   tv,
   fridge,
@@ -60,6 +62,7 @@ const ALL: AssetDef<any>[] = [
   cardboardBox,
   organizer,
   wallClock,
+  wallArt,
   rug,
   curtain,
   plant,

@@ -2,7 +2,7 @@ import { getAsset, resolveItemParams } from '../assets/registry'
 import type { Surface } from '../assets/types'
 import type { Item, Layout } from '../model/schema'
 import { itemFootprint } from '../three/ItemObject'
-import { flushToWall, footprint, nearestWall, overlaps3D, type Footprint2D, type LocalBox } from './space'
+import { flushToWall, footprint, nearestWall, overlaps3D, partsOf, type Footprint2D, type LocalBox } from './space'
 import { createStacking, roundY, surfaceBounds, type PlacedSurface, type Solid } from './stacking'
 
 const FALLBACK: LocalBox = { min: { x: -100, y: 0, z: -100 }, max: { x: 100, y: 100, z: 100 } }
@@ -17,20 +17,37 @@ export function visualBox(item: Pick<Item, 'type' | 'params'>): LocalBox {
   return itemFootprint(item.type, item.params)?.box ?? FALLBACK
 }
 
-/** Room-space footprint of an item; ceiling items hang from the ceiling height. */
+/** Separate solid parts of an item in its local frame (mm), when the asset declares them. */
+export function localSolids(item: Pick<Item, 'type' | 'params'>): LocalBox[] | undefined {
+  return itemFootprint(item.type, item.params)?.solids
+}
+
+/**
+ * Room-space footprint of an item; ceiling items hang from the ceiling height.
+ * Items made of several solid parts (AssetDef.solids) carry them in `parts`.
+ */
 export function itemFootprint2D(item: Item, layout: Layout, at?: { x?: number; y?: number; z?: number; rotation?: number }): Footprint2D {
   const box = localBox(item)
   const asset = getAsset(item.type)
+  const x = at?.x ?? item.position[0]
   const y = asset?.placement === 'ceiling' ? layout.room.height : (at?.y ?? item.position[1])
-  return footprint(box, at?.x ?? item.position[0], y, at?.z ?? item.position[2], at?.rotation ?? item.rotation)
+  const z = at?.z ?? item.position[2]
+  const rot = at?.rotation ?? item.rotation
+  const f = footprint(box, x, y, z, rot)
+  const parts = localSolids(item)
+  if (parts?.length) f.parts = parts.map((b) => footprint(b, x, y, z, rot))
+  return f
 }
 
 const surfaceCache = new Map<string, Surface[]>()
 
-/** Support surfaces of an item in its local frame: the asset's `surfaces`, or the top of its body. */
+/**
+ * Support surfaces of an item in its local frame: the asset's `surfaces`, or the top of its body.
+ * Wall items only have the surfaces they declare (a wall shelf); ceiling items have none.
+ */
 export function itemSurfaces(item: Pick<Item, 'type' | 'params'>): Surface[] {
   const asset = getAsset(item.type)
-  if (!asset || asset.placement === 'wall' || asset.placement === 'ceiling') return []
+  if (!asset || asset.placement === 'ceiling' || (asset.placement === 'wall' && !asset.surfaces)) return []
   const key = item.type + JSON.stringify(item.params)
   let s = surfaceCache.get(key)
   if (!s) {
@@ -53,11 +70,13 @@ function stackable(item: Item) {
 /** Stacking helpers bound to the asset registry. */
 export const stack = createStacking({ surfaces: itemSurfaces, stackable })
 
-/** Soft or flat things that never block others (rugs, curtains, floor cushions, ceiling fixtures). */
-const SOFT = new Set(['rug', 'curtain', 'cushion'])
+/**
+ * Things that never block others: soft or flat ones (rugs, curtains, floor cushions) and ceiling
+ * fixtures, unless the asset says otherwise (AssetDef.blocks).
+ */
 export function isPassive(type: string) {
   const a = getAsset(type)
-  return SOFT.has(type) || a?.placement === 'ceiling'
+  return !(a?.blocks ?? a?.placement !== 'ceiling')
 }
 
 /** Seats that are meant to be tucked under tables and desks. */
@@ -160,6 +179,12 @@ function placeOnSurface(layout: Layout, probe: Item, preferId?: string): Pick<It
   return null
 }
 
+/** Default mounting height (mm) of a wall item with these parameters. */
+export function wallElevation(type: string, params: Record<string, unknown>, room: { height: number }) {
+  const e = getAsset(type)?.elevation
+  return typeof e === 'function' ? e(resolveItemParams(type, params) as never, room) : (e ?? 1500)
+}
+
 /** Find a sensible spot for a newly added item. `preferId` is the item whose surfaces are tried first. */
 export function placeNewItem(
   layout: Layout,
@@ -200,12 +225,12 @@ export function placeNewItem(
     const nz = w === 'north' ? 100 : w === 'south' ? room.depth - 100 : u
     const rot = nearestWall(room, nx, nz).rotation
     const p = flushToWall((x, z) => fpAt(x, z, rot), nx, nz, room, w)
-    return { position: [p.x, asset.elevation ?? 1500, p.z], rotation: rot }
+    return { position: [p.x, Math.round(wallElevation(type, params, room)), p.z], rotation: rot }
   }
 
   // Floor / ceiling: spiral out from the room centre until there is no overlap.
   const others = layout.items.filter((i) => !isPassive(i.type)).map((i) => itemFootprint2D(i, layout))
-  const passive = type === 'rug' || asset?.placement === 'ceiling'
+  const passive = type === 'rug' || (asset?.placement === 'ceiling' && isPassive(type))
   const cx = room.width / 2
   const cz = room.depth / 2
   for (const rot of [0, 90]) {
@@ -235,8 +260,9 @@ export function surfaceFrame(surface: PlacedSurface | null, room: { width: numbe
 export function solids(layout: Layout, except?: ReadonlySet<string>): Solid[] {
   return layout.items
     .filter((i) => !except?.has(i.id) && !isPassive(i.type) && !isHollow(i))
-    .map((i) => {
-      const f = itemFootprint2D(i, layout)
-      return { itemId: i.id, occludes: itemSurfaces(i).length > 0, minX: f.minX, maxX: f.maxX, minY: f.minY, maxY: f.maxY, minZ: f.minZ, maxZ: f.maxZ }
+    .flatMap((i) => {
+      const occludes = itemSurfaces(i).length > 0
+      // Each solid part separately: the floor under a loft bed's deck is a place to put things.
+      return partsOf(itemFootprint2D(i, layout)).map((f) => ({ itemId: i.id, occludes, minX: f.minX, maxX: f.maxX, minY: f.minY, maxY: f.maxY, minZ: f.minZ, maxZ: f.maxZ }))
     })
 }

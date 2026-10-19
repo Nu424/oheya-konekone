@@ -85,6 +85,8 @@ export const rug = defineAsset({
   category: 'decor',
   description: '床に敷くラグ。家具の下に敷いてよい（重なってもOK）',
   placement: 'floor',
+  // Soft: furniture may stand on it or push it aside.
+  blocks: false,
   // Furniture on the rug should not ride along when the rug moves.
   surfaces: () => [],
   contactShadow: false,
@@ -156,6 +158,8 @@ export const curtain = defineAsset({
   category: 'decor',
   description: '窓にかけるカーテンとレール。背面を窓のある壁につけ、position yはカーテンの下端（掃き出し窓なら10〜20、腰窓なら窓の下端-150くらい）',
   placement: 'wall',
+  // Soft: furniture may stand on it or push it aside.
+  blocks: false,
   elevation: 15,
   contactShadow: false,
   params: {
@@ -581,6 +585,8 @@ export const cushion = defineAsset({
   category: 'decor',
   description: '床やソファに置くクッション・座布団',
   placement: 'floor',
+  // Soft: furniture may stand on it or push it aside.
+  blocks: false,
   // Nothing is meant to stand on it.
   surfaces: () => [],
   params: {
