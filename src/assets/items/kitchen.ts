@@ -1,7 +1,8 @@
 import * as THREE from 'three'
 import { mat, SWATCHES } from '../../three/materials'
-import { cyl, group, panelOn, rbox, tube } from '../kit'
+import { cyl, group, lathe, merged, panelOn, rbox, tube } from '../kit'
 import { p } from '../params'
+import { hollowCylinder } from '../parts'
 import { defineAsset } from '../types'
 
 export const miniKitchen = defineAsset({
@@ -116,6 +117,133 @@ export const miniKitchen = defineAsset({
       }
       // Backsplash
       g.add(panelOn(W, uy + 200 - H, 10, mat('ceramic', '#f6f4f0'), 0, H, -D / 2 + 5))
+    }
+    return g
+  },
+})
+
+const PLATES = ['#f7f5f0', '#eae4d8', '#c9d6df', '#d8a48f', '#9fb59a', '#2f3a45']
+
+export const dishRack = defineAsset({
+  type: 'dishRack',
+  label: '水切りかご',
+  category: 'kitchen',
+  description: '洗った食器を立てておくワイヤーのかごと水受けトレー。シンク横やカウンターに置く',
+  placement: 'onTop',
+  surfaces: () => [],
+  params: {
+    width: p.mm('幅', 300, 560, 420),
+    depth: p.mm('奥行き', 240, 400, 300),
+    tiers: p.number({ label: '段数', min: 1, max: 2, step: 1, default: 1, group: '形' }),
+    material: p.select('材質', { stainless: 'ステンレス', white: '白い樹脂コート', black: '黒い樹脂コート' }, 'stainless', { group: '色・素材' }),
+    tray: p.bool('水受けトレー', true),
+    cutlery: p.bool('はし立て', true),
+    dishes: p.number({ label: '食器の数', min: 0, max: 10, step: 1, default: 5, group: '形' }),
+  },
+  presets: [
+    { name: 'スリム', params: { width: 320, depth: 260, dishes: 3 } },
+    { name: '2 段（白）', params: { tiers: 2, material: 'white', width: 450, dishes: 7 } },
+    { name: '空っぽ', params: { dishes: 0 } },
+  ],
+  build({ width: W, depth: D, tiers, material, tray, cutlery, dishes }) {
+    const g = group()
+    const wire = material === 'stainless' ? mat('stainless', '#d4d7da') : mat('plastic', material === 'white' ? '#f2f2ef' : '#2b2b2e', { roughness: 0.4 })
+    const wires: THREE.Mesh[] = []
+    const r = 2
+    const trayH = tray ? 22 : 0
+    if (tray) {
+      // Shallow tray with a spout at the front left.
+      const tm = mat('plastic', material === 'black' ? '#3a3b3e' : '#f4f4f2', { roughness: 0.35 })
+      g.add(panelOn(W + 20, 3, D + 20, tm, 0, 0, 0, { edge: 1.5 }))
+      for (const s of [-1, 1]) {
+        g.add(panelOn(W + 20, trayH, 3, tm, 0, 0, s * (D / 2 + 8.5), { edge: 1 }))
+        g.add(panelOn(3, trayH, D + 20, tm, s * (W / 2 + 8.5), 0, 0, { edge: 1 }))
+      }
+      g.add(panelOn(40, 6, 30, tm, -W / 2 + 40, trayH - 8, D / 2 + 22, { edge: 1.5 }))
+    }
+    const bar = (a: [number, number, number], b: [number, number, number], rr = r) => {
+      const dir = new THREE.Vector3(b[0] - a[0], b[1] - a[1], b[2] - a[2])
+      const m = new THREE.Mesh(new THREE.CylinderGeometry(rr, rr, dir.length(), 6), wire)
+      m.position.set((a[0] + b[0]) / 2, (a[1] + b[1]) / 2, (a[2] + b[2]) / 2)
+      m.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), dir.normalize())
+      wires.push(m)
+    }
+    const y0 = trayH + 18
+    const H = 120
+    // Feet, floor grid, rims and uprights of the basket.
+    for (const [x, z] of [[-1, -1], [1, -1], [-1, 1], [1, 1]] as const) bar([x * (W / 2 - 15), trayH, z * (D / 2 - 15)], [x * (W / 2 - 15), y0, z * (D / 2 - 15)], 3)
+    for (let x = -W / 2; x <= W / 2 + 0.1; x += W / Math.round(W / 22)) bar([x, y0, -D / 2], [x, y0, D / 2])
+    for (const z of [-D / 2, -D / 6, D / 6, D / 2]) bar([-W / 2, y0, z], [W / 2, y0, z])
+    for (const y of [y0 + H * 0.5, y0 + H]) {
+      for (const z of [-D / 2, D / 2]) bar([-W / 2, y, z], [W / 2, y, z], 2.5)
+      for (const x of [-W / 2, W / 2]) bar([x, y, -D / 2], [x, y, D / 2], 2.5)
+    }
+    for (let x = -W / 2; x <= W / 2 + 0.1; x += W / Math.round(W / 40)) for (const z of [-D / 2, D / 2]) bar([x, y0, z], [x, y0 + H, z], 1.6)
+    for (let z = -D / 2; z <= D / 2 + 0.1; z += D / Math.round(D / 40)) for (const x of [-W / 2, W / 2]) bar([x, y0, z], [x, y0 + H, z], 1.6)
+    // Plate dividers: a row of wire hoops across the back half.
+    const slots = Math.max(4, Math.round((W - 120) / 28))
+    const slotX = (i: number) => -W / 2 + 30 + ((W - 140) * i) / (slots - 1)
+    for (let i = 0; i < slots; i++) {
+      const x = slotX(i)
+      bar([x, y0, -D / 2 + 20], [x, y0 + 90, -D / 2 + 30], 1.8)
+      bar([x, y0 + 90, -D / 2 + 30], [x, y0 + 90, -D / 8], 1.8)
+      bar([x, y0 + 90, -D / 8], [x, y0, -D / 8 + 10], 1.8)
+    }
+    let top = y0 + H
+    if (tiers >= 2) {
+      // Upper rack on four posts for cups and small bowls.
+      const y1 = y0 + H + 110
+      for (const x of [-W / 2, W / 2]) for (const z of [-D / 2, D / 2]) bar([x, y0 + H, z], [x, y1, z], 3)
+      for (let x = -W / 2; x <= W / 2 + 0.1; x += W / Math.round(W / 25)) bar([x, y1, -D / 2], [x, y1, D / 2])
+      for (const z of [-D / 2, D / 2]) bar([-W / 2, y1 + 25, z], [W / 2, y1 + 25, z], 2.5)
+      for (const x of [-W / 2, W / 2]) bar([x, y1 + 25, -D / 2], [x, y1 + 25, D / 2], 2.5)
+      top = y1
+    }
+    g.add(merged(wires, wire))
+    if (cutlery) {
+      const cm = mat('plastic', material === 'black' ? '#3a3b3e' : '#f4f4f2', { roughness: 0.35 })
+      const holder = hollowCylinder(32, 110, 3, cm, { segments: 24 })
+      holder.position.set(W / 2 - 50, y0, D / 2 - 50)
+      g.add(holder)
+      if (dishes > 0) {
+        const steel = mat('stainless', '#d4d7da')
+        for (let k = 0; k < 4; k++) g.add(cyl(2.5, 2, 170, k % 2 ? steel : mat('wood', '#6b4a34'), [W / 2 - 50 + (k - 1.5) * 9, y0 + 85, D / 2 - 50 + (k % 2 ? 6 : -6)], { rot: [0.08 * (k - 1.5), 0, 0.1 * (k - 1.5)], segments: 6 }))
+      }
+    }
+    // Dishes: plates stand in the slots (largest at the back), bowls and cups face down in front.
+    const n = Math.round(dishes)
+    const plates = Math.min(slots, Math.ceil(n * 0.6))
+    for (let i = 0; i < plates; i++) {
+      const R = 95 + ((i * 37) % 3) * 12
+      const plate = lathe(
+        [
+          [0, 0],
+          [R * 0.55, 0],
+          [R * 0.62, 6],
+          [R, 16],
+          [R, 19],
+          [R * 0.6, 9],
+          [0, 9],
+        ],
+        mat('ceramic', PLATES[(i * 3) % PLATES.length]),
+        [0, 0, 0],
+        { segments: 40 },
+      )
+      plate.rotation.z = Math.PI / 2
+      plate.rotation.y = 0.12
+      plate.position.set(slotX(Math.round((i * (slots - 1)) / Math.max(1, plates - 1))) + 8, y0 + R + 4, -D / 2 + D * 0.27)
+      g.add(plate)
+    }
+    const rest = n - plates
+    for (let k = 0; k < rest; k++) {
+      const cup = k % 2 === 0
+      const col = PLATES[(k * 5 + 1) % PLATES.length]
+      const piece = cup ? hollowCylinder(38, 85, 3, mat('ceramic', col), { segments: 28 }) : lathe([[0, 0], [30, 0], [62, 45], [65, 48], [58, 48], [28, 4], [0, 4]], mat('ceramic', col), [0, 0, 0], { segments: 32 })
+      piece.rotation.x = Math.PI // upside down to drain
+      const x = -W / 2 + 70 + (k % 3) * 110
+      const onTop = tiers >= 2 && k >= 2
+      piece.position.set(Math.min(W / 2 - 110, x), (onTop ? top : y0) + (cup ? 85 : 48) + 2, onTop ? (k % 2 ? -D / 5 : D / 5) : D / 2 - 70)
+      g.add(piece)
     }
     return g
   },

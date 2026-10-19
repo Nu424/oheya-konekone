@@ -246,3 +246,72 @@ export const toaster = defineAsset({
     return g
   },
 })
+
+export const coffeeMaker = defineAsset({
+  type: 'coffeeMaker',
+  label: 'コーヒーメーカー',
+  category: 'kitchen',
+  description: 'コーヒーメーカー。ガラスポットのドリップ式・カプセル式・豆から挽く全自動。カウンターや棚に置く',
+  placement: 'onTop',
+  surfaces: () => [],
+  params: {
+    style: p.select('形', { drip: 'ドリップ（ガラスポット）', capsule: 'カプセル式', auto: '全自動（ミル付き）' }, 'drip', { group: '形' }),
+    color: p.color('本体', '#2b2b2e', { swatches: [...WHITES, '#d7d9dc'] }),
+    cup: p.bool('カップ', true, { hint: 'カプセル式・全自動の注ぎ口の下に置くカップ' }),
+  },
+  presets: [
+    { name: '白いドリップ', params: { color: '#f4f4f2' } },
+    { name: 'カプセル（赤）', params: { style: 'capsule', color: '#c94a3c' } },
+    { name: '全自動（シルバー）', params: { style: 'auto', color: '#d7d9dc' } },
+  ],
+  build({ style, color, cup }) {
+    const g = group()
+    const body = color === '#d7d9dc' ? mat('stainless', color) : mat('plastic', color, { roughness: 0.32 })
+    const dark = mat('plastic', '#1f1f22', { roughness: 0.4 })
+    const steel = mat('stainless', '#d4d7da')
+    const glass = mat('glass', '#e8eef0', { opacity: 0.35 })
+    const coffee = mat('gloss', '#2a160c')
+    const mug = (x: number, y: number, z: number) => {
+      const m = hollowCylinder(38, 90, 4, mat('ceramic', '#f7f5f0'), { segments: 28 })
+      m.position.set(x, y, z)
+      g.add(m, tube([[x + 36, y + 70, z], [x + 62, y + 62, z], [x + 62, y + 30, z], [x + 36, y + 22, z]], 6, mat('ceramic', '#f7f5f0'), { segments: 16, tension: 0.4 }))
+    }
+    if (style === 'drip') {
+      // Base with a warming plate, a tower at the back holding the tank, and a head over the jug.
+      g.add(panelOn(180, 40, 240, body, 0, 0, 10, { edge: 8 }))
+      g.add(cyl(62, 62, 3, dark, [0, 41.5, 45], { segments: 32 }))
+      g.add(panelOn(180, 330, 90, body, 0, 0, -75, { edge: 10 }))
+      g.add(panelOn(150, 200, 4, mat('acrylic', '#cfd9dc', { opacity: 0.5 }), 0, 90, -29, { edge: 2 })) // water window
+      g.add(panelOn(190, 55, 230, body, 0, 300, 5, { edge: 12 }))
+      g.add(cyl(48, 40, 30, dark, [0, 285, 45], { segments: 28 })) // filter basket
+      // Glass jug with coffee inside, a black collar and a handle.
+      g.add(lathe([[0, 0], [58, 0], [64, 30], [62, 120], [50, 150], [40, 165], [0, 165]], glass, [0, 43, 45], { segments: 36 }))
+      g.add(lathe([[0, 0], [56, 0], [61, 28], [60, 70], [0, 70]], coffee, [0, 45, 45], { segments: 32 }))
+      g.add(cyl(44, 52, 22, dark, [0, 43 + 150, 45], { segments: 32 }))
+      g.add(tube([[0, 190, 95], [0, 185, 128], [0, 90, 128], [0, 80, 102]], 9, dark, { segments: 24, tension: 0.4 }))
+      g.add(panelOn(16, 10, 6, mat('emissive', '#ff6b3d', { intensity: 1.2 }), 60, 20, 131, { edge: 1 }))
+    } else if (style === 'capsule') {
+      // Narrow upright body, a lever on top, a drip tray that folds out at the front.
+      g.add(panelOn(130, 270, 240, body, 0, 0, -50, { edge: 18 }))
+      g.add(panelOn(118, 50, 140, dark, 0, 270, 40, { edge: 14 })) // lever head
+      g.add(cyl(14, 14, 50, steel, [0, 262, 105], { segments: 16 })) // spout
+      g.add(panelOn(120, 14, 150, dark, 0, 18, 110, { edge: 3 }))
+      g.add(panelOn(110, 2, 140, steel, 0, 32, 110, { edge: 1 }))
+      g.add(panelOn(110, 160, 6, mat('acrylic', '#cfd9dc', { opacity: 0.5 }), 0, 60, -173, { edge: 2 })) // tank behind
+      if (cup) mug(0, 34, 110)
+    } else {
+      // Fully automatic: a box with a bean hopper on top, a spout column and a display.
+      g.add(panelOn(250, 340, 400, body, 0, 0, -10, { edge: 10 }))
+      g.add(panelOn(170, 6, 330, dark, 0, 340, -20, { edge: 3 }))
+      g.add(cyl(55, 55, 30, mat('acrylic', '#7a5a46', { opacity: 0.6 }), [-50, 360, -110], { segments: 28 })) // hopper lid
+      g.add(panelOn(140, 120, 50, dark, 0, 120, 205, { edge: 6 })) // spout column front
+      g.add(cyl(9, 9, 20, steel, [0, 110, 215], { segments: 16 }))
+      g.add(panelOn(200, 12, 120, dark, 0, 0, 230, { edge: 3 })) // drip tray
+      g.add(panelOn(196, 2, 116, steel, 0, 12, 230, { edge: 1 }))
+      g.add(panelOn(160, 50, 2, mat('screen', '#2c3a48'), 0, 270, 191, { edge: 1 }))
+      for (const s of [-1, 1]) g.add(cyl(10, 10, 6, steel, [s * 100, 295, 191], { rot: [Math.PI / 2, 0, 0], segments: 18 }))
+      if (cup) mug(0, 14, 230)
+    }
+    return g
+  },
+})

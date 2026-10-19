@@ -1,13 +1,13 @@
 import { bed, futon } from './items/beds'
 import { desk } from './items/desk'
 import { cushion, curtain, mirror, plant, rug, trashCan } from './items/decor'
-import { kettle, microwave, riceCooker, toaster } from './items/appliances'
+import { coffeeMaker, kettle, microwave, riceCooker, toaster } from './items/appliances'
 import { bookRow, bookStack, fileBox } from './items/books'
 import { desktopPC, keyboardMouse, laptop, monitor } from './items/computing'
 import { aircon, fridge, tv, washer } from './items/electronics'
 import { cardboardBox, organizer, wallClock } from './items/small'
 import { copier, foldingChair, officeDesk, partition, printer, whiteboard } from './items/office'
-import { miniKitchen } from './items/kitchen'
+import { dishRack, miniKitchen } from './items/kitchen'
 import { ceilingLight, deskLamp, floorLamp, pendantLight } from './items/lights'
 import { beanbag, diningChair, floorChair, officeChair, sofa } from './items/seating'
 import { cabinet, hangerRack, metalRack, shelf, tvStand, wallStorage } from './items/storage'
@@ -56,6 +56,8 @@ const ALL: AssetDef<any>[] = [
   riceCooker,
   kettle,
   toaster,
+  coffeeMaker,
+  dishRack,
   bookRow,
   bookStack,
   fileBox,
