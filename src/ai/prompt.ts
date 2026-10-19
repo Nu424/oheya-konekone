@@ -1,6 +1,6 @@
 import { assetList, defaultParams, describeParam } from '../assets/registry'
 import { CATEGORY_LABELS, type AssetDef } from '../assets/types'
-import { itemSurfaces } from '../editor/placement'
+import { itemSurfaces, wallElevation } from '../editor/placement'
 import type { Layout } from '../model/schema'
 
 /**
@@ -15,8 +15,10 @@ export const RULES = `## 座標と単位
 - 開口部（door / window / closet）の offset は、その壁の座標が小さい側の端から開口部の端までの距離（北・南の壁ならx、西・東の壁ならz）。
 - アイテムの position は底面中心 [x, y, z]。y は床からの高さで、ふつうは 0。
   - ほかの家具の上に置くもの（モニター・テレビ・デスクライトなど）は、y を下の家具の面の高さにする（くわしくは「積み重ね」）。
-  - placement が wall のもの（エアコン・カーテン）は、背面を壁につけて y を取り付け高さにする。
-  - placement が ceiling のもの（ペンダントライトなど）は、y を無視して天井から吊るす。
+  - placement が wall のもの（エアコン・カーテン・壁の棚・ポスター）は、背面を壁につけて y を取り付け高さ（本体の下端）にする。
+  - placement が ceiling のもの（ペンダントライト・天井の物干し・間仕切りカーテン）は、y を無視して天井から吊るす。
+- 当たり判定は高さも見る。床から浮いている物（壁の棚・吊り戸棚・天井の物干し）の下には家具を置ける。
+  - ロフトベッドは柱・はしご・床板だけが場所をとる。床板の下にデスク・ソファ・収納を入れてよい（床板の下の高さに収まる物）。
 - rotation はアイテムの正面の向き。0=南(+Z)、90=東(+X)、180=北、270=西。
   - 例: 北の壁に背をつけて置く家具は rotation 0、西の壁に背をつけるなら 90、東の壁なら 270、南の壁なら 180。
   - 回転しても position（中心）は変わらない。90°や270°のときは、幅と奥行きが入れ替わった形で場所をとる。
@@ -29,12 +31,14 @@ export const RULES = `## 座標と単位
   - 例: デスク（y=0、天板の面が 720）の上のモニターは y=720。テレビ台（面が 400）の上のテレビは y=400。
   - カタログの面の高さはデフォルト寸法のときの値。高さなどのパラメータを変えたら、その分だけ面も動く。
 - x, z（底面の中心）は、載せる面の範囲の中にする。
+- 壁の棚（wallStorage）にも物を載せられる。面の高さ ＝ 棚の y ＋ カタログの面の高さ。
 - 親子関係を書く必要はない。座標が面の上にあれば、アプリが「載っている」と判断して、下の家具を動かすと一緒に動く。
 - y が面の高さと 2mm 以上ずれていると「宙に浮いています」という警告が出る。
 - 「上には何も載せられない」と書いてあるもの（ベッド・ソファ・椅子・ラグなど）の上には置かない。`
 
 export const DESIGN_TIPS = `## レイアウトのコツ
-- 家具どうし、家具と柱は重ねない（上に載せるのはOK。ラグ・カーテン・クッション・天井照明は重なってOK。椅子は机やテーブルの下に入れてOK）。
+- 家具どうし、家具と柱は重ねない（上に載せるのはOK。ラグ・カーテン・間仕切りカーテン・クッション・天井照明は重なってOK。椅子は机やテーブルの下に入れてOK。ロフトベッドの床板の下もOK）。
+- 天井の物干しの洗濯物は、背の高い家具（本棚・冷蔵庫など）の上にかからないようにする。
 - 人が通る通路は 600mm 以上あける。ドアの開く範囲（ドア幅の扇形）と、掃き出し窓（sill=0）の前はふさがない。
 - クローゼットの前（奥行き 600mm くらい）は空ける。
 - 背の高い家具（本棚・冷蔵庫など）は壁際に。ベッドは窓や壁に沿わせると広く見える。
@@ -43,7 +47,7 @@ export const DESIGN_TIPS = `## レイアウトのコツ
 
 /** Support surfaces of an asset at its default size, measured from its declaration. */
 function surfaceLine(a: AssetDef): string | null {
-  if (a.placement !== 'floor' && a.placement !== 'onTop') return null
+  if (a.placement === 'ceiling' || (a.placement === 'wall' && !a.surfaces)) return null
   const s = itemSurfaces({ type: a.type, params: defaultParams(a.params) as Record<string, unknown> })
   if (!s.length) return '- 上には何も載せられない'
   return `- 載せられる面（既定の寸法のとき）: ${s
@@ -51,10 +55,18 @@ function surfaceLine(a: AssetDef): string | null {
     .join(' / ')}`
 }
 
+/** Default mounting height of a wall item, worked out for a 2400 mm ceiling when it depends on the room. */
+function elevationText(a: AssetDef): string {
+  if (a.elevation === undefined) return ''
+  if (typeof a.elevation === 'number') return ` / 既定の高さ y=${a.elevation}`
+  const v = Math.round(wallElevation(a.type, defaultParams(a.params) as Record<string, unknown>, { height: 2400 }))
+  return ` / 既定の高さ y=${v}（大きさや天井高で変わる）`
+}
+
 export function catalogText(): string {
   const lines: string[] = []
   for (const a of assetList) {
-    lines.push(`### ${a.type} — ${a.label}（${CATEGORY_LABELS[a.category]} / placement: ${a.placement}${a.elevation !== undefined ? ` / 既定の高さ y=${a.elevation}` : ''}）`)
+    lines.push(`### ${a.type} — ${a.label}（${CATEGORY_LABELS[a.category]} / placement: ${a.placement}${elevationText(a)}）`)
     lines.push(a.description)
     const sl = surfaceLine(a)
     if (sl) lines.push(sl)

@@ -217,7 +217,7 @@ export const roomDivider = defineAsset({
   contactShadow: false,
   params: {
     width: p.mm('幅', 600, 3600, 1800),
-    height: p.mm('丈', 300, 2600, 2300, { hint: '天井から裾まで。床まで下げるなら天井高 −100、のれんなら 600〜1000' }),
+    height: p.mm('丈', 300, 2600, 2300, { hardMax: 3100, hint: '天井から裾まで。床まで下げるなら天井高 −100、のれんなら 600〜1000' }),
     open: p.number({ label: '開き具合', min: 0, max: 100, step: 1, default: 0, unit: '%', group: '形' }),
     gather: p.select('寄せる側', { both: '両側', left: '左', right: '右' }, 'both', { group: '形' }),
     rail: p.select('レール', { ceiling: '天井のレール', rod: '突っ張り棒' }, 'ceiling', { group: '形' }),

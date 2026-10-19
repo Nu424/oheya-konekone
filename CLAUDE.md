@@ -5,7 +5,7 @@ Vite + React + TypeScript + react-three-fiber。GitHub Pages に静的デプロ�
 
 くわしい知見（モデリング・レンダリング・検証の罠）は [docs/KNOWLEDGE.md](docs/KNOWLEDGE.md)、描画の軽さの仕組みと測り方は [docs/PERFORMANCE.md](docs/PERFORMANCE.md)、
 計画と進捗は [docs/PLAN.md](docs/PLAN.md)、レイアウト JSON のルールとカタログは [docs/AI_GUIDE.md](docs/AI_GUIDE.md)。
-積み重ね・コピペ・複数選択・削除や数値入力の追加の設計は [docs/STACKING.md](docs/STACKING.md)・[docs/CLIPBOARD.md](docs/CLIPBOARD.md)・[docs/MULTISELECT.md](docs/MULTISELECT.md)・[docs/EDITING-EXTRAS.md](docs/EDITING-EXTRAS.md)。
+積み重ね・床から浮いている物・コピペ・複数選択・削除や数値入力の追加の設計は [docs/STACKING.md](docs/STACKING.md)・[docs/OVERHEAD.md](docs/OVERHEAD.md)・[docs/CLIPBOARD.md](docs/CLIPBOARD.md)・[docs/MULTISELECT.md](docs/MULTISELECT.md)・[docs/EDITING-EXTRAS.md](docs/EDITING-EXTRAS.md)。
 
 ## このプロジェクトの前提（迷ったらここに立ち返る）
 
@@ -57,6 +57,7 @@ node scripts/perf-check.mjs   # 描画の軽量化の回帰チェック（dev �
 - **アセットの規約**：`build(params)` は mm で組み、底面中心が原点、正面が +Z。マテリアルは `mat(kind, color)` で共有キャッシュから取る（直接 `new` しない）。新しいアセットは `registry.ts` の `ALL` に足し、`/?gallery&type=<type>` で最小・最大・各プリセットを目で確認する。長さのパラメータは直接入力ならスライダーの上限の 1.5 倍まで通る（`numberLimits`）ので、`/?gallery&limits=max&types=<type>` でもその端の形を見る。崩れるなら `hardMax` を付ける。
 - **形は実物の作りで**：木や金属の部品は `panel`（角 1〜5mm）、扉と引き出しは `parts.ts` の部品（すき間と継ぎ目つき）を使う。大きく丸めた `rbox` はクッション・布団・家電の外装だけ。棚・収納は `storageKit` を通す。中に入れる物はパラメータにせず、別のアセットとして積み重ねる。
 - **開く物は中を空洞にする**：扉・フタ・引き出しが開くアセットは、閉じたときも中身のある塊ではなく、`parts.ts` の `hollowBox` / `hollowCylinder` で空洞を作る（電子レンジの庫内、洗濯槽、炊飯器の内釜、冷蔵庫の庫内）。開いた状態は `/?gallery&type=<type>&only=0&p={"open":true}` で確かめる。
+- **床から浮いている物**（ロフトベッド・壁の棚・天井の物干し）は新しい置き方にしない。本体が分かれているなら `solids`、壁付けで物を載せるなら `surfaces`、天井付けでぶつかるなら `blocks: true`（docs/OVERHEAD.md）。
 - **上に物を置ける面はアセットが宣言する**（`surfaces`）。省略すると本体の上面が面になる。上に何も置かない家具（ベッド・椅子・ラグなど）は `surfaces: () => []`。段のある家具は段ごとに返し、**返す順番の意味をパラメータで変えない**（0 番は天板）。見た目より小さい本体があるときは `body` を書く。
 - **マテリアル配列を持つメッシュを作らない**（撮影モードのパストレーサーで以降の全マテリアルがずれる）。色違いの面は別メッシュにする。
 - **ブラウザ外でも組み立てられるように**：テクスチャ生成は `textures.ts` の `HEADLESS` ガードを通す。`document` を直接触る処理をアセットに書かない（テストと `scripts/` が node で寸法を測っている）。

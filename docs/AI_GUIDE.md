@@ -11,8 +11,10 @@ JSONはアプリの「JSON」ダイアログに貼り付けるか、ファイル
 - 開口部（door / window / closet）の offset は、その壁の座標が小さい側の端から開口部の端までの距離（北・南の壁ならx、西・東の壁ならz）。
 - アイテムの position は底面中心 [x, y, z]。y は床からの高さで、ふつうは 0。
   - ほかの家具の上に置くもの（モニター・テレビ・デスクライトなど）は、y を下の家具の面の高さにする（くわしくは「積み重ね」）。
-  - placement が wall のもの（エアコン・カーテン）は、背面を壁につけて y を取り付け高さにする。
-  - placement が ceiling のもの（ペンダントライトなど）は、y を無視して天井から吊るす。
+  - placement が wall のもの（エアコン・カーテン・壁の棚・ポスター）は、背面を壁につけて y を取り付け高さ（本体の下端）にする。
+  - placement が ceiling のもの（ペンダントライト・天井の物干し・間仕切りカーテン）は、y を無視して天井から吊るす。
+- 当たり判定は高さも見る。床から浮いている物（壁の棚・吊り戸棚・天井の物干し）の下には家具を置ける。
+  - ロフトベッドは柱・はしご・床板だけが場所をとる。床板の下にデスク・ソファ・収納を入れてよい（床板の下の高さに収まる物）。
 - rotation はアイテムの正面の向き。0=南(+Z)、90=東(+X)、180=北、270=西。
   - 例: 北の壁に背をつけて置く家具は rotation 0、西の壁に背をつけるなら 90、東の壁なら 270、南の壁なら 180。
   - 回転しても position（中心）は変わらない。90°や270°のときは、幅と奥行きが入れ替わった形で場所をとる。
@@ -25,12 +27,14 @@ JSONはアプリの「JSON」ダイアログに貼り付けるか、ファイル
   - 例: デスク（y=0、天板の面が 720）の上のモニターは y=720。テレビ台（面が 400）の上のテレビは y=400。
   - カタログの面の高さはデフォルト寸法のときの値。高さなどのパラメータを変えたら、その分だけ面も動く。
 - x, z（底面の中心）は、載せる面の範囲の中にする。
+- 壁の棚（wallStorage）にも物を載せられる。面の高さ ＝ 棚の y ＋ カタログの面の高さ。
 - 親子関係を書く必要はない。座標が面の上にあれば、アプリが「載っている」と判断して、下の家具を動かすと一緒に動く。
 - y が面の高さと 2mm 以上ずれていると「宙に浮いています」という警告が出る。
 - 「上には何も載せられない」と書いてあるもの（ベッド・ソファ・椅子・ラグなど）の上には置かない。
 
 ## レイアウトのコツ
-- 家具どうし、家具と柱は重ねない（上に載せるのはOK。ラグ・カーテン・クッション・天井照明は重なってOK。椅子は机やテーブルの下に入れてOK）。
+- 家具どうし、家具と柱は重ねない（上に載せるのはOK。ラグ・カーテン・間仕切りカーテン・クッション・天井照明は重なってOK。椅子は机やテーブルの下に入れてOK。ロフトベッドの床板の下もOK）。
+- 天井の物干しの洗濯物は、背の高い家具（本棚・冷蔵庫など）の上にかからないようにする。
 - 人が通る通路は 600mm 以上あける。ドアの開く範囲（ドア幅の扇形）と、掃き出し窓（sill=0）の前はふさがない。
 - クローゼットの前（奥行き 600mm くらい）は空ける。
 - 背の高い家具（本棚・冷蔵庫など）は壁際に。ベッドは窓や壁に沿わせると広く見える。
@@ -62,6 +66,23 @@ JSONはアプリの「JSON」ダイアログに貼り付けるか、ファイル
 - folded: boolean (既定 false) — 三つ折りにたたむ
 - color: "#rrggbb" (既定 #f1ede6) — 布団の色
 - coverColor: "#rrggbb" (既定 #c9d6df) — 掛け布団
+
+### loftBed — ロフトベッド（寝具 / placement: floor）
+床板が高いベッド。下の空いたところにデスク・ソファ・収納を置ける（柱・はしご以外はぶつからない）。ミドルは床板 800〜1000、ハイは 1400〜1600。天井とマットレスのあいだは 700 くらい空けると起き上がれる。足元が正面(+Z)
+- 上には何も載せられない
+- size: "single"(シングル) | "semiDouble"(セミダブル) (既定 "single") — サイズ
+- length: number 1950〜2100mm (既定 1950、1950〜2200 まで指定可) — 長さ
+- deckHeight: number 700〜1700mm (既定 1450、700〜1800 まで指定可) — 床板の高さ
+- frame: "steel"(スチールパイプ) | "wood"(木製) (既定 "steel") — フレーム
+- ladder: "straight"(まっすぐ) | "slant"(ななめ（上りやすい）) (既定 "straight") — はしご
+- ladderSide: "right"(右の側面) | "left"(左の側面) | "end"(足元) (既定 "right") — はしごの位置
+- guard: number 200〜450mm (既定 320、200〜500 まで指定可) — 柵の高さ
+- mattress: number 60〜200mm (既定 100、60〜300 まで指定可) — マットレス厚
+- frameColor: "#rrggbb" (既定 #f4f4f2) — フレーム
+- beddingColor: "#rrggbb" (既定 #9fb59a) — 掛け布団
+- sheetColor: "#rrggbb" (既定 #f4f1ec) — シーツ・枕
+- duvet: boolean (既定 true) — 掛け布団
+- プリセット例: ハイ（黒） {"deckHeight":1550,"frameColor":"#2b2b2e","beddingColor":"#d9d2c5"} / ミドル {"deckHeight":900,"ladder":"slant","ladderSide":"end","beddingColor":"#c9d6df"} / 木製 {"frame":"wood","frameColor":"#b8875a","ladder":"slant","deckHeight":1400,"beddingColor":"#e8c76a"} / セミダブル {"size":"semiDouble","deckHeight":1500,"frameColor":"#8e9196"}
 
 ### sofa — ソファ（くつろぎ / placement: floor）
 ソファ。幅で1〜3人掛けを表現。ひじ掛けや脚の形、布の色を変えられる。座る側が正面
@@ -316,22 +337,50 @@ PC の本体。タワー型・小型・ミニ PC。床にも机の上にも置�
 - depth: number 300〜650mm (既定 460、300〜975 まで指定可) — 奥行き
 - height: number 600〜2000mm (既定 1790、600〜3000 まで指定可) — 高さ
 - shelves: number 2〜8 (既定 5) — 棚の数
-- shelfType: "wire"(ワイヤー) | "board"(木目の板をのせる) | "glass"(ガラスをのせる) (既定 "wire") — 棚板
+- shelfType: "wire"(ワイヤー) | "basket"(かご（ふちのあるワイヤー）) | "board"(木目の板をのせる) | "glass"(ガラスをのせる) (既定 "wire") — 棚板
 - pole: "standard"(太い (25mm)) | "slim"(細い (19mm)) (既定 "standard") — ポール
 - feet: "adjuster"(アジャスター) | "casters"(キャスター) (既定 "adjuster") — 足もと
+- handle: boolean (既定 false) — 持ち手
 - finish: "chrome"(クロムめっき) | "black"(ブラック) | "white"(ホワイト) | "gold"(ゴールド) (既定 "chrome") — 色
 - boardColor: "#rrggbb" (既定 #b8875a) — 棚板の色
-- プリセット例: キッチンラック {"width":760,"depth":460,"height":1790,"shelves":5,"feet":"casters"} / ブラック＋木目 {"finish":"black","shelfType":"board","boardColor":"#8f5f3d"} / ロー（3 段） {"width":910,"height":900,"shelves":3,"pole":"slim","finish":"white","shelfType":"board","boardColor":"#e4cfa8"} / すき間ラック {"width":450,"depth":350,"height":1500,"shelves":5,"pole":"slim"}
+- プリセット例: キッチンラック {"width":760,"depth":460,"height":1790,"shelves":5,"feet":"casters"} / ブラック＋木目 {"finish":"black","shelfType":"board","boardColor":"#8f5f3d"} / ロー（3 段） {"width":910,"height":900,"shelves":3,"pole":"slim","finish":"white","shelfType":"board","boardColor":"#e4cfa8"} / すき間ラック {"width":450,"depth":350,"height":1500,"shelves":5,"pole":"slim"} / キッチンワゴン {"width":450,"depth":300,"height":820,"shelves":3,"shelfType":"basket","pole":"slim","feet":"casters","finish":"white","handle":true}
 
 ### hangerRack — ハンガーラック（収納 / placement: floor）
-服をかけるラック。服をかけた状態も表示できる
+服をかけるラック。服をかけた状態も表示できる。洗濯物を干した室内物干しにもなる
 - 上には何も載せられない
 - width: number 600〜1600mm (既定 1000、600〜2400 まで指定可) — 幅
 - height: number 1300〜1900mm (既定 1650、1300〜2850 まで指定可) — 高さ
 - depth: number 350〜600mm (既定 450、350〜900 まで指定可) — 奥行き
 - clothes: number 0〜20 (既定 9) — 服の数
+- kind: "clothes"(服（ハンガー）) | "laundry"(洗濯物（シャツ・タオル・ピンチハンガー）) (既定 "clothes") — かける物
 - shelf: boolean (既定 true) — 下段の棚
 - color: "#rrggbb" (既定 #2b2b2b) — フレーム
+- プリセット例: 室内物干し {"width":1300,"height":1600,"depth":550,"clothes":7,"kind":"laundry","shelf":false,"color":"#d7d9dc"}
+
+### ceilingDryer — 天井の物干し（収納 / placement: ceiling）
+天井から 2 本の支柱で竿を吊るす室内物干し。洗濯物は床から浮いているので下を通れる・物を置けるが、背の高い家具とはぶつかる。天井から吊るす（position y は無視）
+- length: number 900〜2400mm (既定 1600、900〜3600 まで指定可) — 竿の長さ
+- drop: number 250〜1100mm (既定 500、250〜1400 まで指定可) — 吊り下げの長さ
+- clothes: number 0〜14 (既定 6) — 洗濯物の数
+- kind: "clothes"(服（ハンガー）) | "laundry"(洗濯物（シャツ・タオル・ピンチハンガー）) (既定 "laundry") — かける物
+- color: "#rrggbb" (既定 #f2f2ef) — 支柱と竿
+- プリセット例: 何もかけない {"clothes":0,"drop":300} / 窓ぎわに長く {"length":2200,"clothes":10}
+
+### wallStorage — 壁付けの棚・吊り戸棚（収納 / placement: wall / 既定の高さ y=1200（大きさや天井高で変わる））
+壁に取り付ける収納。1 枚板のウォールシェルフ・箱の飾り棚・吊り戸棚・天袋。床から浮いているので下に家具を置ける。棚の上や中に物を載せられ、物は棚と一緒に動く。奥行き 450 以上の扉付きは天井にぴったり付けて置く
+- 載せられる面（既定の寸法のとき）: 棚板 高さ 200（800×200）
+- style: "board"(1 枚板の棚) | "open"(箱の棚（扉なし）) | "hinged"(開き戸) | "sliding"(引き戸) | "flap"(フラップ扉（下に開く）) | "glass"(ガラス開き戸) (既定 "board") — 形
+- width: number 300〜2400mm (既定 800、300〜3600 まで指定可) — 幅
+- height: number 100〜1200mm (既定 200、100〜1800 まで指定可) — 高さ
+- depth: number 120〜650mm (既定 200、120〜975 まで指定可) — 奥行き
+- rows: number 1〜5 (既定 1) — 段数
+- cols: number 1〜4 (既定 1) — 列数
+- bracket: "hidden"(見えない（浮いて見える）) | "iron"(アイアン) | "wood"(木) (既定 "iron") — 棚受け
+- open: number 0〜1 (既定 0) — 開き具合
+- handle: "bar"(バー) | "knob"(つまみ) | "groove"(溝（彫り込み）) | "cup"(くぼみ) | "lever"(レバー（ロッカー）) | "none"(なし) (既定 "groove") — 取っ手
+- finish: "wood"(木) | "melamine"(化粧板（白木・単色）) | "steel"(スチール) (既定 "wood") — 素材
+- color: "#rrggbb" (既定 #b8875a) — 色
+- プリセット例: ウォールシェルフ {"style":"board","width":600,"height":180,"depth":180,"bracket":"hidden","color":"#d2ad7c"} / アイアンの 2 段棚 {"style":"board","width":900,"height":700,"depth":220,"rows":2,"bracket":"iron","color":"#8f5f3d"} / 飾り棚（箱） {"style":"open","width":900,"height":300,"depth":220,"cols":3,"finish":"melamine","color":"#f4f4f2"} / 吊り戸棚 {"style":"hinged","width":900,"height":600,"depth":350,"cols":2,"rows":2,"handle":"bar","finish":"melamine","color":"#f1ece4"} / 天袋 {"style":"sliding","width":1600,"height":450,"depth":600,"finish":"melamine","color":"#efe9df","handle":"groove"} / フラップ扉の吊り戸棚 {"style":"flap","width":1200,"height":380,"depth":330,"cols":3,"finish":"wood","color":"#6b4a34"}
 
 ### tvStand — テレビ台（AV / placement: floor）
 テレビを置く低い台。テレビ（tv）を上に載せて使う。中の段にゲーム機などを置ける
@@ -350,6 +399,27 @@ PC の本体。タワー型・小型・ミニ PC。床にも机の上にも置�
 - inches: number 19〜75インチ (既定 43) — サイズ
 - stand: "center"(中央) | "feet"(両端の脚) | "wall"(壁掛け) (既定 "center") — スタンド
 - on: boolean (既定 false) — 画面をつける
+
+### gameConsole — ゲーム機（AV / placement: onTop）
+家庭用ゲーム機とコントローラー。縦型の据え置き機・横置きの箱型・携帯機とドック。テレビ台やデスクに置く
+- 上には何も載せられない
+- style: "tower"(据え置き（縦長）) | "box"(箱型) | "hybrid"(携帯機＋ドック) (既定 "tower") — 形
+- upright: boolean (既定 true) — 縦置き
+- controllers: number 0〜2 (既定 1) — コントローラーの数
+- color: "#rrggbb" (既定 #f4f4f2) — 本体
+- accent: "#rrggbb" (既定 #2b2b2e) — 差し色
+- プリセット例: 黒い箱型（横置き） {"style":"box","upright":false,"color":"#2b2b2e","accent":"#1d6fd1"} / 携帯機（ドック） {"style":"hybrid","color":"#3a3b3e","accent":"#1b998b","controllers":0}
+
+### speaker — スピーカー（AV / placement: onTop）
+スピーカー。左右ペアのブックシェルフ型・トールボーイ型（床置き）・テレビ前のサウンドバー・小さなスマートスピーカー。ペアは間隔を変えられる（1 アイテムで 2 台）
+- 載せられる面（既定の寸法のとき）: 左の上面 高さ 280（170×220） / 右の上面 高さ 280（170×220）
+- style: "bookshelf"(ブックシェルフ（ペア）) | "tower"(トールボーイ（ペア・床置き）) | "soundbar"(サウンドバー) | "smart"(スマートスピーカー) (既定 "bookshelf") — 形
+- size: number 70〜140% (既定 100) — 大きさ
+- spacing: number 250〜2400mm (既定 900、250〜3600 まで指定可) — ペアの間隔
+- grille: boolean (既定 false) — ネット
+- color: "#rrggbb" (既定 #6b4a34) — 本体
+- grilleColor: "#rrggbb" (既定 #2f2f31) — ネットの色
+- プリセット例: デスク用の小型ペア {"size":75,"spacing":700,"color":"#f4f4f2","grille":true,"grilleColor":"#d9d2c5"} / トールボーイ {"style":"tower","spacing":1800,"color":"#2b2b2e"} / サウンドバー {"style":"soundbar","color":"#2b2b2e","grille":true} / スマートスピーカー {"style":"smart","color":"#d9d2c5","grilleColor":"#8c8a86"}
 
 ### fridge — 冷蔵庫（家電 / placement: floor）
 冷蔵庫。容量でサイズが変わる。一人暮らしなら150L前後の2ドアが定番。扉を開けると中の棚に物を置ける。上に電子レンジを載せられる
@@ -411,7 +481,28 @@ PC の本体。タワー型・小型・ミニ PC。床にも机の上にも置�
 ### toaster — トースター（キッチン / placement: onTop）
 オーブントースター。レンジ台や棚、カウンターに置く。上にも物を置ける
 - 載せられる面（既定の寸法のとき）: 天面 高さ 220（300×220）
+- open: boolean (既定 false) — 扉を開ける
 - color: "#rrggbb" (既定 #f4f4f2) — 本体
+
+### coffeeMaker — コーヒーメーカー（キッチン / placement: onTop）
+コーヒーメーカー。ガラスポットのドリップ式・カプセル式・豆から挽く全自動。カウンターや棚に置く
+- 上には何も載せられない
+- style: "drip"(ドリップ（ガラスポット）) | "capsule"(カプセル式) | "auto"(全自動（ミル付き）) (既定 "drip") — 形
+- color: "#rrggbb" (既定 #2b2b2e) — 本体
+- cup: boolean (既定 true) — カップ
+- プリセット例: 白いドリップ {"color":"#f4f4f2"} / カプセル（赤） {"style":"capsule","color":"#c94a3c"} / 全自動（シルバー） {"style":"auto","color":"#d7d9dc"}
+
+### dishRack — 水切りかご（キッチン / placement: onTop）
+洗った食器を立てておくワイヤーのかごと水受けトレー。シンク横やカウンターに置く
+- 上には何も載せられない
+- width: number 300〜560mm (既定 420、300〜840 まで指定可) — 幅
+- depth: number 240〜400mm (既定 300、240〜600 まで指定可) — 奥行き
+- tiers: number 1〜2 (既定 1) — 段数
+- material: "stainless"(ステンレス) | "white"(白い樹脂コート) | "black"(黒い樹脂コート) (既定 "stainless") — 材質
+- tray: boolean (既定 true) — 水受けトレー
+- cutlery: boolean (既定 true) — はし立て
+- dishes: number 0〜10 (既定 5) — 食器の数
+- プリセット例: スリム {"width":320,"depth":260,"dishes":3} / 2 段（白） {"tiers":2,"material":"white","width":450,"dishes":7} / 空っぽ {"dishes":0}
 
 ### bookRow — 本の列（縦置き）（小物 / placement: onTop）
 本棚や机に立てて並べた本・バインダー・ファイル。幅を決めると、その幅ぶんだけ並ぶ。棚の段の上に置く
@@ -474,6 +565,7 @@ PC の本体。タワー型・小型・ミニ PC。床にも机の上にも置�
 
 ### wallClock — 壁掛け時計（雑貨 / placement: wall / 既定の高さ y=1750）
 壁に掛ける時計。針は画面の時間帯スライダーの時刻を指す
+- 上には何も載せられない
 - diameter: number 200〜450mm (既定 300、200〜675 まで指定可) — 直径
 - shape: "round"(丸) | "square"(四角) (既定 "round") — 形
 - frame: "plastic"(樹脂) | "wood"(木) | "metal"(金属) | "none"(枠なし) (既定 "wood") — 枠
@@ -481,6 +573,23 @@ PC の本体。タワー型・小型・ミニ PC。床にも机の上にも置�
 - face: "numbers"(数字) | "bars"(線) | "minimal"(シンプル) (既定 "numbers") — 文字盤
 - faceColor: "#rrggbb" (既定 #fbfaf6) — 文字盤の色
 - プリセット例: 駅の時計風 {"frame":"metal","frameColor":"#2b2b2e","face":"bars","diameter":350} / 黒い文字盤 {"faceColor":"#2b2b2e","frame":"none","face":"minimal"} / 四角い木の時計 {"shape":"square","frame":"wood","face":"bars"}
+
+### wallArt — ポスター・アート（雑貨 / placement: wall / 既定の高さ y=1153（大きさや天井高で変わる））
+壁に飾るポスター・額入りのアート・キャンバス。絵柄はコードで描く。何枚かを横並びや格子に並べたギャラリーにもできる
+- 上には何も載せられない
+- width: number 150〜1200mm (既定 420、150〜1800 まで指定可) — 幅（1 枚）
+- height: number 150〜1500mm (既定 594、150〜2250 まで指定可) — 高さ（1 枚）
+- frame: "none"(なし（テープで貼る）) | "hanger"(ポスターハンガー) | "thin"(細い金属の枠) | "wood"(木の枠) | "box"(厚みのある額) | "canvas"(キャンバス（枠なし）) (既定 "wood") — 枠
+- frameColor: "#rrggbb" (既定 #b8875a) — 枠の色
+- mat: boolean (既定 true) — 余白（マット）
+- art: "shapes"(ゆるい図形) | "arches"(アーチ) | "sunset"(夕焼けの海) | "mountains"(山の風景) | "botanical"(植物の線画) | "geometric"(幾何学) | "type"(文字のポスター) (既定 "shapes") — 絵柄
+- palette: "warm"(あたたかい) | "earth"(アースカラー) | "cool"(すずしい) | "pastel"(パステル) | "mono"(モノトーン) | "vivid"(ビビッド) (既定 "warm") — 色の雰囲気
+- seed: number 1〜30 (既定 1) — バリエーション
+- text: string 16文字まで (既定 "hello") — 文字
+- count: number 1〜6 (既定 1) — 枚数
+- arrange: "row"(横一列) | "grid"(格子) (既定 "row") — 並べ方
+- gap: number 20〜300mm (既定 60、20〜450 まで指定可) — すき間
+- プリセット例: A3 の額 {"width":297,"height":420,"frame":"thin","frameColor":"#2b2b2e","art":"mountains","palette":"cool"} / B2 ポスター（テープ） {"width":515,"height":728,"frame":"none","art":"type","palette":"vivid","text":"GOOD DAY"} / ポスターハンガー {"width":500,"height":700,"frame":"hanger","frameColor":"#b8875a","art":"botanical","palette":"earth"} / 大きなキャンバス {"width":900,"height":600,"frame":"canvas","art":"sunset","palette":"warm"} / 3 枚並べ {"width":300,"height":400,"count":3,"frame":"wood","frameColor":"#e4cfa8","art":"arches","palette":"earth"} / ギャラリー（2×2） {"width":300,"height":300,"count":4,"arrange":"grid","gap":40,"frame":"box","frameColor":"#f4f4f2","art":"geometric","palette":"pastel"}
 
 ### rug — ラグ（雑貨 / placement: floor）
 床に敷くラグ。家具の下に敷いてよい（重なってもOK）
@@ -501,6 +610,17 @@ PC の本体。タワー型・小型・ミニ PC。床にも机の上にも置�
 - lace: boolean (既定 true) — レースカーテン
 - color: "#rrggbb" (既定 #9fb5a5) — ドレープの色
 - プリセット例: 閉じた状態 {"open":0} / 腰窓用 {"width":1800,"height":1350}
+
+### roomDivider — 間仕切りカーテン（雑貨 / placement: ceiling）
+天井のレールや突っ張り棒から下げて、部屋を区切るカーテン・のれん。天井から吊るす（position y は無視）。丈は天井高から 100 くらい引いた長さで床すれすれ。やわらかいので家具と重なってもよい
+- width: number 600〜3600mm (既定 1800、600〜5400 まで指定可) — 幅
+- height: number 300〜2600mm (既定 2300、300〜3100 まで指定可) — 丈
+- open: number 0〜100% (既定 0) — 開き具合
+- gather: "both"(両側) | "left"(左) | "right"(右) (既定 "both") — 寄せる側
+- rail: "ceiling"(天井のレール) | "rod"(突っ張り棒) (既定 "ceiling") — レール
+- fabric: "drape"(ドレープ) | "lace"(レース（透ける）) | "noren"(のれん（切れ目）) (既定 "drape") — 生地
+- color: "#rrggbb" (既定 #d9d2c5) — 色
+- プリセット例: 間仕切りカーテン {} / のれん {"width":900,"height":900,"fabric":"noren","rail":"rod","color":"#3d4a5c"} / レースで仕切る {"fabric":"lace","color":"#fbfaf6","open":30,"gather":"left"}
 
 ### plant — 観葉植物（雑貨 / placement: floor）
 鉢植えの観葉植物。種類と高さを変えられる

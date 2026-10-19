@@ -216,7 +216,7 @@ function rackLevels(q: RackParams) {
   const n = Math.max(2, Math.round(q.shelves))
   const foot = q.feet === 'casters' ? 75 : 30
   const top = q.height - 40
-  const board = q.shelfType === 'wire' ? 0 : q.shelfType === 'glass' ? 6 : 9
+  const board = q.shelfType === 'wire' || q.shelfType === 'basket' ? 0 : q.shelfType === 'glass' ? 6 : 9
   return Array.from({ length: n }, (_, i) => foot + 25 + ((top - foot - 25) * i) / (n - 1) + board)
 }
 
@@ -288,7 +288,7 @@ export const metalRack = defineAsset({
     })
     const wireR = 2.2
     for (const top of lv) {
-      const y = top - (q.shelfType === 'wire' ? 0 : q.shelfType === 'glass' ? 6 : 9)
+      const y = top - (q.shelfType === 'wire' || q.shelfType === 'basket' ? 0 : q.shelfType === 'glass' ? 6 : 9)
       // Frame: front and back rails (flat bars), side rails, conical sleeves on the poles.
       for (const z of [-D / 2 + r, D / 2 - r]) wires.push(panelOn(W - r * 2, 22, 3, metal, 0, y - 22, z, { edge: 1 }))
       for (const x of [-W / 2 + r, W / 2 - r]) wires.push(panelOn(3, 22, D - r * 2, metal, x, y - 22, 0, { edge: 1 }))
@@ -609,7 +609,7 @@ export const ceilingDryer = defineAsset({
   surfaces: () => [],
   params: {
     length: p.mm('竿の長さ', 900, 2400, 1600),
-    drop: p.mm('吊り下げの長さ', 250, 1100, 500, { hint: '天井から竿まで' }),
+    drop: p.mm('吊り下げの長さ', 250, 1100, 500, { hardMax: 1400, hint: '天井から竿まで' }),
     clothes: p.number({ label: '洗濯物の数', min: 0, max: 14, step: 1, default: 6, group: '形' }),
     kind: p.select('かける物', LAUNDRY_KINDS, 'laundry', { group: '形' }),
     color: p.color('支柱と竿', '#f2f2ef', { swatches: ['#f2f2ef', '#d7d9dc', '#2b2b2e', '#c9a86a'] }),
