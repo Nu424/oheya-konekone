@@ -1,7 +1,7 @@
 import type * as THREE from 'three'
 import type { ParamSpecs, ParamValues } from './params'
 
-export type Category = 'bed' | 'sofa' | 'table' | 'work' | 'office' | 'storage' | 'av' | 'appliance' | 'kitchen' | 'small' | 'decor' | 'light'
+export type Category = 'bed' | 'sofa' | 'table' | 'work' | 'office' | 'storage' | 'av' | 'appliance' | 'kitchen' | 'bath' | 'small' | 'decor' | 'light'
 
 export const CATEGORY_LABELS: Record<Category, string> = {
   bed: '寝具',
@@ -13,6 +13,7 @@ export const CATEGORY_LABELS: Record<Category, string> = {
   av: 'AV',
   appliance: '家電',
   kitchen: 'キッチン',
+  bath: '水まわり',
   small: '小物',
   decor: '雑貨',
   light: '照明',

@@ -14,6 +14,7 @@ const candidates = [
   process.env.CHROMIUM,
   'C:/Program Files/Google/Chrome/Application/chrome.exe',
   'C:/Program Files (x86)/Microsoft/Edge/Application/msedge.exe',
+  '/opt/pw-browsers/chromium',
   '/opt/pw-browsers/chromium-1194/chrome-linux/chrome',
 ].filter((p) => p && existsSync(p))
 // Software WebGL by default (works everywhere); SHOT_GPU=1 uses the real GPU where there is one.

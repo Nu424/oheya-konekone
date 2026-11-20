@@ -118,6 +118,7 @@ export const cabinet = defineAsset({
     },
     { name: '食器棚', params: { width: 900, height: 1800, depth: 450, lower: 'drawers', lowerRows: 2, upperShare: 0.6, upper: 'glass', upperRows: 3, span: 'row', color: '#f1ece4', frontColor: '#f1ece4', finish: 'melamine', handle: 'bar' } },
     { name: 'キャビネット（開き戸）', params: { width: 800, height: 850, depth: 400, lower: 'hinged', lowerRows: 2, span: 'whole', handle: 'knob', base: 'legs', color: '#8f5f3d', frontColor: '#8f5f3d' } },
+    { name: '靴箱（下駄箱）', params: { width: 800, height: 950, depth: 350, lower: 'hinged', lowerRows: 4, span: 'column', handle: 'bar', base: 'plinth', finish: 'melamine', color: '#f1ece4', frontColor: '#f1ece4' } },
     { name: 'サイドボード', params: { width: 1500, height: 700, depth: 420, cols: 3, lower: 'flap', lowerRows: 1, span: 'cell', handle: 'groove', base: 'legs', color: '#6b4a34', frontColor: '#6b4a34' } },
   ],
   surfaces: (prm) => storageSurfaces(cabinetSpec(prm)),

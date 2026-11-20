@@ -4,7 +4,7 @@
 //   Each query is opened as /?gallery&<query>; with `&only=` the gallery shows one cell up close.
 // Env: CELL=520x420 (size of each tile), WAIT=2500 (ms after the scene is ready), BASE_URL.
 import { chromium } from 'playwright-core'
-import { mkdirSync } from 'node:fs'
+import { existsSync, mkdirSync } from 'node:fs'
 import { dirname } from 'node:path'
 
 const [out = 'shots/sheet.png', colsArg, ...queries] = process.argv.slice(2)
@@ -14,8 +14,10 @@ const wait = Number(process.env.WAIT ?? 2500)
 const base = process.env.BASE_URL ?? 'http://localhost:5173'
 mkdirSync(dirname(out), { recursive: true })
 
+// Pre-installed Chromium in cloud containers (a symlink to whichever version is there), else Playwright's own.
+const executablePath = [process.env.CHROMIUM, '/opt/pw-browsers/chromium', '/opt/pw-browsers/chromium-1194/chrome-linux/chrome'].find((p) => p && existsSync(p))
 const browser = await chromium.launch({
-  executablePath: process.env.CHROMIUM ?? '/opt/pw-browsers/chromium-1194/chrome-linux/chrome',
+  executablePath,
   args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist'],
 })
 const page = await browser.newPage({ viewport: { width: cw, height: ch }, deviceScaleFactor: 1 })

@@ -339,7 +339,7 @@ PC の本体。タワー型・小型・ミニ PC。床にも机の上にも置�
 - finish: "wood"(木) | "melamine"(化粧板（白木・単色）) | "steel"(スチール) | "plastic"(樹脂) (既定 "wood") — 素材
 - color: "#rrggbb" (既定 #d2ad7c) — 本体
 - frontColor: "#rrggbb" (既定 #d2ad7c) — 扉・前板
-- プリセット例: チェスト（4 段） {} / 横長チェスト {"width":1200,"height":700,"cols":3,"lowerRows":2,"handle":"knob"} / 衣装ケース {"width":440,"height":1000,"depth":550,"lowerRows":5,"finish":"plastic","color":"#f4f4f2","frontColor":"#f4f4f2","handle":"cup","base":"casters"} / ロッカー（1 人用） {"width":380,"height":1790,"depth":515,"lower":"hinged","lowerRows":4,"span":"column","handle":"lever","finish":"steel","color":"#e6e6e3","frontColor":"#e6e6e3","base":"adjusters"} / ロッカー（3 人用） {"width":900,"height":1790,"depth":515,"cols":3,"lower":"hinged","lowerRows":4,"span":"column","handle":"lever","finish":"steel","color":"#e6e6e3","frontColor":"#e6e6e3","base":"adjusters"} / 引き戸書庫 {"width":880,"height":1050,"depth":400,"lower":"sliding","lowerRows":2,"finish":"steel","color":"#e6e6e3","frontColor":"#e6e6e3","base":"adjusters"} / スチール書庫（上ガラス） {"width":880,"height":1790,"depth":400,"lower":"hinged","lowerRows":2,"upperShare":0.55,"upper":"glassSliding","upperRows":3,"span":"column","handle":"lever","finish":"steel","color":"#e6e6e3","frontColor":"#e6e6e3","base":"adjusters"} / 食器棚 {"width":900,"height":1800,"depth":450,"lower":"drawers","lowerRows":2,"upperShare":0.6,"upper":"glass","upperRows":3,"span":"row","color":"#f1ece4","frontColor":"#f1ece4","finish":"melamine","handle":"bar"} / キャビネット（開き戸） {"width":800,"height":850,"depth":400,"lower":"hinged","lowerRows":2,"span":"whole","handle":"knob","base":"legs","color":"#8f5f3d","frontColor":"#8f5f3d"} / サイドボード {"width":1500,"height":700,"depth":420,"cols":3,"lower":"flap","lowerRows":1,"span":"cell","handle":"groove","base":"legs","color":"#6b4a34","frontColor":"#6b4a34"}
+- プリセット例: チェスト（4 段） {} / 横長チェスト {"width":1200,"height":700,"cols":3,"lowerRows":2,"handle":"knob"} / 衣装ケース {"width":440,"height":1000,"depth":550,"lowerRows":5,"finish":"plastic","color":"#f4f4f2","frontColor":"#f4f4f2","handle":"cup","base":"casters"} / ロッカー（1 人用） {"width":380,"height":1790,"depth":515,"lower":"hinged","lowerRows":4,"span":"column","handle":"lever","finish":"steel","color":"#e6e6e3","frontColor":"#e6e6e3","base":"adjusters"} / ロッカー（3 人用） {"width":900,"height":1790,"depth":515,"cols":3,"lower":"hinged","lowerRows":4,"span":"column","handle":"lever","finish":"steel","color":"#e6e6e3","frontColor":"#e6e6e3","base":"adjusters"} / 引き戸書庫 {"width":880,"height":1050,"depth":400,"lower":"sliding","lowerRows":2,"finish":"steel","color":"#e6e6e3","frontColor":"#e6e6e3","base":"adjusters"} / スチール書庫（上ガラス） {"width":880,"height":1790,"depth":400,"lower":"hinged","lowerRows":2,"upperShare":0.55,"upper":"glassSliding","upperRows":3,"span":"column","handle":"lever","finish":"steel","color":"#e6e6e3","frontColor":"#e6e6e3","base":"adjusters"} / 食器棚 {"width":900,"height":1800,"depth":450,"lower":"drawers","lowerRows":2,"upperShare":0.6,"upper":"glass","upperRows":3,"span":"row","color":"#f1ece4","frontColor":"#f1ece4","finish":"melamine","handle":"bar"} / キャビネット（開き戸） {"width":800,"height":850,"depth":400,"lower":"hinged","lowerRows":2,"span":"whole","handle":"knob","base":"legs","color":"#8f5f3d","frontColor":"#8f5f3d"} / 靴箱（下駄箱） {"width":800,"height":950,"depth":350,"lower":"hinged","lowerRows":4,"span":"column","handle":"bar","base":"plinth","finish":"melamine","color":"#f1ece4","frontColor":"#f1ece4"} / サイドボード {"width":1500,"height":700,"depth":420,"cols":3,"lower":"flap","lowerRows":1,"span":"cell","handle":"groove","base":"legs","color":"#6b4a34","frontColor":"#6b4a34"}
 
 ### metalRack — メタルラック（収納 / placement: floor）
 ポールと棚板を組み合わせるスチールラック（ワイヤー棚・木目の棚板・ガラス）。キッチン・洗面所・押し入れなどに。各段に物を載せられる
@@ -514,6 +514,37 @@ PC の本体。タワー型・小型・ミニ PC。床にも机の上にも置�
 - cutlery: boolean (既定 true) — はし立て
 - dishes: number 0〜10 (既定 5) — 食器の数
 - プリセット例: スリム {"width":320,"depth":260,"dishes":3} / 2 段（白） {"tiers":2,"material":"white","width":450,"dishes":7} / 空っぽ {"dishes":0}
+
+### bathtub — 浴槽（水まわり / placement: floor）
+浴室の浴槽（エプロン付き）と、壁の水栓・シャワー。背面(-Z)を壁につける。中は空洞で、お湯を張った状態も表示できる
+- 上には何も載せられない
+- length: number 1000〜1800mm (既定 1300、1000〜2700 まで指定可) — 長さ
+- width: number 650〜900mm (既定 750、650〜1350 まで指定可) — 幅（奥行き）
+- height: number 400〜650mm (既定 550、400〜975 まで指定可) — 高さ
+- water: boolean (既定 false) — お湯を張る
+- lid: boolean (既定 false) — 風呂ふた
+- shower: "shower"(水栓とシャワー) | "faucet"(水栓だけ) | "none"(なし) (既定 "shower") — 水栓・シャワー
+- color: "#rrggbb" (既定 #f6f4ef) — 色
+- プリセット例: ユニットバス 1116 {"length":1100,"width":700,"height":550} / ゆったり 1418 {"length":1400,"width":800,"water":true} / ふたをした状態 {"lid":true}
+
+### toilet — トイレ（水まわり / placement: floor）
+洋式トイレ。タンク付き・タンクレス、温水洗浄便座、フタの開け閉め。背面(-Z)を壁につける
+- 上には何も載せられない
+- tank: "tank"(タンク付き) | "tankless"(タンクレス) (既定 "tank") — タンク
+- lid: "closed"(閉じる) | "open"(開ける) | "seatUp"(便座も上げる) (既定 "closed") — フタ
+- washlet: boolean (既定 true) — 温水洗浄便座
+- color: "#rrggbb" (既定 #f6f4ef) — 色
+- プリセット例: タンクレス {"tank":"tankless"} / フタを開けた状態 {"lid":"open"}
+
+### washbasin — 洗面台（水まわり / placement: floor）
+洗面化粧台（収納の上に洗面ボウル、上に鏡）か、柱の上の洗面器。背面(-Z)を壁につける
+- 上には何も載せられない
+- style: "vanity"(洗面化粧台) | "pedestal"(柱の洗面器) (既定 "vanity") — 形
+- width: number 450〜1200mm (既定 750、450〜1800 まで指定可) — 幅
+- mirror: "cabinet"(収納付きの鏡) | "mirror"(鏡だけ) | "none"(なし) (既定 "cabinet") — 鏡
+- open: number 0〜1 (既定 0) — 開き具合
+- color: "#rrggbb" (既定 #f4f4f2) — 本体
+- プリセット例: 600 の洗面化粧台 {"width":600} / 木目の洗面台 {"width":900,"color":"#b8875a","mirror":"mirror"} / 小さな洗面器 {"style":"pedestal","width":500,"mirror":"mirror"}
 
 ### bookRow — 本の列（縦置き）（小物 / placement: onTop）
 本棚や机に立てて並べた本・バインダー・ファイル。幅を決めると、その幅ぶんだけ並ぶ。棚の段の上に置く
@@ -770,7 +801,7 @@ PC の本体。タワー型・小型・ミニ PC。床にも机の上にも置�
       "position": [
         530,
         0,
-        1130
+        1225
       ],
       "rotation": 0,
       "params": {

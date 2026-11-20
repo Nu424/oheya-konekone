@@ -1,3 +1,4 @@
+import { bathtub, toilet, washbasin } from './items/bath'
 import { bed, futon, loftBed } from './items/beds'
 import { desk } from './items/desk'
 import { cushion, curtain, mirror, plant, roomDivider, rug, trashCan } from './items/decor'
@@ -62,6 +63,9 @@ const ALL: AssetDef<any>[] = [
   toaster,
   coffeeMaker,
   dishRack,
+  bathtub,
+  toilet,
+  washbasin,
   bookRow,
   bookStack,
   fileBox,
