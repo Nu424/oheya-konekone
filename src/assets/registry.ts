@@ -1,4 +1,4 @@
-import { bathtub, toilet, washbasin } from './items/bath'
+import { bathStool, bathtub, faucetShower, toilet, wallAccessory, washbasin } from './items/bath'
 import { bed, futon, loftBed } from './items/beds'
 import { desk } from './items/desk'
 import { cushion, curtain, mirror, plant, roomDivider, rug, trashCan } from './items/decor'
@@ -6,11 +6,11 @@ import { coffeeMaker, kettle, microwave, riceCooker, toaster } from './items/app
 import { bookRow, bookStack, fileBox } from './items/books'
 import { desktopPC, keyboardMouse, laptop, monitor } from './items/computing'
 import { aircon, fridge, gameConsole, speaker, tv, washer } from './items/electronics'
-import { cardboardBox, organizer, wallClock } from './items/small'
+import { basket, cardboardBox, organizer, wallClock } from './items/small'
 import { copier, foldingChair, officeDesk, partition, printer, whiteboard } from './items/office'
 import { dishRack, miniKitchen } from './items/kitchen'
 import { ceilingLight, deskLamp, floorLamp, pendantLight } from './items/lights'
-import { beanbag, diningChair, floorChair, officeChair, sofa } from './items/seating'
+import { beanbag, diningChair, floorChair, officeChair, sofa, stool } from './items/seating'
 import { cabinet, ceilingDryer, hangerRack, metalRack, shelf, tvStand, wallStorage } from './items/storage'
 import { wallArt } from './items/wall'
 import { diningTable, kotatsu, lowTable } from './items/tables'
@@ -25,6 +25,7 @@ const ALL: AssetDef<any>[] = [
   sofa,
   floorChair,
   beanbag,
+  stool,
   cushion,
   lowTable,
   kotatsu,
@@ -64,13 +65,17 @@ const ALL: AssetDef<any>[] = [
   coffeeMaker,
   dishRack,
   bathtub,
+  faucetShower,
+  bathStool,
   toilet,
   washbasin,
+  wallAccessory,
   bookRow,
   bookStack,
   fileBox,
   cardboardBox,
   organizer,
+  basket,
   wallClock,
   wallArt,
   rug,

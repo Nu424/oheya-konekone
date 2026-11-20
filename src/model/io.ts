@@ -1,6 +1,6 @@
 import { z } from 'zod'
 import { getAsset, itemParamsSchema } from '../assets/registry'
-import { stack } from '../editor/placement'
+import { localBox, stack } from '../editor/placement'
 import { overlappingOpenings } from './geometry'
 import { floorAt, onFloor, resolveOpening, sideLength } from './plan'
 import { Layout, type LayoutInput } from './schema'
@@ -46,6 +46,35 @@ export function parseLayoutText(text: string): ParseResult {
   return parseLayout(raw)
 }
 
+/**
+ * Bring older layouts up to date in place (they keep loading as they were saved):
+ * - bathtub `shower` (2026-11): the tap and shower are now their own wall item, `faucetShower`,
+ *   on the wall behind the tub.
+ */
+function migrate(layout: Layout) {
+  const added: Layout['items'] = []
+  for (const it of layout.items) {
+    if (it.type !== 'bathtub' || !('shower' in it.params)) continue
+    const { shower, ...rest } = it.params
+    it.params = rest
+    if (shower === 'none') continue
+    const w = Number(rest.width ?? 750)
+    const h = Number(rest.height ?? 550)
+    const r = (it.rotation * Math.PI) / 180
+    const params = { kind: shower === 'faucet' ? 'mixer' : 'bath' }
+    // The middle of the tub's back is on the wall; the fitting's back goes there, its body in front.
+    const off = w / 2 + localBox({ type: 'faucetShower', params }).min.z
+    added.push({
+      id: `${it.id}-shower`,
+      type: 'faucetShower',
+      position: [Math.round(it.position[0] - off * Math.sin(r)), it.position[1] + h + 200, Math.round(it.position[2] - off * Math.cos(r))],
+      rotation: it.rotation,
+      params,
+    })
+  }
+  layout.items.push(...added)
+}
+
 export function parseLayout(raw: unknown): ParseResult {
   const errors: Issue[] = []
   const warnings: Issue[] = []
@@ -55,6 +84,7 @@ export function parseLayout(raw: unknown): ParseResult {
     return { ok: false, errors, warnings }
   }
   const layout = res.data
+  migrate(layout)
 
   // Spaces: unique ids, no overlaps; the room outline is the box around them.
   const spaces = layout.room.spaces ?? []

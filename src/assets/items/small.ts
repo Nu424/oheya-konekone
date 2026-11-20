@@ -1,7 +1,8 @@
 import * as THREE from 'three'
 import { mat, printedMat } from '../../three/materials'
 import { drawnTexture, rng } from '../../three/textures'
-import { box, boxOn, cyl, deg, group, lathe, merged, panelOn } from '../kit'
+import { box, boxOn, cyl, deg, group, lathe, merged, panelOn, rbox, sphere, tube } from '../kit'
+import { hollowBox, hollowCylinder } from '../parts'
 import { p } from '../params'
 import { defineAsset } from '../types'
 
@@ -451,6 +452,202 @@ export const wallClock = defineAsset({
       const glass = new THREE.Mesh(shape === 'round' ? new THREE.CircleGeometry(faceR, 64) : new THREE.PlaneGeometry(faceR * 2, faceR * 2), mat('glass', '#ffffff', { opacity: 0.08 }))
       glass.position.set(0, R, depth / 2 - 1)
       g.add(glass)
+    }
+    return g
+  },
+})
+
+// ---- Baskets and holders ------------------------------------------------------------------------
+
+const BASKET_MATERIALS = { rattan: 'ラタン（編み目）', fabric: '布', plastic: '樹脂', wire: 'ワイヤー', steel: 'スチール', ceramic: '陶器' } as const
+type BasketMaterial = keyof typeof BASKET_MATERIALS
+const CONTENTS = { none: 'からっぽ', umbrellas: '傘', laundry: '洗濯物', towels: '丸めたタオル', toys: 'おもちゃ' } as const
+
+/** Basket weave: horizontal strands over and under vertical stakes, one repeat per metre. */
+function weaveTexture(color: string) {
+  const t = drawnTexture(`weave-${color}`, 512, 512, (ctx, w, h) => {
+    const n = 40
+    const c = w / n
+    const base = new THREE.Color(color)
+    const tone = (k: number) => `#${base.clone().multiplyScalar(k).getHexString()}`
+    ctx.fillStyle = tone(0.55)
+    ctx.fillRect(0, 0, w, h)
+    for (let r = 0; r < n; r++)
+      for (let k = 0; k < n; k++) {
+        const over = (r + k) % 2 === 0
+        ctx.fillStyle = tone(over ? 1.05 : 0.85)
+        ctx.beginPath()
+        ctx.roundRect(k * c + 1, r * c + (over ? 2 : 4), c - 2, c - (over ? 4 : 8), c * 0.3)
+        ctx.fill()
+      }
+  })
+  t.wrapS = t.wrapT = THREE.RepeatWrapping
+  return t
+}
+
+function basketMaterial(m: BasketMaterial, color: string): THREE.Material {
+  switch (m) {
+    case 'rattan':
+      return printedMat(`weave-${color}`, weaveTexture(color), 'paper', { roughness: 0.85 })
+    case 'fabric':
+      return mat('fabric', color)
+    case 'steel':
+    case 'wire':
+      return mat('powder', color)
+    case 'ceramic':
+      return mat('ceramic', color)
+    default:
+      return mat('plastic', color, { roughness: 0.4 })
+  }
+}
+
+const basketWall = (m: BasketMaterial) => ({ rattan: 12, fabric: 6, plastic: 4, wire: 3, steel: 2, ceramic: 10 })[m]
+
+export const basket = defineAsset({
+  type: 'basket',
+  label: 'かご・入れ物',
+  category: 'small',
+  description:
+    'かご・入れ物。傘立て・洗濯かご・ラタンのかご・布の収納ボックス・おもちゃ箱。形と材質を選べて、中身（傘・洗濯物・タオル・おもちゃ）も表示できる。からっぽなら中に物を置ける。フタを閉じると上に置ける',
+  placement: 'floor',
+  params: {
+    shape: p.select('形', { round: '丸', square: '四角' }, 'round', { group: '形' }),
+    width: p.mm('幅', 150, 700, 420),
+    depth: p.mm('奥行き', 150, 600, 340, { hint: '丸なら楕円になる' }),
+    height: p.mm('高さ', 60, 900, 380),
+    material: p.select('材質', BASKET_MATERIALS, 'rattan', { group: '色・素材' }),
+    color: p.color('色', '#b8875a', { swatches: ['#d2ad7c', '#b8875a', '#6b4a34', '#f4f4f2', '#c4c6c8', '#2b2b2e', '#9fb59a', '#d9cbb4', '#8fa9bf'] }),
+    handles: p.bool('持ち手', true),
+    lid: p.bool('フタ', false),
+    contents: p.select('中身', CONTENTS, 'none', { group: '形' }),
+    fill: p.number({ label: '入れる量', min: 0.1, max: 1, step: 0.05, default: 0.6, group: '形' }),
+  },
+  presets: [
+    { name: '傘立て', params: { shape: 'square', width: 240, depth: 240, height: 480, material: 'steel', color: '#2b2b2e', handles: false, contents: 'umbrellas', fill: 0.5 } },
+    { name: '陶器の傘立て', params: { shape: 'round', width: 260, depth: 260, height: 500, material: 'ceramic', color: '#d9cbb4', handles: false, contents: 'umbrellas', fill: 0.3 } },
+    { name: '洗濯かご', params: { shape: 'square', width: 480, depth: 340, height: 380, material: 'plastic', color: '#f4f4f2', contents: 'laundry', fill: 0.8 } },
+    { name: 'ラタンのかご', params: { shape: 'round', width: 380, depth: 380, height: 300, contents: 'towels' } },
+    { name: 'インナーボックス（布）', params: { shape: 'square', width: 380, depth: 260, height: 250, material: 'fabric', color: '#d9cbb4' } },
+    { name: 'おもちゃ箱', params: { shape: 'square', width: 520, depth: 360, height: 360, material: 'fabric', color: '#8fa9bf', contents: 'toys', fill: 0.8 } },
+    { name: 'ワイヤーバスケット', params: { shape: 'square', width: 360, depth: 260, height: 200, material: 'wire', color: '#f4f4f2', handles: false } },
+  ],
+  surfaces: (q) => {
+    const t = basketWall(q.material)
+    if (q.lid) return [{ y: q.height + 12, minX: -q.width / 2, maxX: q.width / 2, minZ: -q.depth / 2, maxZ: q.depth / 2, label: 'フタの上' }]
+    if (q.contents !== 'none') return []
+    const k = q.shape === 'round' ? 0.7 : 1
+    return [{ y: t, minX: (-q.width / 2 + t) * k, maxX: (q.width / 2 - t) * k, minZ: (-q.depth / 2 + t) * k, maxZ: (q.depth / 2 - t) * k, clearance: q.height - t, label: '中' }]
+  },
+  build(q) {
+    const { shape, width: W, depth: D, height: H, material, color, handles, lid, contents, fill } = q
+    const g = group()
+    const m = basketMaterial(material, color)
+    const t = basketWall(material)
+    const round = shape === 'round'
+    if (material === 'wire') {
+      // An open wire frame: rims, uprights and a grid floor.
+      const wires: THREE.Mesh[] = []
+      const r = 2.5
+      for (const y of [r, H * 0.5, H - r]) {
+        for (const z of [-D / 2, D / 2]) wires.push(cyl(r, r, W, m, [0, y, z], { rot: [0, 0, Math.PI / 2], segments: 6 }))
+        for (const x of [-W / 2, W / 2]) wires.push(cyl(r, r, D, m, [x, y, 0], { rot: [Math.PI / 2, 0, 0], segments: 6 }))
+      }
+      for (let x = -W / 2; x <= W / 2 + 1; x += W / Math.round(W / 30)) {
+        for (const z of [-D / 2, D / 2]) wires.push(cyl(1.6, 1.6, H, m, [x, H / 2, z], { segments: 5 }))
+        wires.push(cyl(1.6, 1.6, D, m, [x, r, 0], { rot: [Math.PI / 2, 0, 0], segments: 5 }))
+      }
+      for (let z = -D / 2; z <= D / 2 + 1; z += D / Math.round(D / 30)) for (const x of [-W / 2, W / 2]) wires.push(cyl(1.6, 1.6, H, m, [x, H / 2, z], { segments: 5 }))
+      g.add(merged(wires, m))
+    } else if (round) {
+      const tub = hollowCylinder(W / 2, H - t, t, m, { segments: 40, lip: material === 'rattan' ? 6 : 2 })
+      tub.scale.z = D / W
+      g.add(tub)
+      if (material === 'rattan') {
+        const rim = new THREE.Mesh(new THREE.TorusGeometry(W / 2, 9, 8, 40), m)
+        rim.rotation.x = Math.PI / 2
+        rim.scale.y = D / W
+        rim.position.y = H - 4
+        g.add(rim)
+      }
+    } else {
+      const edge = material === 'fabric' ? 10 : material === 'rattan' ? 6 : 3
+      g.add(hollowBox(W, H, D, t, m, { open: 'top', edge }))
+      if (material === 'rattan') for (const s of [-1, 1]) g.add(panelOn(W + 6, 16, 16, m, 0, H - 14, (s * D) / 2, { edge: 6 }), panelOn(16, 16, D + 6, m, (s * W) / 2, H - 14, 0, { edge: 6 }))
+    }
+    if (handles && material !== 'wire') {
+      for (const s of [-1, 1]) {
+        if (material === 'fabric' || material === 'plastic') {
+          // Hand holes: a dark slot near the top of each end.
+          const slot = panelOn(t + 2, 30, Math.min(110, D * 0.4), mat('matte', '#2a2420'), s * (W / 2 - t / 2) * (round ? 0.98 : 1), H - 70, 0, { edge: 2 })
+          g.add(slot)
+        } else {
+          const h = tube([[s * (W / 2 + 2), H - 60, -50], [s * (W / 2 + 26), H - 30, -30], [s * (W / 2 + 26), H - 30, 30], [s * (W / 2 + 2), H - 60, 50]], 7, m, { segments: 16, tension: 0.5 })
+          g.add(h)
+        }
+      }
+    }
+    if (lid) {
+      if (round) {
+        const top = cyl(W / 2 + 6, W / 2 + 6, 12, m, [0, H + 6, 0], { segments: 40 })
+        top.scale.z = D / W
+        g.add(top)
+      } else g.add(panelOn(W + 10, 12, D + 10, m, 0, H, 0, { edge: 4 }))
+      return g
+    }
+    // What is inside: made from the walls in, up to `fill` of the height.
+    const rr = rng(Math.round(W * 7 + D * 3 + H + fill * 100))
+    const inner = { w: (W - t * 2) * (round ? 0.72 : 0.92), d: (D - t * 2) * (round ? 0.72 : 0.92) }
+    const top = t + (H - t) * fill
+    const CLOTH = ['#f2efe9', '#3d4a5c', '#8fa9bf', '#c5687a', '#e8c76a', '#9fb59a', '#d9cbb4']
+    if (contents === 'umbrellas') {
+      const n = Math.max(1, Math.round(fill * 8))
+      for (let i = 0; i < n; i++) {
+        const u = new THREE.Group()
+        const col = CLOTH[Math.floor(rr() * CLOTH.length)]
+        const L = 800 + rr() * 100
+        u.add(lathe([[0, 0], [6, 30], [26, L * 0.35], [22, L * 0.8], [6, L * 0.9], [0, L * 0.9]], mat('fabric', col), [0, 0, 0], { segments: 14 }))
+        u.add(cyl(4, 4, L * 0.1 + 40, mat('chrome', '#cfd2d6'), [0, L * 0.9 + 20, 0], { segments: 8 }))
+        u.add(tube([[0, L + 40, 0], [0, L + 90, 0], [0, L + 120, 30], [0, L + 95, 55]], 9, mat('plastic', i % 2 ? '#2b2b2e' : '#6b4a34', { roughness: 0.4 }), { segments: 14, tension: 0.5 }))
+        u.position.set((rr() - 0.5) * inner.w * 0.6, t, (rr() - 0.5) * inner.d * 0.6)
+        u.rotation.set((rr() - 0.5) * 0.2, rr() * Math.PI * 2, (rr() - 0.5) * 0.2)
+        g.add(u)
+      }
+    } else if (contents === 'laundry') {
+      // Crumpled clothes: soft slabs tumbled on each other, the top ones spilling over the rim a little.
+      const n = Math.round(4 + fill * 10)
+      for (let i = 0; i < n; i++) {
+        const y = t + ((top - t) * (i + 0.5)) / n
+        const c = rbox(inner.w * (0.5 + rr() * 0.4), 40 + rr() * 30, inner.d * (0.5 + rr() * 0.4), 18, mat('fabric', CLOTH[Math.floor(rr() * CLOTH.length)]))
+        c.position.set((rr() - 0.5) * inner.w * 0.3, y, (rr() - 0.5) * inner.d * 0.3)
+        c.rotation.set((rr() - 0.5) * 0.5, rr() * Math.PI, (rr() - 0.5) * 0.5)
+        g.add(c)
+      }
+    } else if (contents === 'towels') {
+      // Rolled towels standing on end, packed in a ring.
+      const rr0 = 45
+      const cols = Math.max(1, Math.floor(inner.w / (rr0 * 2)))
+      const rows = Math.max(1, Math.floor(inner.d / (rr0 * 2)))
+      const n = Math.max(1, Math.round(cols * rows * fill))
+      for (let i = 0; i < n; i++) {
+        const cx = -inner.w / 2 + rr0 + (i % cols) * rr0 * 2
+        const cz = -inner.d / 2 + rr0 + (Math.floor(i / cols) % rows) * rr0 * 2
+        const h = Math.min(H * 1.05, 260)
+        g.add(cyl(rr0 - 2, rr0 - 2, h, mat('fabric', CLOTH[(i * 3) % CLOTH.length]), [cx, t + h / 2, cz], { segments: 18 }))
+        g.add(cyl(10, 10, 2, mat('fabric', '#8a7f74'), [cx, t + h + 1, cz], { segments: 10 }))
+      }
+    } else if (contents === 'toys') {
+      // Balls, blocks and a soft toy.
+      const n = Math.round(3 + fill * 8)
+      for (let i = 0; i < n; i++) {
+        const y = t + ((top - t) * (i + 0.5)) / n
+        const x = (rr() - 0.5) * inner.w * 0.6
+        const z = (rr() - 0.5) * inner.d * 0.6
+        const col = ['#e63946', '#f4a300', '#1d6fd1', '#1b998b', '#f2bfb8'][i % 5]
+        const k = i % 3
+        if (k === 0) g.add(sphere(40 + rr() * 30, mat('plastic', col, { roughness: 0.35 }), [x, y, z]))
+        else if (k === 1) g.add(panelOn(60, 60, 60, mat('wood', col), x, y - 30, z, { edge: 6 }))
+        else g.add(rbox(110, 130, 80, 40, mat('fabric', col), [x, y, z]))
+      }
     }
     return g
   },

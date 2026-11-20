@@ -247,9 +247,20 @@ function OpeningCard({ o, open, warn, onToggle }: { o: Opening; open: boolean; w
                   options={[
                     { value: 'sliding', label: '引き戸' },
                     { value: 'folding', label: '折れ戸' },
+                    { value: 'fusuma', label: 'ふすま' },
                     { value: 'open', label: 'なし' },
                   ]}
                   onChange={(doorStyle) => set({ doorStyle })}
+                />
+              </Field>
+              <Field label="中">
+                <Segmented
+                  value={o.interior}
+                  options={[
+                    { value: 'hanger', label: 'ハンガーパイプ' },
+                    { value: 'futon', label: '中段（押し入れ）' },
+                  ]}
+                  onChange={(interior) => set({ interior })}
                 />
               </Field>
               <NumberSlider label="奥行き" value={o.depth} min={300} max={1000} hint="壁の向こう側に広がる収納の深さ" onChange={(depth) => set({ depth })} />

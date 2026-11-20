@@ -23,9 +23,9 @@ export const lowTable = defineAsset({
   placement: 'floor',
   params: {
     shape: p.select('天板の形', { rect: '四角', round: '丸', oval: '楕円' }, 'rect'),
-    width: p.mm('幅', 500, 1400, 900),
-    depth: p.mm('奥行き', 400, 900, 500, { hint: '丸の場合は幅＝直径' }),
-    height: p.mm('高さ', 280, 500, 360),
+    width: p.mm('幅', 350, 1400, 900),
+    depth: p.mm('奥行き', 300, 900, 500, { hint: '丸の場合は幅＝直径' }),
+    height: p.mm('高さ', 280, 650, 360, { hint: 'ソファの横のサイドテーブルなら 500〜600' }),
     legs: p.select('脚', { wood: '木の脚', hairpin: 'ヘアピン', folding: '折りたたみ', box: '箱型' }, 'wood'),
     shelf: p.bool('下段の棚', false),
     topColor: p.color('天板', '#d2ad7c', { swatches: SWATCHES.wood }),
@@ -33,6 +33,8 @@ export const lowTable = defineAsset({
   },
   presets: [
     { name: '丸テーブル', params: { shape: 'round', width: 750, legs: 'folding', topColor: '#f1ece4', legColor: '#f1ece4' } },
+    { name: 'サイドテーブル', params: { shape: 'round', width: 400, height: 550, legs: 'hairpin', topColor: '#6b4a34', legColor: '#2b2b2b' } },
+    { name: 'ナイトテーブル（四角）', params: { width: 400, depth: 350, height: 500, legs: 'wood', shelf: true, topColor: '#d2ad7c', legColor: '#d2ad7c' } },
     { name: '北欧風', params: { shape: 'oval', width: 1000, depth: 550, topColor: '#e4cfa8', legColor: '#e4cfa8' } },
     { name: 'インダストリアル', params: { legs: 'hairpin', topColor: '#6b4a34', legColor: '#2b2b2b' } },
   ],

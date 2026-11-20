@@ -320,12 +320,18 @@ function buildCloset(g: THREE.Group, f: WallFrame, o: Closet, t: number, room: R
   }
   g.add(wallBox(f, u0, u1, -1, 0, t, back, innerMat)) // floor
   g.add(wallBox(f, u0, u1, H, H + 18, t, back, innerMat)) // shelf / head
-  // Interior: shelf + hanger pipe
-  g.add(wallBox(f, u0, u1, 1800, 1818, t, back, innerMat))
-  const pipe = new THREE.Mesh(new THREE.CylinderGeometry(12, 12, o.width, 16), mat('metal', '#cfd2d6', { roughness: 0.25 }))
-  pipe.rotation.z = Math.PI / 2
-  place(g, f, pipe, (u0 + u1) / 2, 1700, t + o.depth / 2)
-  pipe.rotation.set(0, f.yaw, Math.PI / 2)
+  if (o.interior === 'futon') {
+    // Oshiire: a deep middle shelf (中段) with a front rail, where futons go.
+    g.add(wallBox(f, u0, u1, 780, 800, t, back, innerMat))
+    g.add(wallBox(f, u0, u1, 760, 800, t, t + 45, mat('wood', '#d9c3a0')))
+  } else {
+    // Interior: shelf + hanger pipe
+    g.add(wallBox(f, u0, u1, 1800, 1818, t, back, innerMat))
+    const pipe = new THREE.Mesh(new THREE.CylinderGeometry(12, 12, o.width, 16), mat('metal', '#cfd2d6', { roughness: 0.25 }))
+    pipe.rotation.z = Math.PI / 2
+    place(g, f, pipe, (u0 + u1) / 2, 1700, t + o.depth / 2)
+    pipe.rotation.set(0, f.yaw, Math.PI / 2)
+  }
 
   // Trim
   const cw = 50
@@ -335,6 +341,23 @@ function buildCloset(g: THREE.Group, f: WallFrame, o: Closet, t: number, room: R
   place(g, f, cas(cw, H), u1 + cw / 2, H / 2, -7)
 
   if (o.doorStyle === 'open') return
+  if (o.doorStyle === 'fusuma') {
+    // Fusuma: paper panels in a lacquered frame on two tracks, each with a round recessed pull.
+    const pw = o.width / 2 + 20
+    const paper = mat('paper', o.color === '#efe9df' ? '#f1ead8' : o.color)
+    const frame = mat('wood', '#3b2a20', { roughness: 0.4 })
+    for (let i = 0; i < 2; i++) {
+      const cu = i === 0 ? u0 + pw / 2 : u1 - pw / 2
+      const w = t * 0.3 + i * 26
+      place(g, f, new THREE.Mesh(new THREE.BoxGeometry(pw - 4, H - 10, 20), paper), cu, H / 2, w)
+      for (const s of [-1, 1]) place(g, f, new THREE.Mesh(new THREE.BoxGeometry(18, H - 10, 22), frame), cu + (s * (pw - 22)) / 2, H / 2, w)
+      for (const v of [14, H - 14]) place(g, f, new THREE.Mesh(new THREE.BoxGeometry(pw - 4, 18, 22), frame), cu, v, w)
+      const pull = new THREE.Mesh(new THREE.CylinderGeometry(32, 32, 4, 24), mat('metal', '#6f5a3a', { roughness: 0.4 }))
+      place(g, f, pull, i === 0 ? cu + pw / 2 - 90 : cu - pw / 2 + 90, 850, w - 11)
+      pull.rotation.set(Math.PI / 2, f.yaw, 0)
+    }
+    return
+  }
   const n = o.doorStyle === 'sliding' ? 2 : o.width > 1500 ? 4 : 2
   const pw = o.doorStyle === 'sliding' ? o.width / 2 + 25 : o.width / n
   for (let i = 0; i < n; i++) {

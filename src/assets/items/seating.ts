@@ -265,3 +265,68 @@ export const diningChair = defineAsset({
     return g
   },
 })
+
+export const stool = defineAsset({
+  type: 'stool',
+  label: 'スツール',
+  category: 'sofa',
+  description: 'スツール・オットマン・カウンタースツール。高さで使い分ける（座面 400 前後がふつう、650〜750 がカウンター用）。上に物を置いてサイドテーブル代わりにもできる',
+  placement: 'floor',
+  params: {
+    kind: p.select('種類', { wood: '木の脚', ottoman: 'オットマン（布張り）', counter: 'カウンタースツール（足置き付き）' }, 'wood', { group: '形' }),
+    shape: p.select('座面', { round: '丸', square: '四角' }, 'round', { group: '形' }),
+    size: p.mm('座面の大きさ', 280, 600, 340),
+    height: p.mm('高さ', 250, 800, 450, { hardMax: 900 }),
+    color: p.color('座面', '#b8875a', { swatches: [...SWATCHES.wood.slice(0, 5), ...SWATCHES.fabric.slice(0, 6)] }),
+    frame: p.color('脚', '#6b4a34', { swatches: [...SWATCHES.wood.slice(0, 5), '#2b2b2e', '#d7d9dc'] }),
+  },
+  presets: [
+    { name: 'オットマン', params: { kind: 'ottoman', shape: 'square', size: 450, height: 400, color: '#d9d2c5' } },
+    { name: 'カウンタースツール', params: { kind: 'counter', size: 360, height: 700, color: '#6b4a34', frame: '#2b2b2e' } },
+    { name: '丸い布のスツール', params: { kind: 'ottoman', size: 380, height: 420, color: '#9fb59a' } },
+  ],
+  surfaces: (q) => {
+    const r = q.size / 2
+    return [{ y: q.height, minX: -r * 0.8, maxX: r * 0.8, minZ: -r * 0.8, maxZ: r * 0.8, label: '座面' }]
+  },
+  build({ kind, shape, size, height: H, color, frame }) {
+    const g = group()
+    const r = size / 2
+    const round = shape === 'round'
+    if (kind === 'ottoman') {
+      const fab = mat('fabric', color)
+      if (round) g.add(cyl(r, r, H - 20, fab, [0, 20 + (H - 20) / 2, 0], { segments: 40 }), cyl(r - 15, r - 15, 20, mat('wood', frame), [0, 10, 0], { segments: 32 }))
+      else g.add(rbox(size, H - 20, size, 40, fab, [0, 20 + (H - 20) / 2, 0]), panelOn(size - 40, 20, size - 40, mat('wood', frame), 0, 0, 0, { edge: 2 }))
+      return g
+    }
+    const wood = frame === '#2b2b2e' || frame === '#d7d9dc' ? mat('powder', frame) : mat('wood', frame)
+    const seatT = kind === 'counter' ? 40 : 30
+    const seatM = kind === 'counter' && !SWATCHES.wood.includes(color) ? mat('leather', color) : mat('wood', color)
+    if (round) g.add(cyl(r, r, seatT, seatM, [0, H - seatT / 2, 0], { segments: 40 }))
+    else g.add(panelOn(size, seatT, size, seatM, 0, H - seatT, 0, { edge: 4 }))
+    // Four splayed legs, a stretcher ring (a footrest on a counter stool).
+    const legTop = H - seatT
+    const spread = r * 0.68
+    const foot = r * 0.95
+    const legR = kind === 'counter' ? 12 : 16
+    for (let i = 0; i < 4; i++) {
+      const a = Math.PI / 4 + (i * Math.PI) / 2
+      const top: [number, number, number] = [Math.cos(a) * spread, legTop, Math.sin(a) * spread]
+      const bot: [number, number, number] = [Math.cos(a) * foot, 0, Math.sin(a) * foot]
+      const dir = new THREE.Vector3(bot[0] - top[0], bot[1] - top[1], bot[2] - top[2])
+      const leg = new THREE.Mesh(new THREE.CylinderGeometry(legR, legR * 0.75, dir.length(), 12), wood)
+      leg.position.set((top[0] + bot[0]) / 2, (top[1] + bot[1]) / 2, (top[2] + bot[2]) / 2)
+      leg.quaternion.setFromUnitVectors(new THREE.Vector3(0, -1, 0), dir.normalize())
+      leg.castShadow = true
+      g.add(leg)
+    }
+    const ringY = kind === 'counter' ? H * 0.3 : H * 0.35
+    const k = ringY / legTop
+    const ringR = spread + (foot - spread) * (1 - k)
+    const ring = new THREE.Mesh(new THREE.TorusGeometry(ringR, kind === 'counter' ? 9 : 7, 8, 32), wood)
+    ring.rotation.x = Math.PI / 2
+    ring.position.y = ringY
+    g.add(ring)
+    return g
+  },
+})

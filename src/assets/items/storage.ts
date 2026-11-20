@@ -119,6 +119,7 @@ export const cabinet = defineAsset({
     { name: '食器棚', params: { width: 900, height: 1800, depth: 450, lower: 'drawers', lowerRows: 2, upperShare: 0.6, upper: 'glass', upperRows: 3, span: 'row', color: '#f1ece4', frontColor: '#f1ece4', finish: 'melamine', handle: 'bar' } },
     { name: 'キャビネット（開き戸）', params: { width: 800, height: 850, depth: 400, lower: 'hinged', lowerRows: 2, span: 'whole', handle: 'knob', base: 'legs', color: '#8f5f3d', frontColor: '#8f5f3d' } },
     { name: '靴箱（下駄箱）', params: { width: 800, height: 950, depth: 350, lower: 'hinged', lowerRows: 4, span: 'column', handle: 'bar', base: 'plinth', finish: 'melamine', color: '#f1ece4', frontColor: '#f1ece4' } },
+    { name: 'ワードローブ', params: { width: 900, height: 1800, depth: 580, lower: 'hinged', lowerRows: 1, upperShare: 0.15, upper: 'hinged', upperRows: 1, span: 'column', handle: 'bar', base: 'plinth', color: '#f1ece4', frontColor: '#f1ece4', finish: 'melamine' } },
     { name: 'サイドボード', params: { width: 1500, height: 700, depth: 420, cols: 3, lower: 'flap', lowerRows: 1, span: 'cell', handle: 'groove', base: 'legs', color: '#6b4a34', frontColor: '#6b4a34' } },
   ],
   surfaces: (prm) => storageSurfaces(cabinetSpec(prm)),
@@ -207,7 +208,7 @@ function rackMetal(finish: string) {
   return finish === 'chrome' ? mat('chrome', '#d9dcdf', { roughness: 0.14 }) : finish === 'gold' ? mat('chrome', '#c9a86a', { roughness: 0.22 }) : mat('powder', finish === 'black' ? '#262729' : '#f1f1ef')
 }
 
-type RackParams = { width: number; depth: number; height: number; shelves: number; shelfType: string; finish: string; feet: string; pole: string; boardColor: string; handle: boolean }
+type RackParams = { width: number; depth: number; height: number; shelves: number; shelfType: string; finish: string; feet: string; pole: string; boardColor: string; handle: boolean; bottom: number }
 
 /** Height of the wire guard around basket shelves. */
 const BASKET_RIM = 70
@@ -218,7 +219,9 @@ function rackLevels(q: RackParams) {
   const foot = q.feet === 'casters' ? 75 : 30
   const top = q.height - 40
   const board = q.shelfType === 'wire' || q.shelfType === 'basket' ? 0 : q.shelfType === 'glass' ? 6 : 9
-  return Array.from({ length: n }, (_, i) => foot + 25 + ((top - foot - 25) * i) / (n - 1) + board)
+  // A raised lowest shelf leaves the floor free between the poles (a rack over a washing machine).
+  const first = Math.max(foot + 25, q.bottom)
+  return Array.from({ length: n }, (_, i) => first + ((top - first) * i) / (n - 1) + board)
 }
 
 export const metalRack = defineAsset({
@@ -236,6 +239,7 @@ export const metalRack = defineAsset({
     pole: p.select('ポール', { standard: '太い (25mm)', slim: '細い (19mm)' }, 'standard', { group: '形' }),
     feet: p.select('足もと', { adjuster: 'アジャスター', casters: 'キャスター' }, 'adjuster', { group: '形' }),
     handle: p.bool('持ち手', false, { hint: '一番上の棚の横に付く押し手（ワゴンに）' }),
+    bottom: p.mm('一番下の棚の高さ', 0, 1400, 0, { group: '形', hint: '上げると、ポールのあいだの床に物を置ける。洗濯機をまたぐランドリーラックなら 1150 くらい' }),
     finish: p.select('色', RACK_FINISH, 'chrome', { group: '色・素材' }),
     boardColor: p.color('棚板の色', '#b8875a', { swatches: SWATCHES.wood }),
   },
@@ -244,8 +248,19 @@ export const metalRack = defineAsset({
     { name: 'ブラック＋木目', params: { finish: 'black', shelfType: 'board', boardColor: '#8f5f3d' } },
     { name: 'ロー（3 段）', params: { width: 910, height: 900, shelves: 3, pole: 'slim', finish: 'white', shelfType: 'board', boardColor: '#e4cfa8' } },
     { name: 'すき間ラック', params: { width: 450, depth: 350, height: 1500, shelves: 5, pole: 'slim' } },
+    { name: 'ランドリーラック', params: { width: 760, depth: 650, height: 1900, shelves: 3, bottom: 1150, pole: 'slim', finish: 'white' } },
     { name: 'キッチンワゴン', params: { width: 450, depth: 300, height: 820, shelves: 3, shelfType: 'basket', pole: 'slim', feet: 'casters', finish: 'white', handle: true } },
   ],
+  // With a raised lowest shelf only the poles reach the floor (see docs/OVERHEAD.md).
+  solids: (q) => {
+    const lv = rackLevels(q)
+    if (lv[0] < 300) return []
+    const r = q.pole === 'slim' ? 9.5 : 12.5
+    const W = q.width
+    const D = q.depth
+    const poles = [-1, 1].flatMap((sx) => [-1, 1].map((sz) => ({ min: { x: sx * (W / 2 - r) - r, y: 0, z: sz * (D / 2 - r) - r }, max: { x: sx * (W / 2 - r) + r, y: q.height, z: sz * (D / 2 - r) + r } })))
+    return [...poles, { min: { x: -W / 2, y: lv[0] - 40, z: -D / 2 }, max: { x: W / 2, y: q.height, z: D / 2 } }]
+  },
   surfaces: (q) => {
     const lv = rackLevels(q)
     const r = q.pole === 'slim' ? 9.5 : 12.5
@@ -518,6 +533,7 @@ export const wallStorage = defineAsset({
     { name: 'アイアンの 2 段棚', params: { style: 'board', width: 900, height: 700, depth: 220, rows: 2, bracket: 'iron', color: '#8f5f3d' } },
     { name: '飾り棚（箱）', params: { style: 'open', width: 900, height: 300, depth: 220, cols: 3, finish: 'melamine', color: '#f4f4f2' } },
     { name: '吊り戸棚', params: { style: 'hinged', width: 900, height: 600, depth: 350, cols: 2, rows: 2, handle: 'bar', finish: 'melamine', color: '#f1ece4' } },
+    { name: '浴室の棚', params: { style: 'board', width: 400, height: 520, depth: 120, rows: 2, bracket: 'hidden', finish: 'steel', color: '#f4f4f2' } },
     { name: '天袋', params: { style: 'sliding', width: 1600, height: 450, depth: 600, finish: 'melamine', color: '#efe9df', handle: 'groove' } },
     { name: 'フラップ扉の吊り戸棚', params: { style: 'flap', width: 1200, height: 380, depth: 330, cols: 3, finish: 'wood', color: '#6b4a34' } },
   ],

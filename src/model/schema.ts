@@ -59,7 +59,8 @@ export const ClosetOpening = z.object({
   type: z.literal('closet'),
   width: z.number().min(600).max(3600).default(1600),
   height: z.number().min(1700).max(2400).default(2100),
-  doorStyle: z.enum(['sliding', 'folding', 'open']).default('sliding'),
+  doorStyle: z.enum(['sliding', 'folding', 'open', 'fusuma']).default('sliding').meta({ description: 'sliding=引き戸, folding=折れ戸, open=扉なし, fusuma=ふすま（和室の押し入れ）' }),
+  interior: z.enum(['hanger', 'futon']).default('hanger').meta({ description: 'hanger=ハンガーパイプと枕棚, futon=押し入れの中段（布団を入れる）' }),
   depth: z.number().min(300).max(1000).default(600).meta({ description: '壁の向こう側に張り出す収納の奥行き' }),
   color: hex.default('#efe9df'),
 })

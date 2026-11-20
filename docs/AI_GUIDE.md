@@ -126,6 +126,17 @@ JSONはアプリの「JSON」ダイアログに貼り付けるか、ファイル
 - height: number 300〜800mm (既定 620、300〜1200 まで指定可) — 高さ
 - color: "#rrggbb" (既定 #d8a48f) — 布の色
 
+### stool — スツール（くつろぎ / placement: floor）
+スツール・オットマン・カウンタースツール。高さで使い分ける（座面 400 前後がふつう、650〜750 がカウンター用）。上に物を置いてサイドテーブル代わりにもできる
+- 載せられる面（既定の寸法のとき）: 座面 高さ 450（272×272）
+- kind: "wood"(木の脚) | "ottoman"(オットマン（布張り）) | "counter"(カウンタースツール（足置き付き）) (既定 "wood") — 種類
+- shape: "round"(丸) | "square"(四角) (既定 "round") — 座面
+- size: number 280〜600mm (既定 340、280〜900 まで指定可) — 座面の大きさ
+- height: number 250〜800mm (既定 450、250〜900 まで指定可) — 高さ
+- color: "#rrggbb" (既定 #b8875a) — 座面
+- frame: "#rrggbb" (既定 #6b4a34) — 脚
+- プリセット例: オットマン {"kind":"ottoman","shape":"square","size":450,"height":400,"color":"#d9d2c5"} / カウンタースツール {"kind":"counter","size":360,"height":700,"color":"#6b4a34","frame":"#2b2b2e"} / 丸い布のスツール {"kind":"ottoman","size":380,"height":420,"color":"#9fb59a"}
+
 ### cushion — クッション（雑貨 / placement: floor）
 床やソファに置くクッション・座布団
 - 上には何も載せられない
@@ -137,14 +148,14 @@ JSONはアプリの「JSON」ダイアログに貼り付けるか、ファイル
 床に座って使う低いテーブル。四角・丸・楕円
 - 載せられる面（既定の寸法のとき）: 上面 高さ 360（906×506）
 - shape: "rect"(四角) | "round"(丸) | "oval"(楕円) (既定 "rect") — 天板の形
-- width: number 500〜1400mm (既定 900、500〜2100 まで指定可) — 幅
-- depth: number 400〜900mm (既定 500、400〜1350 まで指定可) — 奥行き
-- height: number 280〜500mm (既定 360、280〜750 まで指定可) — 高さ
+- width: number 350〜1400mm (既定 900、350〜2100 まで指定可) — 幅
+- depth: number 300〜900mm (既定 500、300〜1350 まで指定可) — 奥行き
+- height: number 280〜650mm (既定 360、280〜975 まで指定可) — 高さ
 - legs: "wood"(木の脚) | "hairpin"(ヘアピン) | "folding"(折りたたみ) | "box"(箱型) (既定 "wood") — 脚
 - shelf: boolean (既定 false) — 下段の棚
 - topColor: "#rrggbb" (既定 #d2ad7c) — 天板
 - legColor: "#rrggbb" (既定 #d2ad7c) — 脚
-- プリセット例: 丸テーブル {"shape":"round","width":750,"legs":"folding","topColor":"#f1ece4","legColor":"#f1ece4"} / 北欧風 {"shape":"oval","width":1000,"depth":550,"topColor":"#e4cfa8","legColor":"#e4cfa8"} / インダストリアル {"legs":"hairpin","topColor":"#6b4a34","legColor":"#2b2b2b"}
+- プリセット例: 丸テーブル {"shape":"round","width":750,"legs":"folding","topColor":"#f1ece4","legColor":"#f1ece4"} / サイドテーブル {"shape":"round","width":400,"height":550,"legs":"hairpin","topColor":"#6b4a34","legColor":"#2b2b2b"} / ナイトテーブル（四角） {"width":400,"depth":350,"height":500,"legs":"wood","shelf":true,"topColor":"#d2ad7c","legColor":"#d2ad7c"} / 北欧風 {"shape":"oval","width":1000,"depth":550,"topColor":"#e4cfa8","legColor":"#e4cfa8"} / インダストリアル {"legs":"hairpin","topColor":"#6b4a34","legColor":"#2b2b2b"}
 
 ### kotatsu — こたつ（テーブル / placement: floor）
 こたつ布団付きのこたつ。布団なし（夏モード）にもできる
@@ -341,7 +352,7 @@ PC の本体。タワー型・小型・ミニ PC。床にも机の上にも置�
 - finish: "wood"(木) | "melamine"(化粧板（白木・単色）) | "steel"(スチール) | "plastic"(樹脂) (既定 "wood") — 素材
 - color: "#rrggbb" (既定 #d2ad7c) — 本体
 - frontColor: "#rrggbb" (既定 #d2ad7c) — 扉・前板
-- プリセット例: チェスト（4 段） {} / 横長チェスト {"width":1200,"height":700,"cols":3,"lowerRows":2,"handle":"knob"} / 衣装ケース {"width":440,"height":1000,"depth":550,"lowerRows":5,"finish":"plastic","color":"#f4f4f2","frontColor":"#f4f4f2","handle":"cup","base":"casters"} / ロッカー（1 人用） {"width":380,"height":1790,"depth":515,"lower":"hinged","lowerRows":4,"span":"column","handle":"lever","finish":"steel","color":"#e6e6e3","frontColor":"#e6e6e3","base":"adjusters"} / ロッカー（3 人用） {"width":900,"height":1790,"depth":515,"cols":3,"lower":"hinged","lowerRows":4,"span":"column","handle":"lever","finish":"steel","color":"#e6e6e3","frontColor":"#e6e6e3","base":"adjusters"} / 引き戸書庫 {"width":880,"height":1050,"depth":400,"lower":"sliding","lowerRows":2,"finish":"steel","color":"#e6e6e3","frontColor":"#e6e6e3","base":"adjusters"} / スチール書庫（上ガラス） {"width":880,"height":1790,"depth":400,"lower":"hinged","lowerRows":2,"upperShare":0.55,"upper":"glassSliding","upperRows":3,"span":"column","handle":"lever","finish":"steel","color":"#e6e6e3","frontColor":"#e6e6e3","base":"adjusters"} / 食器棚 {"width":900,"height":1800,"depth":450,"lower":"drawers","lowerRows":2,"upperShare":0.6,"upper":"glass","upperRows":3,"span":"row","color":"#f1ece4","frontColor":"#f1ece4","finish":"melamine","handle":"bar"} / キャビネット（開き戸） {"width":800,"height":850,"depth":400,"lower":"hinged","lowerRows":2,"span":"whole","handle":"knob","base":"legs","color":"#8f5f3d","frontColor":"#8f5f3d"} / 靴箱（下駄箱） {"width":800,"height":950,"depth":350,"lower":"hinged","lowerRows":4,"span":"column","handle":"bar","base":"plinth","finish":"melamine","color":"#f1ece4","frontColor":"#f1ece4"} / サイドボード {"width":1500,"height":700,"depth":420,"cols":3,"lower":"flap","lowerRows":1,"span":"cell","handle":"groove","base":"legs","color":"#6b4a34","frontColor":"#6b4a34"}
+- プリセット例: チェスト（4 段） {} / 横長チェスト {"width":1200,"height":700,"cols":3,"lowerRows":2,"handle":"knob"} / 衣装ケース {"width":440,"height":1000,"depth":550,"lowerRows":5,"finish":"plastic","color":"#f4f4f2","frontColor":"#f4f4f2","handle":"cup","base":"casters"} / ロッカー（1 人用） {"width":380,"height":1790,"depth":515,"lower":"hinged","lowerRows":4,"span":"column","handle":"lever","finish":"steel","color":"#e6e6e3","frontColor":"#e6e6e3","base":"adjusters"} / ロッカー（3 人用） {"width":900,"height":1790,"depth":515,"cols":3,"lower":"hinged","lowerRows":4,"span":"column","handle":"lever","finish":"steel","color":"#e6e6e3","frontColor":"#e6e6e3","base":"adjusters"} / 引き戸書庫 {"width":880,"height":1050,"depth":400,"lower":"sliding","lowerRows":2,"finish":"steel","color":"#e6e6e3","frontColor":"#e6e6e3","base":"adjusters"} / スチール書庫（上ガラス） {"width":880,"height":1790,"depth":400,"lower":"hinged","lowerRows":2,"upperShare":0.55,"upper":"glassSliding","upperRows":3,"span":"column","handle":"lever","finish":"steel","color":"#e6e6e3","frontColor":"#e6e6e3","base":"adjusters"} / 食器棚 {"width":900,"height":1800,"depth":450,"lower":"drawers","lowerRows":2,"upperShare":0.6,"upper":"glass","upperRows":3,"span":"row","color":"#f1ece4","frontColor":"#f1ece4","finish":"melamine","handle":"bar"} / キャビネット（開き戸） {"width":800,"height":850,"depth":400,"lower":"hinged","lowerRows":2,"span":"whole","handle":"knob","base":"legs","color":"#8f5f3d","frontColor":"#8f5f3d"} / 靴箱（下駄箱） {"width":800,"height":950,"depth":350,"lower":"hinged","lowerRows":4,"span":"column","handle":"bar","base":"plinth","finish":"melamine","color":"#f1ece4","frontColor":"#f1ece4"} / ワードローブ {"width":900,"height":1800,"depth":580,"lower":"hinged","lowerRows":1,"upperShare":0.15,"upper":"hinged","upperRows":1,"span":"column","handle":"bar","base":"plinth","color":"#f1ece4","frontColor":"#f1ece4","finish":"melamine"} / サイドボード {"width":1500,"height":700,"depth":420,"cols":3,"lower":"flap","lowerRows":1,"span":"cell","handle":"groove","base":"legs","color":"#6b4a34","frontColor":"#6b4a34"}
 
 ### metalRack — メタルラック（収納 / placement: floor）
 ポールと棚板を組み合わせるスチールラック（ワイヤー棚・木目の棚板・ガラス）。キッチン・洗面所・押し入れなどに。各段に物を載せられる
@@ -354,9 +365,10 @@ PC の本体。タワー型・小型・ミニ PC。床にも机の上にも置�
 - pole: "standard"(太い (25mm)) | "slim"(細い (19mm)) (既定 "standard") — ポール
 - feet: "adjuster"(アジャスター) | "casters"(キャスター) (既定 "adjuster") — 足もと
 - handle: boolean (既定 false) — 持ち手
+- bottom: number 0〜1400mm (既定 0、0〜2100 まで指定可) — 一番下の棚の高さ
 - finish: "chrome"(クロムめっき) | "black"(ブラック) | "white"(ホワイト) | "gold"(ゴールド) (既定 "chrome") — 色
 - boardColor: "#rrggbb" (既定 #b8875a) — 棚板の色
-- プリセット例: キッチンラック {"width":760,"depth":460,"height":1790,"shelves":5,"feet":"casters"} / ブラック＋木目 {"finish":"black","shelfType":"board","boardColor":"#8f5f3d"} / ロー（3 段） {"width":910,"height":900,"shelves":3,"pole":"slim","finish":"white","shelfType":"board","boardColor":"#e4cfa8"} / すき間ラック {"width":450,"depth":350,"height":1500,"shelves":5,"pole":"slim"} / キッチンワゴン {"width":450,"depth":300,"height":820,"shelves":3,"shelfType":"basket","pole":"slim","feet":"casters","finish":"white","handle":true}
+- プリセット例: キッチンラック {"width":760,"depth":460,"height":1790,"shelves":5,"feet":"casters"} / ブラック＋木目 {"finish":"black","shelfType":"board","boardColor":"#8f5f3d"} / ロー（3 段） {"width":910,"height":900,"shelves":3,"pole":"slim","finish":"white","shelfType":"board","boardColor":"#e4cfa8"} / すき間ラック {"width":450,"depth":350,"height":1500,"shelves":5,"pole":"slim"} / ランドリーラック {"width":760,"depth":650,"height":1900,"shelves":3,"bottom":1150,"pole":"slim","finish":"white"} / キッチンワゴン {"width":450,"depth":300,"height":820,"shelves":3,"shelfType":"basket","pole":"slim","feet":"casters","finish":"white","handle":true}
 
 ### hangerRack — ハンガーラック（収納 / placement: floor）
 服をかけるラック。服をかけた状態も表示できる。洗濯物を干した室内物干しにもなる
@@ -393,7 +405,7 @@ PC の本体。タワー型・小型・ミニ PC。床にも机の上にも置�
 - handle: "bar"(バー) | "knob"(つまみ) | "groove"(溝（彫り込み）) | "cup"(くぼみ) | "lever"(レバー（ロッカー）) | "none"(なし) (既定 "groove") — 取っ手
 - finish: "wood"(木) | "melamine"(化粧板（白木・単色）) | "steel"(スチール) (既定 "wood") — 素材
 - color: "#rrggbb" (既定 #b8875a) — 色
-- プリセット例: ウォールシェルフ {"style":"board","width":600,"height":180,"depth":180,"bracket":"hidden","color":"#d2ad7c"} / アイアンの 2 段棚 {"style":"board","width":900,"height":700,"depth":220,"rows":2,"bracket":"iron","color":"#8f5f3d"} / 飾り棚（箱） {"style":"open","width":900,"height":300,"depth":220,"cols":3,"finish":"melamine","color":"#f4f4f2"} / 吊り戸棚 {"style":"hinged","width":900,"height":600,"depth":350,"cols":2,"rows":2,"handle":"bar","finish":"melamine","color":"#f1ece4"} / 天袋 {"style":"sliding","width":1600,"height":450,"depth":600,"finish":"melamine","color":"#efe9df","handle":"groove"} / フラップ扉の吊り戸棚 {"style":"flap","width":1200,"height":380,"depth":330,"cols":3,"finish":"wood","color":"#6b4a34"}
+- プリセット例: ウォールシェルフ {"style":"board","width":600,"height":180,"depth":180,"bracket":"hidden","color":"#d2ad7c"} / アイアンの 2 段棚 {"style":"board","width":900,"height":700,"depth":220,"rows":2,"bracket":"iron","color":"#8f5f3d"} / 飾り棚（箱） {"style":"open","width":900,"height":300,"depth":220,"cols":3,"finish":"melamine","color":"#f4f4f2"} / 吊り戸棚 {"style":"hinged","width":900,"height":600,"depth":350,"cols":2,"rows":2,"handle":"bar","finish":"melamine","color":"#f1ece4"} / 浴室の棚 {"style":"board","width":400,"height":520,"depth":120,"rows":2,"bracket":"hidden","finish":"steel","color":"#f4f4f2"} / 天袋 {"style":"sliding","width":1600,"height":450,"depth":600,"finish":"melamine","color":"#efe9df","handle":"groove"} / フラップ扉の吊り戸棚 {"style":"flap","width":1200,"height":380,"depth":330,"cols":3,"finish":"wood","color":"#6b4a34"}
 
 ### tvStand — テレビ台（AV / placement: floor）
 テレビを置く低い台。テレビ（tv）を上に載せて使う。中の段にゲーム機などを置ける
@@ -518,16 +530,33 @@ PC の本体。タワー型・小型・ミニ PC。床にも机の上にも置�
 - プリセット例: スリム {"width":320,"depth":260,"dishes":3} / 2 段（白） {"tiers":2,"material":"white","width":450,"dishes":7} / 空っぽ {"dishes":0}
 
 ### bathtub — 浴槽（水まわり / placement: floor）
-浴室の浴槽（エプロン付き）と、壁の水栓・シャワー。背面(-Z)を壁につける。中は空洞で、お湯を張った状態も表示できる
+浴室の浴槽（エプロン付き）。背面(-Z)を壁につける。中は空洞で、お湯を張った状態も表示できる。水栓とシャワーは別の「水栓・シャワー」を壁に付ける
 - 上には何も載せられない
 - length: number 1000〜1800mm (既定 1300、1000〜2000 まで指定可) — 長さ
 - width: number 650〜900mm (既定 750、650〜1000 まで指定可) — 幅（奥行き）
 - height: number 400〜650mm (既定 550、400〜700 まで指定可) — 高さ
 - water: boolean (既定 false) — お湯を張る
 - lid: boolean (既定 false) — 風呂ふた
-- shower: "shower"(水栓とシャワー) | "faucet"(水栓だけ) | "none"(なし) (既定 "shower") — 水栓・シャワー
 - color: "#rrggbb" (既定 #f6f4ef) — 色
 - プリセット例: ユニットバス 1116 {"length":1100,"width":700,"height":550} / ゆったり 1418 {"length":1400,"width":800,"water":true} / ふたをした状態 {"lid":true}
+
+### faucetShower — 水栓・シャワー（水まわり / placement: wall / 既定の高さ y=750（大きさや天井高で変わる））
+壁に付ける水栓とシャワー。浴槽の上の壁、洗い場、洗濯機の横など。背面を壁につけ、position y は水栓の下端（浴槽の上なら浴槽の高さ＋200 くらい）
+- 上には何も載せられない
+- kind: "bath"(水栓とシャワー（スライドバー）) | "mixer"(水栓だけ) | "fixed"(シャワーヘッド固定（頭の上）) | "tap"(蛇口ひとつ（洗濯機・ベランダ）) (既定 "bath") — 種類
+- bar: number 500〜1200mm (既定 900、500〜1500 まで指定可) — スライドバーの長さ
+- spread: number -900〜900mm (既定 380、-900〜1350 まで指定可) — 水栓からバーまで
+- color: "#rrggbb" (既定 #d9dcdf) — 色
+- プリセット例: 水栓だけ {"kind":"mixer"} / 黒いシャワー {"color":"#2b2b2e"} / 洗濯機の蛇口 {"kind":"tap"}
+
+### bathStool — 風呂いす・洗面器（水まわり / placement: floor）
+洗い場の風呂いすと洗面器。洗面器だけ・いすだけにもできる
+- 上には何も載せられない
+- height: number 200〜450mm (既定 300、200〜675 まで指定可) — いすの高さ
+- stool: boolean (既定 true) — いす
+- bowl: "beside"(いすの横) | "on"(いすの上) | "none"(なし) (既定 "beside") — 洗面器
+- color: "#rrggbb" (既定 #f4f4f2) — 色
+- プリセット例: 高めのいす {"height":400} / 洗面器だけ {"stool":false} / 木の手桶風 {"color":"#b8875a","bowl":"on"}
 
 ### toilet — トイレ（水まわり / placement: floor）
 洋式トイレ。タンク付き・タンクレス、温水洗浄便座、フタの開け閉め。背面(-Z)を壁につける
@@ -547,6 +576,17 @@ PC の本体。タワー型・小型・ミニ PC。床にも机の上にも置�
 - open: number 0〜1 (既定 0) — 開き具合
 - color: "#rrggbb" (既定 #f4f4f2) — 本体
 - プリセット例: 600 の洗面化粧台 {"width":600} / 木目の洗面台 {"width":900,"color":"#b8875a","mirror":"mirror"} / 小さな洗面器 {"style":"pedestal","width":500,"mirror":"mirror"}
+
+### wallAccessory — 壁の小物（水まわり / placement: wall / 既定の高さ y=1000（大きさや天井高で変わる））
+壁に付ける小物。タオル掛け・タオルリング・トイレットペーパーホルダー・フック・手すり。浴室・トイレ・洗面所・キッチン・玄関に。背面を壁につける
+- 上には何も載せられない
+- kind: "towelBar"(タオル掛け（バー）) | "towelRing"(タオルリング) | "paper"(トイレットペーパーホルダー) | "paperDouble"(ペーパーホルダー（2 連・棚つき）) | "hooks"(フック) | "grab"(手すり) (既定 "towelBar") — 種類
+- width: number 150〜900mm (既定 450、150〜1500 まで指定可) — 幅
+- count: number 1〜6 (既定 3) — フックの数
+- towel: boolean (既定 true) — タオルをかける
+- towelColor: "#rrggbb" (既定 #c9d6df) — タオルの色
+- color: "#rrggbb" (既定 #d9dcdf) — 色
+- プリセット例: タオルリング {"kind":"towelRing"} / ペーパーホルダー {"kind":"paper"} / 2 連ホルダー {"kind":"paperDouble","color":"#2b2b2e"} / 玄関のフック {"kind":"hooks","count":4,"width":500,"color":"#b8875a","towel":false} / 手すり {"kind":"grab","width":600}
 
 ### bookRow — 本の列（縦置き）（小物 / placement: onTop）
 本棚や机に立てて並べた本・バインダー・ファイル。幅を決めると、その幅ぶんだけ並ぶ。棚の段の上に置く
@@ -607,6 +647,21 @@ PC の本体。タワー型・小型・ミニ PC。床にも机の上にも置�
 - contents: "none"(からっぽ) | "stationery"(文房具いろいろ) | "pens"(ペン立て) (既定 "stationery") — 中身
 - プリセット例: ペン立て {"width":90,"depth":90,"height":100,"cols":1,"rows":1,"contents":"pens"} / 木のトレー {"material":"wood","color":"#b8875a","cols":4,"rows":1,"height":40} / アクリルケース {"material":"acrylic","color":"#eef3f4","cols":2,"rows":2,"height":80}
 
+### basket — かご・入れ物（小物 / placement: floor）
+かご・入れ物。傘立て・洗濯かご・ラタンのかご・布の収納ボックス・おもちゃ箱。形と材質を選べて、中身（傘・洗濯物・タオル・おもちゃ）も表示できる。からっぽなら中に物を置ける。フタを閉じると上に置ける
+- 載せられる面（既定の寸法のとき）: 中 高さ 12（277×221、上の空き 368）
+- shape: "round"(丸) | "square"(四角) (既定 "round") — 形
+- width: number 150〜700mm (既定 420、150〜1050 まで指定可) — 幅
+- depth: number 150〜600mm (既定 340、150〜900 まで指定可) — 奥行き
+- height: number 60〜900mm (既定 380、60〜1350 まで指定可) — 高さ
+- material: "rattan"(ラタン（編み目）) | "fabric"(布) | "plastic"(樹脂) | "wire"(ワイヤー) | "steel"(スチール) | "ceramic"(陶器) (既定 "rattan") — 材質
+- color: "#rrggbb" (既定 #b8875a) — 色
+- handles: boolean (既定 true) — 持ち手
+- lid: boolean (既定 false) — フタ
+- contents: "none"(からっぽ) | "umbrellas"(傘) | "laundry"(洗濯物) | "towels"(丸めたタオル) | "toys"(おもちゃ) (既定 "none") — 中身
+- fill: number 0.1〜1 (既定 0.6) — 入れる量
+- プリセット例: 傘立て {"shape":"square","width":240,"depth":240,"height":480,"material":"steel","color":"#2b2b2e","handles":false,"contents":"umbrellas","fill":0.5} / 陶器の傘立て {"shape":"round","width":260,"depth":260,"height":500,"material":"ceramic","color":"#d9cbb4","handles":false,"contents":"umbrellas","fill":0.3} / 洗濯かご {"shape":"square","width":480,"depth":340,"height":380,"material":"plastic","color":"#f4f4f2","contents":"laundry","fill":0.8} / ラタンのかご {"shape":"round","width":380,"depth":380,"height":300,"contents":"towels"} / インナーボックス（布） {"shape":"square","width":380,"depth":260,"height":250,"material":"fabric","color":"#d9cbb4"} / おもちゃ箱 {"shape":"square","width":520,"depth":360,"height":360,"material":"fabric","color":"#8fa9bf","contents":"toys","fill":0.8} / ワイヤーバスケット {"shape":"square","width":360,"depth":260,"height":200,"material":"wire","color":"#f4f4f2","handles":false}
+
 ### wallClock — 壁掛け時計（雑貨 / placement: wall / 既定の高さ y=1750）
 壁に掛ける時計。針は画面の時間帯スライダーの時刻を指す
 - 上には何も載せられない
@@ -639,12 +694,13 @@ PC の本体。タワー型・小型・ミニ PC。床にも机の上にも置�
 床に敷くラグ。家具の下に敷いてよい（重なってもOK）
 - 上には何も載せられない
 - shape: "rect"(四角) | "round"(丸) (既定 "rect") — 形
-- width: number 600〜3000mm (既定 1400、600〜4500 まで指定可) — 幅
-- depth: number 600〜3000mm (既定 2000、600〜4500 まで指定可) — 奥行き
+- width: number 400〜3000mm (既定 1400、400〜4500 まで指定可) — 幅
+- depth: number 300〜3000mm (既定 2000、300〜4500 まで指定可) — 奥行き
 - pattern: "plain"(無地) | "border"(ボーダー枠) | "stripe"(ストライプ) | "check"(チェック) | "kilim"(キリム風) (既定 "border") — 柄
 - pile: "flat"(薄手) | "shaggy"(シャギー) (既定 "flat") — 毛足
 - color: "#rrggbb" (既定 #e7dfd2) — ベース色
 - accent: "#rrggbb" (既定 #b9a58c) — 柄の色
+- プリセット例: 玄関マット {"width":600,"depth":400,"pattern":"border","color":"#8c8a86","accent":"#4d4f53"} / バスマット {"width":600,"depth":450,"pattern":"plain","pile":"shaggy","color":"#c9d6df"} / キッチンマット {"width":1800,"depth":450,"pattern":"stripe","color":"#efe9df","accent":"#9fb59a"} / トイレマット {"width":600,"depth":550,"pattern":"plain","pile":"shaggy","color":"#e8c76a"} / 丸いラグ {"shape":"round","width":1400,"pattern":"border"}
 
 ### curtain — カーテン（雑貨 / placement: wall / 既定の高さ y=15）
 窓にかけるカーテンとレール。背面を窓のある壁につけ、position yはカーテンの下端（掃き出し窓なら10〜20、腰窓なら窓の下端-150くらい）
@@ -773,6 +829,7 @@ PC の本体。タワー型・小型・ミニ PC。床にも机の上にも置�
         "height": 2100,
         "type": "closet",
         "doorStyle": "folding",
+        "interior": "hanger",
         "depth": 600,
         "color": "#efe9df"
       }

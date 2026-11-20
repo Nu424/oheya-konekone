@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { clampOpening, tatami } from '../model/geometry'
 import { extractJson, parseLayout, parseLayoutText, serializeLayout } from '../model/io'
 import { TEMPLATES } from '../model/templates'
+import { localBox } from '../editor/placement'
 
 describe('layout io', () => {
   it('all templates validate and round-trip', () => {
@@ -68,5 +69,21 @@ describe('geometry', () => {
     const l = TEMPLATES[0].layout()
     const o = clampOpening(l.room, { ...l.room.openings[0], offset: 99999 })
     expect(o.offset + o.width).toBeLessThanOrEqual(l.room.width)
+  })
+})
+
+describe('migrations', () => {
+  it('splits an old bathtub with a shower into the tub and a wall fitting behind it', () => {
+    const r = parseLayout({
+      room: { width: 2000, depth: 2000 },
+      items: [{ id: 'tub', type: 'bathtub', position: [1000, 0, 375], rotation: 0, params: { length: 1300, width: 750, height: 550, shower: 'shower' } }],
+    })
+    expect(r.ok).toBe(true)
+    if (!r.ok) return
+    expect(r.layout.items[0].params.shower).toBeUndefined()
+    const f = r.layout.items[1]
+    expect([f.type, f.params.kind, f.position[1], f.rotation]).toEqual(['faucetShower', 'bath', 750, 0])
+    // Its back is on the wall the tub stands against (z = 0).
+    expect(Math.abs(f.position[2] + localBox(f).min.z)).toBeLessThan(1)
   })
 })

@@ -92,13 +92,20 @@ export const rug = defineAsset({
   contactShadow: false,
   params: {
     shape: p.select('形', { rect: '四角', round: '丸' }, 'rect'),
-    width: p.mm('幅', 600, 3000, 1400),
-    depth: p.mm('奥行き', 600, 3000, 2000, { hint: '丸の場合は幅＝直径' }),
+    width: p.mm('幅', 400, 3000, 1400),
+    depth: p.mm('奥行き', 300, 3000, 2000, { hint: '丸の場合は幅＝直径' }),
     pattern: p.select('柄', { plain: '無地', border: 'ボーダー枠', stripe: 'ストライプ', check: 'チェック', kilim: 'キリム風' }, 'border'),
     pile: p.select('毛足', { flat: '薄手', shaggy: 'シャギー' }, 'flat'),
     color: p.color('ベース色', '#e7dfd2', { swatches: SWATCHES.fabric }),
     accent: p.color('柄の色', '#b9a58c', { swatches: SWATCHES.fabric }),
   },
+  presets: [
+    { name: '玄関マット', params: { width: 600, depth: 400, pattern: 'border', color: '#8c8a86', accent: '#4d4f53' } },
+    { name: 'バスマット', params: { width: 600, depth: 450, pattern: 'plain', pile: 'shaggy', color: '#c9d6df' } },
+    { name: 'キッチンマット', params: { width: 1800, depth: 450, pattern: 'stripe', color: '#efe9df', accent: '#9fb59a' } },
+    { name: 'トイレマット', params: { width: 600, depth: 550, pattern: 'plain', pile: 'shaggy', color: '#e8c76a' } },
+    { name: '丸いラグ', params: { shape: 'round', width: 1400, pattern: 'border' } },
+  ],
   build({ shape, width, depth, pattern, pile, color, accent }) {
     const round = shape === 'round'
     const W = width
