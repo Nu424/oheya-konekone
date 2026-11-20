@@ -33,7 +33,7 @@ export const lowTable = defineAsset({
   },
   presets: [
     { name: '丸テーブル', params: { shape: 'round', width: 750, legs: 'folding', topColor: '#f1ece4', legColor: '#f1ece4' } },
-    { name: 'サイドテーブル', params: { shape: 'round', width: 400, height: 550, legs: 'hairpin', topColor: '#6b4a34', legColor: '#2b2b2b' } },
+    { name: 'サイドテーブル', params: { shape: 'round', width: 400, height: 550, legs: 'wood', topColor: '#6b4a34', legColor: '#6b4a34' } },
     { name: 'ナイトテーブル（四角）', params: { width: 400, depth: 350, height: 500, legs: 'wood', shelf: true, topColor: '#d2ad7c', legColor: '#d2ad7c' } },
     { name: '北欧風', params: { shape: 'oval', width: 1000, depth: 550, topColor: '#e4cfa8', legColor: '#e4cfa8' } },
     { name: 'インダストリアル', params: { legs: 'hairpin', topColor: '#6b4a34', legColor: '#2b2b2b' } },

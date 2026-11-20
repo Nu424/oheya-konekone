@@ -617,9 +617,11 @@ export const basket = defineAsset({
       const n = Math.round(4 + fill * 10)
       for (let i = 0; i < n; i++) {
         const y = t + ((top - t) * (i + 0.5)) / n
-        const c = rbox(inner.w * (0.5 + rr() * 0.4), 40 + rr() * 30, inner.d * (0.5 + rr() * 0.4), 18, mat('fabric', CLOTH[Math.floor(rr() * CLOTH.length)]))
-        c.position.set((rr() - 0.5) * inner.w * 0.3, y, (rr() - 0.5) * inner.d * 0.3)
-        c.rotation.set((rr() - 0.5) * 0.5, rr() * Math.PI, (rr() - 0.5) * 0.5)
+        // Kept within the walls whatever way they turn: no wider than the inside's short side.
+        const span = Math.min(inner.w, inner.d) * (0.55 + rr() * 0.3)
+        const c = rbox(span, 40 + rr() * 30, span * (0.7 + rr() * 0.3), 18, mat('fabric', CLOTH[Math.floor(rr() * CLOTH.length)]))
+        c.position.set((rr() - 0.5) * (inner.w - span) * 0.8, y, (rr() - 0.5) * (inner.d - span) * 0.8)
+        c.rotation.set((rr() - 0.5) * 0.3, rr() * Math.PI, (rr() - 0.5) * 0.3)
         g.add(c)
       }
     } else if (contents === 'towels') {
