@@ -2,7 +2,7 @@ import { z } from 'zod'
 import { getAsset, itemParamsSchema } from '../assets/registry'
 import { stack } from '../editor/placement'
 import { overlappingOpenings } from './geometry'
-import { onFloor, resolveOpening, sideLength } from './plan'
+import { floorAt, onFloor, resolveOpening, sideLength } from './plan'
 import { Layout, type LayoutInput } from './schema'
 
 z.config(z.locales.ja())
@@ -118,7 +118,7 @@ export function parseLayout(raw: unknown): ParseResult {
       const name = item.name ?? getAsset(item.type)?.label ?? item.type
       const fix = nearest
         ? `真下の面（${layout.items.find((i) => i.id === nearest.itemId)?.id} の${nearest.label ?? '上面'}）は y=${Math.round(nearest.worldY * 10) / 10} です`
-        : '真下に載せられる面がありません。床に置くなら y=0 にしてください'
+        : `真下に載せられる面がありません。床に置くなら y=${floorAt(layout.room, item.position[0], item.position[2])} にしてください`
       warnings.push({ path: `items[${idx}].position`, message: `「${name}」が宙に浮いています（y=${y}）。${fix}` })
     }
   }

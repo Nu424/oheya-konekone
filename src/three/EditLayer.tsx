@@ -161,7 +161,7 @@ function EditableItem({ item, ceiling }: { item: Item; ceiling: number }) {
         { x: o.x / S, y: o.y / S, z: o.z / S },
         dir,
         { x: d.offX, z: d.offZ },
-        { sticky: 25, maxHeight: box.max.y - box.min.y, solids: solids(L, carried) },
+        { sticky: 25, maxHeight: box.max.y - box.min.y, solids: solids(L, carried), layout: L },
       )
       if (!pick) return
       ;({ x, y, z } = pick)

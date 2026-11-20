@@ -201,8 +201,26 @@ export function removeSpace(layout: Layout, id: string): Layout {
   return normalize(layout, next, layout.room.openings.filter((o) => o.space !== id))
 }
 
-/** Rename a space or change its floor. */
-export function updateSpace(layout: Layout, id: string, patch: Partial<Pick<Space, 'name' | 'floor'>>): Layout {
+/** Rename a space, or change its floor or walls. */
+export function updateSpace(layout: Layout, id: string, patch: Partial<Pick<Space, 'name' | 'floor' | 'wall'>>): Layout {
   const L = ensureSpaces(layout)
   return { ...L, room: { ...L.room, spaces: L.room.spaces!.map((s) => (s.id === id ? { ...s, ...patch } : s)) } }
+}
+
+/** Raise or lower a space's floor; what stands on it there moves with it. */
+export function setSpaceLevel(layout: Layout, id: string, level: number): Layout {
+  const L = ensureSpaces(layout)
+  const s = L.room.spaces!.find((x) => x.id === id)
+  if (!s) return layout
+  const before = s.floorLevel ?? 0
+  const d = level - before
+  if (!d) return layout
+  const [x, z, w, h] = s.rect
+  const inside = (p: [number, number, number]) => p[0] >= x && p[0] <= x + w && p[2] >= z && p[2] <= z + h
+  return {
+    ...L,
+    room: { ...L.room, spaces: L.room.spaces!.map((sp) => (sp.id === id ? { ...sp, floorLevel: level || undefined } : sp)) },
+    // Everything whose centre is in the space and is not hung on a wall or the ceiling goes with the floor.
+    items: L.items.map((it) => (inside(it.position) && it.position[1] < (L.room.height ?? 2400) - 1 ? { ...it, position: [it.position[0], it.position[1] + d, it.position[2]] as [number, number, number] } : it)),
+  }
 }

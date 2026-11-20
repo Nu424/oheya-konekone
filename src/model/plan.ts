@@ -20,6 +20,9 @@ export interface PlanSpace {
   x1: number
   z1: number
   floor: Room['floor']
+  /** Floor height (mm, 0 or below: a sunken entrance). */
+  level: number
+  wall: { color: string; finish: 'paper' | 'panel' | 'tile' }
 }
 
 /** The inner face of the wall along one side (or one stretch of a side) of a space. */
@@ -76,8 +79,19 @@ export const BACK_TO_WALL: Record<WallSide, number> = { north: 0, south: 180, we
 
 /** The spaces of a room: its `spaces`, or one rectangle of width × depth. */
 export function spacesOf(room: Room): PlanSpace[] {
-  if (!room.spaces?.length) return [{ id: 'room', x0: 0, z0: 0, x1: room.width, z1: room.depth, floor: room.floor }]
-  return room.spaces.map((s) => ({ id: s.id, name: s.name, x0: s.rect[0], z0: s.rect[1], x1: s.rect[0] + s.rect[2], z1: s.rect[1] + s.rect[3], floor: s.floor ?? room.floor }))
+  const wall = { color: room.wall.color, finish: 'paper' as const }
+  if (!room.spaces?.length) return [{ id: 'room', x0: 0, z0: 0, x1: room.width, z1: room.depth, floor: room.floor, level: 0, wall }]
+  return room.spaces.map((s) => ({
+    id: s.id,
+    name: s.name,
+    x0: s.rect[0],
+    z0: s.rect[1],
+    x1: s.rect[0] + s.rect[2],
+    z1: s.rect[1] + s.rect[3],
+    floor: s.floor ?? room.floor,
+    level: s.floorLevel ?? 0,
+    wall: s.wall ?? wall,
+  }))
 }
 
 function edge(s: PlanSpace, side: WallSide) {
@@ -312,4 +326,22 @@ export function wallRects(room: Room): { walls: PlanRect[]; gaps: PlanRect[] } {
     if (w.end > cur) walls.push(rect(cur, w.end))
   }
   return { walls, gaps }
+}
+
+/**
+ * Height of the floor at (x, z) in mm: the level of the space there (0 unless it is sunken, like an
+ * entrance). In a wall or doorway, the higher of the spaces on either side.
+ */
+export function floorAt(room: Room, x: number, z: number): number {
+  if (!room.spaces?.some((s) => s.floorLevel)) return 0
+  const spaces = planOf(room).spaces
+  const r = spaceAt(room, x, z)
+  if (r) return spaces.find((s) => s.id === r.space)?.level ?? 0
+  const near = spaces.filter((s) => x >= s.x0 - 1 && x <= s.x1 + 1 && z >= s.z0 - 1 && z <= s.z1 + 1)
+  return near.length ? Math.max(...near.map((s) => s.level)) : 0
+}
+
+/** The distinct floor heights of a room, highest first. */
+export function floorLevels(room: Room): number[] {
+  return [...new Set(planOf(room).spaces.map((s) => s.level))].sort((a, b) => b - a)
 }

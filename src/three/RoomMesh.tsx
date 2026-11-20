@@ -105,10 +105,21 @@ function openingsOf(room: Room, wall: Wall): Opening[] {
     })
 }
 
-function buildWall(room: Room, wall: Wall, wallMat: THREE.Material, capMat: THREE.Material): WallBuild {
+/** What a wall needs from the spaces on its two sides: their wall finish and floor height. */
+interface Sides {
+  material(space: string | undefined): THREE.Material
+  level(space: string | undefined): number
+  /** The lowest floor: walls reach down to it. */
+  bottom: number
+}
+
+function buildWall(room: Room, wall: Wall, sides: Sides, capMat: THREE.Material): WallBuild {
   const f = frameOf(wall.face)
   const t = wall.thickness
   const H = room.height
+  const B = sides.bottom
+  const ownMat = sides.material(wall.face.space)
+  const otherMat = sides.material(wall.face.other)
   const full = new THREE.Group()
   const stub = new THREE.Group()
   const lights: WallBuild['lights'] = []
@@ -119,21 +130,24 @@ function buildWall(room: Room, wall: Wall, wallMat: THREE.Material, capMat: THRE
   let cursor = start
   const solid = (u0: number, u1: number, v0: number, v1: number) => {
     if (u1 - u0 < 0.5 || v1 - v0 < 0.5) return
-    full.add(wallBox(f, u0, u1, v0, v1, 0, t, wallMat))
+    // An interior wall is finished like the room on each side: two halves through its thickness.
+    if (wall.exterior || ownMat === otherMat) full.add(wallBox(f, u0, u1, v0, v1, 0, t, ownMat))
+    else full.add(wallBox(f, u0, u1, v0, v1, 0, t / 2, ownMat), wallBox(f, u0, u1, v0, v1, t / 2, t, otherMat))
     // The cut face on top gets a darker "poché" cap. Separate meshes (not material arrays) keep the
     // path tracer happy: it maps one material per merged mesh.
     if (v1 >= room.height - 0.5) full.add(wallBox(f, u0, u1, v1, v1 + 1, 0, t, capMat))
     if (v0 < STUB) {
-      stub.add(wallBox(f, u0, u1, v0, Math.min(v1, STUB), 0, t, wallMat))
+      stub.add(wallBox(f, u0, u1, v0, Math.min(v1, STUB), 0, t, ownMat))
       stub.add(wallBox(f, u0, u1, Math.min(v1, STUB), Math.min(v1, STUB) + 1, 0, t, capMat))
     }
   }
 
   for (const o of openings) {
     const [b, top] = openingSpan(o, H)
-    solid(cursor, o.offset, 0, H)
+    solid(cursor, o.offset, B, H)
     solid(o.offset, o.offset + o.width, top, H) // lintel
-    solid(o.offset, o.offset + o.width, 0, b) // below window
+    // Below a window; under a door or passage, the step down to a sunken floor (an entrance's riser).
+    solid(o.offset, o.offset + o.width, B, b)
     if (o.type === 'window') {
       buildWindow(full, f, o, t)
       const c = f.toRoom(o.offset + o.width / 2, b + o.height / 2, 0)
@@ -143,7 +157,7 @@ function buildWall(room: Room, wall: Wall, wallMat: THREE.Material, capMat: THRE
     if (o.type === 'closet') buildCloset(full, f, o, t, room)
     cursor = Math.max(cursor, o.offset + o.width)
   }
-  solid(cursor, end, 0, H)
+  solid(cursor, end, B, H)
 
   // Baseboard (skip doors, closets and floor-level windows).
   const bb = room.baseboard
@@ -151,11 +165,11 @@ function buildWall(room: Room, wall: Wall, wallMat: THREE.Material, capMat: THRE
     const bbMat = mat('matte', bb.color, { roughness: 0.6 })
     const gaps = openings.filter((o) => o.type !== 'window' || o.sill < bb.height)
     // Interior walls have a room (and a baseboard) on both faces.
-    for (const [w0, w1] of wall.exterior ? [[-9, 0]] : [[-9, 0], [t, t + 9]]) {
+    for (const [w0, w1, lv] of wall.exterior ? [[-9, 0, sides.level(wall.face.space)]] : [[-9, 0, sides.level(wall.face.space)], [t, t + 9, sides.level(wall.face.other)]]) {
       let c = wall.face.from
       for (const o of [...gaps, null]) {
         const u1 = o ? o.offset : wall.face.to
-        if (u1 - c > 5) full.add(wallBox(f, c, u1, 0, bb.height, w0, w1, bbMat))
+        if (u1 - c > 5) full.add(wallBox(f, c, u1, lv, lv + bb.height, w0, w1, bbMat))
         if (o) c = o.offset + o.width
       }
     }
@@ -382,7 +396,7 @@ export function buildRoom(room: Room): RoomBuild {
     for (let i = 0; i < fuv.count; i++) fuv.setXY(i, (sp.x0 + fuv.getX(i) * fw) / ft.size, (D - sp.z1 + fuv.getY(i) * fd) / ft.size)
     floorGeo.rotateX(-Math.PI / 2)
     const floor = new THREE.Mesh(floorGeo, floorMat)
-    floor.position.set((sp.x0 + sp.x1) / 2, 0, (sp.z0 + sp.z1) / 2)
+    floor.position.set((sp.x0 + sp.x1) / 2, sp.level, (sp.z0 + sp.z1) / 2)
     floor.receiveShadow = true
     floor.name = 'floor'
     floor.userData.space = sp.id
@@ -392,7 +406,8 @@ export function buildRoom(room: Room): RoomBuild {
   // Slab under everything for a diorama look.
   const slab = new THREE.Mesh(new THREE.BoxGeometry(W + t * 2 + 40, 160, D + t * 2 + 40), mat('matte', '#d9cfc2', { roughness: 0.95 }))
   // Keep the slab top clearly below the floor: coplanar faces z-fight in the path tracer.
-  slab.position.set(W / 2, -86, D / 2)
+  const bottom = Math.min(0, ...plan.spaces.map((s) => s.level))
+  slab.position.set(W / 2, bottom - 86, D / 2)
   slab.receiveShadow = true
   root.add(slab)
 
@@ -401,7 +416,33 @@ export function buildRoom(room: Room): RoomBuild {
   const wallMat = new THREE.MeshStandardMaterial({ color: room.wall.color, roughness: 0.92, bumpMap: wp, bumpScale: 0.35 })
   wp.repeat.set(3, 3)
   const capMat = mat('matte', '#6f6a64', { roughness: 0.9 })
-  const walls = plan.walls.map((w) => buildWall(room, w, wallMat, capMat))
+  // Each space's wall finish (wallpaper, a smooth bathroom panel, tiles); shared by colour and finish.
+  const finishes = new Map<string, THREE.Material>()
+  const finishOf = (w: { color: string; finish: string }) => {
+    if (w.finish === 'paper' && w.color === room.wall.color) return wallMat
+    const key = `${w.finish}|${w.color}`
+    let m = finishes.get(key)
+    if (!m) {
+      if (w.finish === 'panel') m = new THREE.MeshStandardMaterial({ color: w.color, roughness: 0.32 })
+      else if (w.finish === 'tile') {
+        const ft = floorTextures('tile', w.color)
+        const map = ft.map.clone()
+        // Wall UVs are in metres; one texture repeat covers `ft.size` mm.
+        map.repeat.set(1000 / ft.size, 1000 / ft.size)
+        map.needsUpdate = true
+        m = new THREE.MeshStandardMaterial({ map, roughness: 0.25 })
+      } else m = new THREE.MeshStandardMaterial({ color: w.color, roughness: 0.92, bumpMap: wp, bumpScale: 0.35 })
+      finishes.set(key, m)
+    }
+    return m
+  }
+  const bySpace = new Map(plan.spaces.map((s) => [s.id, s]))
+  const sides: Sides = {
+    material: (id) => (id && bySpace.get(id) ? finishOf(bySpace.get(id)!.wall) : wallMat),
+    level: (id) => (id ? (bySpace.get(id)?.level ?? 0) : 0),
+    bottom,
+  }
+  const walls = plan.walls.map((w) => buildWall(room, w, sides, capMat))
   for (const w of walls) root.add(w.full, w.stub)
 
   // Columns

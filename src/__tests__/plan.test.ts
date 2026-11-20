@@ -1,9 +1,10 @@
 import { describe, expect, it } from 'vitest'
 import { analyzeFlow, doorSwing } from '../editor/flow'
-import { collisions } from '../editor/placement'
+import { collisions, stack, supportHeight } from '../editor/placement'
+import { setSpaceLevel } from '../editor/planEdit'
 import { footprint, nearestWall, snapPosition } from '../editor/space'
 import { makeLayout, parseLayout } from '../model/io'
-import { planOf, resolveOpening, usableRects } from '../model/plan'
+import { floorAt, planOf, resolveOpening, usableRects } from '../model/plan'
 import type { LayoutInput } from '../model/schema'
 
 // A 洋室 with a bathroom to the east of its north half (docs/FLOORPLAN.md).
@@ -109,5 +110,23 @@ describe('plan', () => {
     })
     expect(bad.ok).toBe(false)
     if (!bad.ok) expect(bad.errors.map((e) => e.message).join('\n')).toMatch(/重なっています[\s\S]*区画 "zz" がありません/)
+  })
+
+  it('has a sunken floor where a space is lowered, and drops things onto it', () => {
+    const L = makeLayout({
+      room: {
+        spaces: [
+          { id: 'main', rect: [0, 0, 3000, 3000] },
+          { id: 'genkan', rect: [0, 3000, 1500, 800], floorLevel: -150 },
+        ],
+      },
+      items: [{ id: 'box', type: 'cardboardBox', position: [700, -150, 3400], rotation: 0, params: {} }],
+    })
+    expect(floorAt(L.room, 700, 3400)).toBe(-150)
+    expect(floorAt(L.room, 700, 1000)).toBe(0)
+    expect(stack.floating(L)).toEqual([])
+    expect(supportHeight(L, 1000, 3400)).toBe(-150)
+    const up = setSpaceLevel(L, 'genkan', 0)
+    expect(up.items[0].position[1]).toBe(0)
   })
 })

@@ -2,7 +2,7 @@ import { useFrame, useThree } from '@react-three/fiber'
 import { useEffect, useMemo, useRef } from 'react'
 import * as THREE from 'three'
 import { stepWalk, walkObstacles } from '../editor/walk'
-import { outwardOf, resolvedOpenings } from '../model/plan'
+import { floorAt, outwardOf, resolvedOpenings } from '../model/plan'
 import type { Room } from '../model/schema'
 import { useDoc } from '../store/useStore'
 import { eyeHeight, markUnlock, useWalk } from '../store/walk'
@@ -53,7 +53,7 @@ export function WalkRig({ room, camera }: { room: Room; camera: THREE.Perspectiv
 
   const apply = () => {
     const p = pose.current
-    camera.position.set(p.x * S, eye * S, p.z * S)
+    camera.position.set(p.x * S, (floorAt(useDoc.getState().layout.room, p.x, p.z) + eye) * S, p.z * S)
     camera.rotation.set(p.pitch, p.yaw, 0, 'YXZ')
     camera.updateMatrixWorld()
     invalidate()

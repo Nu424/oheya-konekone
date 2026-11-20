@@ -99,6 +99,11 @@ export const Space = z.object({
     .tuple([z.number().min(0), z.number().min(0), z.number().min(600), z.number().min(600)])
     .meta({ description: '[x, z, 幅, 奥行き] 北西の角と大きさ(mm)。内壁は辺の線の両側に半分ずつ厚みをとる' }),
   floor: z.object({ material: FloorMaterial, color: hex.optional() }).optional().meta({ description: '省くと room.floor' }),
+  floorLevel: z.number().min(-500).max(0).optional().meta({ description: '床の高さ(mm)。玄関の土間なら -150 くらい。省くと 0' }),
+  wall: z
+    .object({ color: hex, finish: z.enum(['paper', 'panel', 'tile']).default('paper').meta({ description: 'paper=壁紙, panel=つるっとした化粧パネル(浴室), tile=タイル' }) })
+    .optional()
+    .meta({ description: 'この区画の壁の内側。省くと room.wall' }),
 })
 export type Space = z.infer<typeof Space>
 

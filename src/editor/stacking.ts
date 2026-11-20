@@ -19,6 +19,10 @@ export interface StackingHost {
   surfaces(item: Item): Surface[]
   /** False for items that never rest on anything (wall-mounted, ceiling-hung). */
   stackable?(item: Item): boolean
+  /** Height of the floor at (x, z) (mm; a sunken entrance is below 0). Defaults to 0 everywhere. */
+  floorAt?(layout: Layout, x: number, z: number): number
+  /** The distinct floor heights, for picking the floor along a ray. Defaults to [0]. */
+  floorLevels?(layout: Layout): number[]
 }
 
 /** A surface placed in the room: local rectangle + the owner's pose. */
@@ -94,6 +98,7 @@ export function surfaceBounds(s: PlacedSurface) {
 }
 
 export function createStacking(host: StackingHost) {
+  const floor = (layout: Layout, x: number, z: number) => host.floorAt?.(layout, x, z) ?? 0
   const stackable = (item: Item) => host.stackable?.(item) ?? true
 
   /** All support surfaces in the room, optionally leaving out some owners. */
@@ -208,7 +213,7 @@ export function createStacking(host: StackingHost) {
       const it = current.items.find((i) => i.id === item.id)!
       const carried = new Set([it.id, ...riders(current, it.id)])
       const below = surfaceUnder(current, it.position[0], it.position[2], { except: carried, maxY: it.position[1] })
-      const y = roundY(below ? below.worldY : 0)
+      const y = roundY(below ? below.worldY : floor(current, it.position[0], it.position[2]))
       if (Math.abs(y - it.position[1]) < 0.05) continue
       const moved = moveWithRiders(current, it.id, { position: [it.position[0], y, it.position[2]] })
       for (const [k, v] of moved) out.set(k, v)
@@ -251,7 +256,7 @@ export function createStacking(host: StackingHost) {
         const r = before.items.find((i) => i.id === rid)!
         const carriedIds = new Set([rid, ...riders(before, rid)])
         const below = surfaceUnder(current, r.position[0], r.position[2], { except: carriedIds, maxY: r.position[1] })
-        const moved = moveWithRiders(before, rid, { position: [r.position[0], roundY(below ? below.worldY : 0), r.position[2]] })
+        const moved = moveWithRiders(before, rid, { position: [r.position[0], roundY(below ? below.worldY : floor(current, r.position[0], r.position[2])), r.position[2]] })
         for (const [k, v] of moved) out.set(k, v)
         current = applyPoses(current, moved)
       }
@@ -270,7 +275,7 @@ export function createStacking(host: StackingHost) {
     origin: { x: number; y: number; z: number },
     dir: { x: number; y: number; z: number },
     offset: { x: number; z: number },
-    o: { sticky?: number; maxHeight?: number; solids?: readonly Solid[] } = {},
+    o: { sticky?: number; maxHeight?: number; solids?: readonly Solid[]; layout?: Layout } = {},
   ): { x: number; y: number; z: number; surface: PlacedSurface | null } | null {
     const sticky = o.sticky ?? 0
     // A spot inside another item's body is not a place to put things: pointing at the front panel
@@ -314,8 +319,15 @@ export function createStacking(host: StackingHost) {
       best = { x, y: s.worldY, z, surface: s, t: h.t }
     }
     if (best) return best
-    const floor = at(0)
-    return floor && !buried(floor.x, 0, floor.z) && !hidden(floor.t) ? { x: floor.x, y: 0, z: floor.z, surface: null } : null
+    // The floor: the nearest of its levels whose space is actually under the hit point.
+    const levels = o.layout && host.floorLevels ? host.floorLevels(o.layout) : [0]
+    for (const level of levels.length ? levels : [0]) {
+      const hit = at(level)
+      if (!hit) continue
+      if (o.layout && levels.length > 1 && Math.abs(floor(o.layout, hit.x, hit.z) - level) > 0.5) continue
+      return !buried(hit.x, level, hit.z) && !hidden(hit.t) ? { x: hit.x, y: level, z: hit.z, surface: null } : null
+    }
+    return null
   }
 
   /** Items whose bottom is in mid-air: above the floor with no surface under them. */
@@ -323,7 +335,7 @@ export function createStacking(host: StackingHost) {
     const sup = supports(layout)
     const out: { item: Item; nearest: PlacedSurface | null }[] = []
     for (const it of layout.items) {
-      if (!stackable(it) || it.position[1] <= REST_TOLERANCE || sup.has(it.id)) continue
+      if (!stackable(it) || it.position[1] <= floor(layout, it.position[0], it.position[2]) + REST_TOLERANCE || sup.has(it.id)) continue
       out.push({ item: it, nearest: surfaceUnder(layout, it.position[0], it.position[2], { except: new Set([it.id]) }) })
     }
     return out
@@ -383,8 +395,9 @@ export function createStacking(host: StackingHost) {
     for (const item of order) {
       const it = current.items.find((i) => i.id === item.id)!
       const carried = new Set([it.id, ...riders(current, it.id)])
-      const below = surfaceUnder(current, it.position[0], it.position[2], { except: carried, maxY: Math.max(0, it.position[1]) })
-      const y = roundY(below ? below.worldY : 0)
+      const ground = floor(current, it.position[0], it.position[2])
+      const below = surfaceUnder(current, it.position[0], it.position[2], { except: carried, maxY: Math.max(ground, it.position[1]) })
+      const y = roundY(below ? below.worldY : ground)
       if (Math.abs(y - it.position[1]) < 0.05) continue
       const moved = moveWithRiders(current, it.id, { position: [it.position[0], y, it.position[2]] })
       for (const [k, v] of moved) out.set(k, v)

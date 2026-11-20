@@ -774,6 +774,7 @@ input[type='range']:focus-visible::-webkit-slider-thumb { box-shadow: 0 0 0 4px 
 /* Overlap outlines toggle: soft red when on; the count shows even when the outlines are off. */
 .overlap-btn { position: relative; }
 .overlap-btn.on { background: var(--err-soft); color: var(--err); }
+.walls-btn.on, .walk-bar .icon-btn.on { background: var(--accent-soft); color: var(--accent-ink); }
 .overlap-count { min-width: 17px; height: 17px; padding: 0 5px; border-radius: 999px; background: var(--err); color: #fff; font-size: 10px; font-weight: 900; line-height: 17px; text-align: center; }
 .overlap-btn:not(.on) .overlap-count { background: var(--ink-3); }
 .flow-panel {

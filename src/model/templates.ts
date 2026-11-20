@@ -116,9 +116,9 @@ export const TEMPLATES: RoomTemplate[] = [
         spaces: [
           { id: 'main', name: '洋室', rect: [0, 0, 3400, 3400] },
           { id: 'kitchen', name: 'キッチン', rect: [0, 3400, 1900, 1600], floor: { material: 'whiteOak' } },
-          { id: 'genkan', name: '玄関', rect: [0, 5000, 1900, 600], floor: { material: 'concrete' } },
-          { id: 'bath', name: '浴室', rect: [1900, 3400, 1500, 1300], floor: { material: 'tile' } },
-          { id: 'toilet', name: 'トイレ・洗面', rect: [1900, 4700, 1500, 900], floor: { material: 'tile' } },
+          { id: 'genkan', name: '玄関', rect: [0, 5000, 1900, 600], floor: { material: 'concrete' }, floorLevel: -150 },
+          { id: 'bath', name: '浴室', rect: [1900, 3400, 1500, 1300], floor: { material: 'tile' }, wall: { color: '#eef0f0', finish: 'panel' } },
+          { id: 'toilet', name: 'トイレ・洗面', rect: [1900, 4700, 1500, 900], floor: { material: 'tile' }, wall: { color: '#e4ebe6', finish: 'paper' } },
         ],
         openings: [
           { id: 'window', type: 'window', space: 'main', wall: 'north', offset: 800, width: 1800, height: 2000, sill: 0 },
@@ -146,7 +146,7 @@ export const TEMPLATES: RoomTemplate[] = [
         { id: 'bathtub', type: 'bathtub', position: [2650, 0, 3830], rotation: 0, params: { length: 1250, width: 750 } },
         { id: 'toilet', type: 'toilet', position: [2600, 0, 5180], rotation: 180, params: {} },
         { id: 'basin', type: 'washbasin', position: [3150, 0, 4980], rotation: 0, params: { style: 'pedestal', width: 450, mirror: 'mirror' } },
-        { id: 'shoes', type: 'cabinet', position: [165, 0, 5320], rotation: 90, params: { width: 500, height: 950, depth: 320, lower: 'hinged', lowerRows: 4, span: 'column', handle: 'bar', base: 'plinth', finish: 'melamine', color: '#f1ece4', frontColor: '#f1ece4' } },
+        { id: 'shoes', type: 'cabinet', position: [165, -150, 5320], rotation: 90, params: { width: 500, height: 950, depth: 320, lower: 'hinged', lowerRows: 4, span: 'column', handle: 'bar', base: 'plinth', finish: 'melamine', color: '#f1ece4', frontColor: '#f1ece4' } },
       ],
     }),
   },

@@ -1,12 +1,19 @@
 import { useState } from 'react'
-import { addSpace, ensureSpaces, removeSpace, resizeSpace, updateSpace } from '../editor/planEdit'
+import { addSpace, ensureSpaces, removeSpace, resizeSpace, setSpaceLevel, updateSpace } from '../editor/planEdit'
+import { SWATCHES } from '../three/materials'
 import type { FloorMaterial, WallSide } from '../model/schema'
 import { useDoc, useUi } from '../store/useStore'
 import { FLOOR_PRESETS } from '../three/textures'
-import { Field, NumberSlider } from './controls'
+import { ColorSwatches, Field, NumberSlider } from './controls'
 import { Icon } from './icons'
 
 const SIDE_LABEL: Record<WallSide, string> = { north: '北', south: '南', west: '西', east: '東' }
+const WALL_FINISHES = [
+  ['paper', '壁紙'],
+  ['panel', 'パネル'],
+  ['tile', 'タイル'],
+] as const
+const WALL_DEFAULT = { paper: '#f3efe8', panel: '#eef0f0', tile: '#f4f4f2' } as const
 
 /** The plan's spaces: add one beside another, resize, rename, change the floor, remove (docs/FLOORPLAN.md). */
 export function PlanPanel() {
@@ -90,6 +97,21 @@ export function PlanPanel() {
                           </button>
                         ))}
                       </div>
+                    </div>
+                    <NumberSlider label="床の高さ" value={sp.floorLevel ?? 0} min={-300} max={0} step={10} hint="玄関の土間は -150 くらい。中の家具も一緒に上下するよ" onChange={(v) => edit((l) => setSpaceLevel(l, sp.id, v))} />
+                    <div className="plan-floor">
+                      <span className="plan-floor-label">壁</span>
+                      <div className="chips plan-wall-finish">
+                        <button className={`chip${!sp.wall ? ' on' : ''}`} onClick={() => edit((l) => updateSpace(l, sp.id, { wall: undefined }))}>
+                          部屋と同じ
+                        </button>
+                        {WALL_FINISHES.map(([f, label]) => (
+                          <button key={f} className={`chip${sp.wall?.finish === f ? ' on' : ''}`} onClick={() => edit((l) => updateSpace(l, sp.id, { wall: { color: sp.wall?.color ?? WALL_DEFAULT[f], finish: f } }))}>
+                            {label}
+                          </button>
+                        ))}
+                      </div>
+                      {sp.wall && <ColorSwatches value={sp.wall.color} swatches={SWATCHES.paint} onChange={(color) => edit((l) => updateSpace(l, sp.id, { wall: { color, finish: sp.wall!.finish } }))} />}
                     </div>
                     <Field label="となりに区画を足す" hint="ドアも一緒につくよ。いらなければ「ドア・窓・収納」から消してね">
                       <div className="compass">

@@ -71,7 +71,7 @@ function FloorPicker() {
       ray.setFromCamera(new THREE.Vector2(((cx - r.left) / r.width) * 2 - 1, -((cy - r.top) / r.height) * 2 + 1), camera)
       const o = ray.ray.origin
       const L = useDoc.getState().layout
-      const p = stack.pickAlongRay(stack.placedSurfaces(L), { x: o.x / S, y: o.y / S, z: o.z / S }, ray.ray.direction, { x: 0, z: 0 }, { solids: solids(L) })
+      const p = stack.pickAlongRay(stack.placedSurfaces(L), { x: o.x / S, y: o.y / S, z: o.z / S }, ray.ray.direction, { x: 0, z: 0 }, { solids: solids(L), layout: L })
       return p ? { x: p.x, y: roundY(p.y), z: p.z } : null
     })
     if (import.meta.env.DEV) {

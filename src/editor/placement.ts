@@ -2,7 +2,7 @@ import { getAsset, resolveItemParams } from '../assets/registry'
 import type { Surface } from '../assets/types'
 import type { Item, Layout } from '../model/schema'
 import { itemFootprint } from '../three/ItemObject'
-import { BACK_TO_WALL, outwardOf, planOf, resolvedOpenings, usableRects, wallRects, type Face } from '../model/plan'
+import { BACK_TO_WALL, floorAt, floorLevels, outwardOf, planOf, resolvedOpenings, usableRects, wallRects, type Face } from '../model/plan'
 import { flushToWall, footprint, overlaps2D, overlaps3D, partsOf, type Footprint2D, type LocalBox } from './space'
 import { createStacking, roundY, surfaceBounds, type PlacedSurface, type Solid } from './stacking'
 
@@ -69,7 +69,7 @@ function stackable(item: Item) {
 }
 
 /** Stacking helpers bound to the asset registry. */
-export const stack = createStacking({ surfaces: itemSurfaces, stackable })
+export const stack = createStacking({ surfaces: itemSurfaces, stackable, floorAt: (L, x, z) => floorAt(L.room, x, z), floorLevels: (L) => floorLevels(L.room) })
 
 /**
  * Things that never block others: soft or flat ones (rugs, curtains, floor cushions) and ceiling
@@ -133,7 +133,7 @@ export function collisions(layout: Layout): Set<string> {
 
 /** Height at which an item dropped at (x, z) comes to rest: the highest surface under it, or the floor. */
 export function supportHeight(layout: Layout, x: number, z: number, except?: ReadonlySet<string>): number {
-  return roundY(stack.surfaceUnder(layout, x, z, { except })?.worldY ?? 0)
+  return roundY(stack.surfaceUnder(layout, x, z, { except })?.worldY ?? floorAt(layout.room, x, z))
 }
 
 const area = (s: PlacedSurface) => (s.maxX - s.minX) * (s.maxZ - s.minZ)
@@ -251,7 +251,7 @@ export function placeNewItem(
         const z = Math.round((cz + Math.sin(a) * r) / 50) * 50
         const f = fpAt(x, z, rot)
         if (!onFloor(f)) continue
-        if (passive || !others.some((o) => overlaps3D(f, o))) return { position: [x, 0, z], rotation: rot }
+        if (passive || !others.some((o) => overlaps3D(f, o))) return { position: [x, floorAt(room, x, z), z], rotation: rot }
       }
     }
     if (passive) break

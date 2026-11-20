@@ -4,6 +4,7 @@ import type { Item, Layout } from '../model/schema'
 import { primaryOf, useDoc, useUi } from '../store/useStore'
 import { instantiateClip, makeClip, parseClip, serializeClip } from './clipboard'
 import { isPassive, itemFootprint2D, localBox, placeNewItem, stack, supportHeight } from './placement'
+import { floorAt } from '../model/plan'
 import { flushToWall, footprint, nearestWall, snapPosition, type Footprint2D } from './space'
 import { applyPoses, roundY, type Pose } from './stacking'
 
@@ -42,11 +43,11 @@ export function addItemOfType(type: string, params?: Record<string, unknown>, at
       y = at.y ?? supportHeight(L, x, z)
     }
     const others = L.items.filter((o) => !isPassive(o.type)).map((o) => itemFootprint2D(o, L))
-    if (y === 0) {
+    if (asset.placement !== 'wall' && Math.abs(y - floorAt(L.room, x, z)) < 0.5) {
       const sn = snapPosition((xx, zz) => footprint(box, xx, y, zz, rotation), x, z, L.room, others)
       x = sn.x
       z = sn.z
-      if (asset.placement !== 'wall') y = supportHeight(L, x, z)
+      y = supportHeight(L, x, z)
     }
     position = [Math.round(x), roundY(y), Math.round(z)]
   }
