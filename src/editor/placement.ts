@@ -2,7 +2,8 @@ import { getAsset, resolveItemParams } from '../assets/registry'
 import type { Surface } from '../assets/types'
 import type { Item, Layout } from '../model/schema'
 import { itemFootprint } from '../three/ItemObject'
-import { flushToWall, footprint, nearestWall, overlaps3D, partsOf, type Footprint2D, type LocalBox } from './space'
+import { BACK_TO_WALL, outwardOf, planOf, resolvedOpenings, usableRects, type Face } from '../model/plan'
+import { flushToWall, footprint, overlaps3D, partsOf, type Footprint2D, type LocalBox } from './space'
 import { createStacking, roundY, surfaceBounds, type PlacedSurface, type Solid } from './stacking'
 
 const FALLBACK: LocalBox = { min: { x: -100, y: 0, z: -100 }, max: { x: 100, y: 100, z: 100 } }
@@ -204,35 +205,36 @@ export function placeNewItem(
   }
 
   if (asset?.placement === 'wall') {
-    const windows = room.openings.filter((o) => o.type === 'window').sort((a, b) => b.width * b.height - a.width * a.height)
-    // Curtains go on the biggest window; everything else prefers a wall without windows.
-    if (type === 'curtain' && windows[0]) {
-      const win = windows[0]
-      const u = win.offset + win.width / 2
-      const nx = win.wall === 'west' ? 100 : win.wall === 'east' ? room.width - 100 : u
-      const nz = win.wall === 'north' ? 100 : win.wall === 'south' ? room.depth - 100 : u
-      const rot = nearestWall(room, nx, nz).rotation
-      const p = flushToWall((x, z) => fpAt(x, z, rot), nx, nz, room, win.wall)
-      return { position: [p.x, Math.max(10, win.sill - 150), p.z], rotation: rot }
+    const plan = planOf(room)
+    const openings = resolvedOpenings(room)
+    // Somewhere on `face` around `along`, flush against it.
+    const onFace = (face: Face, along: number) => {
+      const [ox, oz] = outwardOf(face.side)
+      const nx = face.axis === 'x' ? along : face.line - ox * 100
+      const nz = face.axis === 'x' ? face.line - oz * 100 : along
+      const rot = BACK_TO_WALL[face.side]
+      return { rot, ...flushToWall((x, z) => fpAt(x, z, rot), nx, nz, room, face) }
     }
-    const walls = (['north', 'west', 'east', 'south'] as const).slice().sort((a, b) => {
-      const n = (w: string) => room.openings.filter((o) => o.wall === w).length
-      return n(a) - n(b)
-    })
-    const w = walls[0]
-    const u = (w === 'north' || w === 'south' ? room.width : room.depth) / 2
-    const nx = w === 'west' ? 100 : w === 'east' ? room.width - 100 : u
-    const nz = w === 'north' ? 100 : w === 'south' ? room.depth - 100 : u
-    const rot = nearestWall(room, nx, nz).rotation
-    const p = flushToWall((x, z) => fpAt(x, z, rot), nx, nz, room, w)
-    return { position: [p.x, Math.round(wallElevation(type, params, room)), p.z], rotation: rot }
+    // Curtains go on the biggest window; everything else prefers a long wall without openings.
+    const win = openings.filter((r) => r.opening.type === 'window').sort((a, b) => b.opening.width * b.opening.height - a.opening.width * a.opening.height)[0]
+    if (type === 'curtain' && win && win.opening.type === 'window') {
+      const p = onFace(win.face, (win.from + win.to) / 2)
+      return { position: [p.x, Math.max(10, win.opening.sill - 150), p.z], rotation: p.rot }
+    }
+    const busy = (f: Face) => openings.filter((r) => r.face.id === f.id).length
+    const face = [...plan.faces].sort((a, b) => busy(a) - busy(b) || b.to - b.from - (a.to - a.from))[0]
+    const p = onFace(face, (face.from + face.to) / 2)
+    return { position: [p.x, Math.round(wallElevation(type, params, room)), p.z], rotation: p.rot }
   }
 
-  // Floor / ceiling: spiral out from the room centre until there is no overlap.
+  // Floor / ceiling: spiral out from the centre of the largest space until there is no overlap.
   const others = layout.items.filter((i) => !isPassive(i.type)).map((i) => itemFootprint2D(i, layout))
   const passive = type === 'rug' || (asset?.placement === 'ceiling' && isPassive(type))
-  const cx = room.width / 2
-  const cz = room.depth / 2
+  const rects = usableRects(room)
+  const main = rects.reduce((a, b) => ((b.maxX - b.minX) * (b.maxZ - b.minZ) > (a.maxX - a.minX) * (a.maxZ - a.minZ) ? b : a))
+  const cx = (main.minX + main.maxX) / 2
+  const cz = (main.minZ + main.maxZ) / 2
+  const onFloor = (f: Footprint2D) => rects.some((r) => f.minX >= r.minX && f.maxX <= r.maxX && f.minZ >= r.minZ && f.maxZ <= r.maxZ)
   for (const rot of [0, 90]) {
     for (let r = 0; r < Math.max(room.width, room.depth); r += 100) {
       const steps = Math.max(1, Math.round((2 * Math.PI * r) / 150))
@@ -241,7 +243,7 @@ export function placeNewItem(
         const x = Math.round((cx + Math.cos(a) * r) / 50) * 50
         const z = Math.round((cz + Math.sin(a) * r) / 50) * 50
         const f = fpAt(x, z, rot)
-        if (f.minX < 0 || f.minZ < 0 || f.maxX > room.width || f.maxZ > room.depth) continue
+        if (!onFloor(f)) continue
         if (passive || !others.some((o) => overlaps3D(f, o))) return { position: [x, 0, z], rotation: rot }
       }
     }

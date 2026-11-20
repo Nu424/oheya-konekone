@@ -35,7 +35,7 @@ export function addItemOfType(type: string, params?: Record<string, unknown>, at
     if (asset.placement === 'wall') {
       const nw = nearestWall(L.room, x, z)
       rotation = nw.rotation
-      ;({ x, z } = flushToWall((xx, zz) => footprint(box, xx, y, zz, rotation), x, z, L.room, nw.wall))
+      ;({ x, z } = flushToWall((xx, zz) => footprint(box, xx, y, zz, rotation), x, z, L.room, nw.face))
     } else {
       rotation = 0
       // The drop point already knows which surface is under the pointer; fall back to the highest one.
@@ -379,7 +379,7 @@ export function pasteText(text: string): boolean {
     if (getAsset(it.type)?.placement !== 'wall') return it
     const nw = nearestWall(L.room, it.position[0], it.position[2])
     const b = localBox(it)
-    const p = flushToWall((xx, zz) => footprint(b, xx, it.position[1], zz, nw.rotation), it.position[0], it.position[2], L.room, nw.wall)
+    const p = flushToWall((xx, zz) => footprint(b, xx, it.position[1], zz, nw.rotation), it.position[0], it.position[2], L.room, nw.face)
     return { ...it, position: [Math.round(p.x), it.position[1], Math.round(p.z)] as [number, number, number], rotation: nw.rotation }
   })
   // Which of the pasted items were picked (not riders) falls out of the geometry; they settle

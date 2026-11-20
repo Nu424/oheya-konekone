@@ -956,3 +956,6 @@ input[type='range']:focus-visible::-webkit-slider-thumb { box-shadow: 0 0 0 4px 
 @media (max-width: 760px) { .perf-panel { top: 64px; min-width: 0; width: calc(100% - 16px); } }
 /* The centred HUD reaches the corner hint on mid-size screens; the ? help has the same keys. */
 @media (max-width: 1240px) { .hint { display: none; } }
+
+/* Room panel: note shown instead of the size sliders when the plan has spaces. */
+.plan-note { margin: 6px 0 10px; font-size: 12px; line-height: 1.6; color: var(--ink-2, #6b6259); }

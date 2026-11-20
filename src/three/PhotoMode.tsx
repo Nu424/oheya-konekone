@@ -32,7 +32,7 @@ export function PhotoMode() {
     const inside = (() => {
       const box = new THREE.Box3()
       scene.traverse((o) => {
-        if (o.name === 'floor') box.setFromObject(o)
+        if (o.name === 'floor') box.union(new THREE.Box3().setFromObject(o))
       })
       const p = camera.position
       return p.x > box.min.x && p.x < box.max.x && p.z > box.min.z && p.z < box.max.z && p.y < 3

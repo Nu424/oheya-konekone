@@ -3,6 +3,7 @@ import { Canvas, useFrame, useThree } from '@react-three/fiber'
 import CameraControlsImpl from 'camera-controls'
 import { Suspense, useEffect, useLayoutEffect, useMemo, useRef } from 'react'
 import * as THREE from 'three'
+import { outwardOf, planOf, resolvedOpenings } from '../model/plan'
 import type { Item, Room } from '../model/schema'
 import { getAsset, resolveItemParams } from '../assets/registry'
 import { itemFootprint2D, solids, stack } from '../editor/placement'
@@ -276,16 +277,21 @@ function WalkRig({ room, camera }: { room: Room; camera: THREE.PerspectiveCamera
   useEffect(() => {
     const c = ref.current
     if (!c) return
-    // Start just inside the first door (or the south side), looking at the room centre.
-    const door = room.openings.find((o) => o.type === 'door')
+    // Start just inside the entrance (or the south side), looking at the centre of its space.
+    const doors = resolvedOpenings(room).filter((r) => r.opening.type === 'door')
+    const door = doors.find((r) => r.face.exterior) ?? doors[0]
     let x = W / 2
     let z = D - 0.6
+    let look = { x: W / 2, z: D / 2 }
     if (door) {
-      const mid = (door.offset + door.width / 2) * S
-      const inset = 0.7
-      ;[x, z] = door.wall === 'north' ? [mid, inset] : door.wall === 'south' ? [mid, D - inset] : door.wall === 'west' ? [inset, mid] : [W - inset, mid]
+      const mid = ((door.from + door.to) / 2) * S
+      const [ox, oz] = outwardOf(door.face.side)
+      const line = door.face.line * S - (door.face.axis === 'x' ? oz : ox) * 0.7
+      ;[x, z] = door.face.axis === 'x' ? [mid, line] : [line, mid]
+      const sp = planOf(room).spaces.find((s) => s.id === door.face.space)
+      if (sp) look = { x: ((sp.x0 + sp.x1) / 2) * S, z: ((sp.z0 + sp.z1) / 2) * S }
     }
-    const dir = new THREE.Vector3(W / 2 - x, 0, D / 2 - z).normalize()
+    const dir = new THREE.Vector3(look.x - x, 0, look.z - z).normalize()
     c.setLookAt(x, EYE, z, x + dir.x * 0.01, EYE - 0.002, z + dir.z * 0.01, false)
     c.minDistance = c.maxDistance = 0.01
     c.minPolarAngle = THREE.MathUtils.degToRad(20)

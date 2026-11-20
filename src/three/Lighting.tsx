@@ -5,6 +5,7 @@ import * as THREE from 'three'
 import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js'
 import { RectAreaLightUniformsLib } from 'three/addons/lights/RectAreaLightUniformsLib.js'
 import type { Room, WallSide } from '../model/schema'
+import { resolveOpening, resolvedOpenings } from '../model/plan'
 
 RectAreaLightUniformsLib.init()
 
@@ -90,7 +91,7 @@ export function Lighting({ room, hour = 14, lamps = [] }: LightingProps) {
 
   const windows = room.openings.filter((o) => o.type === 'window')
   const main = [...windows].sort((a, b) => b.width * b.height - a.width * a.height)[0]
-  const outward = OUTWARD[main?.wall ?? 'south']
+  const outward = OUTWARD[(main && resolveOpening(room, main)?.face.side) ?? main?.wall ?? 'south']
 
   // Sun direction: arc across the sky by hour, biased toward the main window side.
   const day = Math.max(0, Math.min(1, (hour - 6) / 12))
@@ -136,18 +137,15 @@ export function Lighting({ room, hour = 14, lamps = [] }: LightingProps) {
         shadow-normalBias={0.02}
         shadow-radius={4}
       />
-      {windows.map((o) => {
-        const u = (o.offset + o.width / 2) * S
+      {resolvedOpenings(room).map((r) => {
+        const o = r.opening
+        if (o.type !== 'window') return null
+        const u = ((r.from + r.to) / 2) * S
         const v = (o.sill + o.height / 2) * S
-        const out = OUTWARD[o.wall]
-        const pos =
-          o.wall === 'north'
-            ? new THREE.Vector3(u, v, 0.01)
-            : o.wall === 'south'
-              ? new THREE.Vector3(u, v, D - 0.01)
-              : o.wall === 'west'
-                ? new THREE.Vector3(0.01, v, u)
-                : new THREE.Vector3(W - 0.01, v, u)
+        const out = OUTWARD[r.face.side]
+        // Just inside the window, facing into its space.
+        const line = r.face.line * S - (r.face.axis === 'x' ? out.z : out.x) * 0.01
+        const pos = r.face.axis === 'x' ? new THREE.Vector3(u, v, line) : new THREE.Vector3(line, v, u)
         const target = pos.clone().sub(out)
         return (
           <rectAreaLight

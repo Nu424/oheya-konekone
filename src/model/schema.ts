@@ -28,8 +28,9 @@ const id = z.string().min(1).max(64)
 
 const openingBase = {
   id,
+  space: id.optional().meta({ description: '開口部がある区画の id。省くと部屋の外形の辺（区画が 1 つのときはその区画）' }),
   wall: WallSide,
-  offset: z.number().min(0).meta({ description: '壁の座標が小さい側の端から開口部の端までの距離(mm)' }),
+  offset: z.number().min(0).meta({ description: '区画（または外形）のその辺の、座標が小さい側の端から開口部の端までの距離(mm)' }),
   width: z.number().min(300).max(4000),
   height: z.number().min(300).max(3000),
 }
@@ -63,7 +64,15 @@ export const ClosetOpening = z.object({
   color: hex.default('#efe9df'),
 })
 
-export const Opening = z.discriminatedUnion('type', [DoorOpening, WindowOpening, ClosetOpening])
+/** A gap in the wall with no door: kitchen to entrance, a room opening onto a corridor. Full height by default. */
+export const PassageOpening = z.object({
+  ...openingBase,
+  type: z.literal('passage'),
+  width: z.number().min(300).max(20000).default(900),
+  height: z.number().min(1700).max(3200).default(3200).meta({ description: '床から開口の上端まで。天井高以上なら天井まで（垂れ壁なし）' }),
+})
+
+export const Opening = z.discriminatedUnion('type', [DoorOpening, WindowOpening, ClosetOpening, PassageOpening])
 export type Opening = z.infer<typeof Opening>
 export type OpeningType = Opening['type']
 
@@ -79,11 +88,30 @@ export type Column = z.infer<typeof Column>
 export const FloorMaterial = z.enum(['oak', 'walnut', 'birch', 'whiteOak', 'tile', 'carpet', 'tatami', 'concrete'])
 export type FloorMaterial = z.infer<typeof FloorMaterial>
 
+/**
+ * A rectangular area of the plan (room, hall, bathroom). Walls are derived from where spaces meet:
+ * shared edges become interior walls, free edges exterior walls. See docs/FLOORPLAN.md.
+ */
+export const Space = z.object({
+  id,
+  name: z.string().max(32).optional(),
+  rect: z
+    .tuple([z.number().min(0), z.number().min(0), z.number().min(600), z.number().min(600)])
+    .meta({ description: '[x, z, 幅, 奥行き] 北西の角と大きさ(mm)。内壁は辺の線の両側に半分ずつ厚みをとる' }),
+  floor: z.object({ material: FloorMaterial, color: hex.optional() }).optional().meta({ description: '省くと room.floor' }),
+})
+export type Space = z.infer<typeof Space>
+
 export const Room = z.object({
-  width: z.number().min(1800).max(8000).default(3600).meta({ description: '部屋の幅(x方向, 内法mm)' }),
-  depth: z.number().min(1800).max(8000).default(2700).meta({ description: '部屋の奥行き(z方向, 内法mm)' }),
+  width: z.number().min(1800).max(20000).default(3600).meta({ description: '部屋の幅(x方向, 内法mm)。spaces があるときは区画全体を囲む大きさ（自動で決まる）' }),
+  depth: z.number().min(1800).max(20000).default(2700).meta({ description: '部屋の奥行き(z方向, 内法mm)。spaces があるときは区画全体を囲む大きさ（自動で決まる）' }),
   height: z.number().min(2100).max(3200).default(2400).meta({ description: '天井高(mm)' }),
   wallThickness: z.number().min(60).max(300).default(120),
+  interiorWallThickness: z.number().min(40).max(250).default(100).meta({ description: '区画どうしのあいだの壁の厚さ(mm)' }),
+  spaces: z
+    .array(Space)
+    .optional()
+    .meta({ description: '間取りの区画。省くと、幅×奥行きの長方形 1 つの部屋。区画は外形(width×depth)の中に置き、辺で接すると内壁になる' }),
   floor: z
     .object({ material: FloorMaterial.default('oak'), color: hex.optional() })
     .default({ material: 'oak' }),

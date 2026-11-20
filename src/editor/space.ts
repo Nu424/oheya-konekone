@@ -1,4 +1,5 @@
 import type { LocalBox } from '../assets/types'
+import { BACK_TO_WALL, nearestFace, planOf, usableRects, type Face } from '../model/plan'
 import type { Item, Room, WallSide } from '../model/schema'
 
 /**
@@ -134,14 +135,13 @@ export function snapPosition(
   if (o.free) return clampInside(fp, x, z, room, snapped)
 
   const f = fp(x, z)
-  const edgesX: { v: number; kind: SnapTarget['kind'] }[] = [
-    { v: 0, kind: 'wall' },
-    { v: room.width, kind: 'wall' },
-  ]
-  const edgesZ: { v: number; kind: SnapTarget['kind'] }[] = [
-    { v: 0, kind: 'wall' },
-    { v: room.depth, kind: 'wall' },
-  ]
+  const edgesX: { v: number; kind: SnapTarget['kind'] }[] = []
+  const edgesZ: { v: number; kind: SnapTarget['kind'] }[] = []
+  // Wall faces near the footprint (a wall in the next room is not a snap target).
+  for (const w of planOf(room).faces) {
+    if (w.axis === 'x' && w.to > f.minX - 600 && w.from < f.maxX + 600) edgesZ.push({ v: w.line, kind: 'wall' })
+    if (w.axis === 'z' && w.to > f.minZ - 600 && w.from < f.maxZ + 600) edgesX.push({ v: w.line, kind: 'wall' })
+  }
   for (const c of room.columns) {
     edgesX.push({ v: c.x - c.width / 2, kind: 'wall' }, { v: c.x + c.width / 2, kind: 'wall' })
     edgesZ.push({ v: c.z - c.depth / 2, kind: 'wall' }, { v: c.z + c.depth / 2, kind: 'wall' })
@@ -186,46 +186,44 @@ export function snapPosition(
   return clampInside(fp, nx, nz, room, snapped)
 }
 
+/** Keep a footprint inside the floor of the space its centre is in (or the nearest one). */
 function clampInside(fp: (x: number, z: number) => Footprint2D, x: number, z: number, room: Room, snapped: SnapTarget[]): SnapResult {
   const f = fp(x, z)
+  const cx = (f.minX + f.maxX) / 2
+  const cz = (f.minZ + f.maxZ) / 2
+  const dist = (r: { minX: number; minZ: number; maxX: number; maxZ: number }) => Math.hypot(Math.max(r.minX - cx, 0, cx - r.maxX), Math.max(r.minZ - cz, 0, cz - r.maxZ))
+  const r = usableRects(room).reduce((a, b) => (dist(b) < dist(a) ? b : a))
   let nx = x
   let nz = z
   const w = f.maxX - f.minX
   const d = f.maxZ - f.minZ
-  if (w <= room.width) {
-    if (f.minX < 0) nx -= f.minX
-    if (f.maxX > room.width) nx -= f.maxX - room.width
+  if (w <= r.maxX - r.minX) {
+    if (f.minX < r.minX) nx -= f.minX - r.minX
+    if (f.maxX > r.maxX) nx -= f.maxX - r.maxX
   }
-  if (d <= room.depth) {
-    if (f.minZ < 0) nz -= f.minZ
-    if (f.maxZ > room.depth) nz -= f.maxZ - room.depth
+  if (d <= r.maxZ - r.minZ) {
+    if (f.minZ < r.minZ) nz -= f.minZ - r.minZ
+    if (f.maxZ > r.maxZ) nz -= f.maxZ - r.maxZ
   }
   return { x: nx, z: nz, snapped }
 }
 
-/** Nearest wall to a point and the rotation that makes an item's back face that wall. */
-export function nearestWall(room: Room, x: number, z: number): { wall: WallSide; rotation: number; dist: number } {
-  const c: { wall: WallSide; rotation: number; dist: number }[] = [
-    { wall: 'north', rotation: 0, dist: z },
-    { wall: 'south', rotation: 180, dist: room.depth - z },
-    { wall: 'west', rotation: 90, dist: x },
-    { wall: 'east', rotation: 270, dist: room.width - x },
-  ]
-  return c.sort((a, b) => a.dist - b.dist)[0]
+/** Nearest wall face to a point and the rotation that makes an item's back face that wall. */
+export function nearestWall(room: Room, x: number, z: number): { wall: WallSide; face: Face; rotation: number; dist: number } {
+  const { face, dist } = nearestFace(room, x, z)
+  return { wall: face.side, face, rotation: BACK_TO_WALL[face.side], dist }
 }
 
-/** Push a footprint flush against a wall. */
-export function flushToWall(fp: (x: number, z: number) => Footprint2D, x: number, z: number, room: Room, wall: WallSide) {
+/** Push a footprint flush against a wall face (or a side of the room outline). */
+export function flushToWall(fp: (x: number, z: number) => Footprint2D, x: number, z: number, room: Room, wall: WallSide | Face) {
   const f = fp(x, z)
-  if (wall === 'north') return { x, z: z - f.minZ }
-  if (wall === 'south') return { x, z: z + (room.depth - f.maxZ) }
-  if (wall === 'west') return { x: x - f.minX, z }
-  return { x: x + (room.width - f.maxX), z }
-}
-
-/** Distances from a footprint to the four walls (mm). */
-export function wallGaps(f: Footprint2D, room: Room) {
-  return { west: f.minX, east: room.width - f.maxX, north: f.minZ, south: room.depth - f.maxZ }
+  const side = typeof wall === 'string' ? wall : wall.side
+  const b = planOf(room).bounds
+  const line = typeof wall === 'string' ? (side === 'north' ? b.minZ : side === 'south' ? b.maxZ : side === 'west' ? b.minX : b.maxX) : wall.line
+  if (side === 'north') return { x, z: z - (f.minZ - line) }
+  if (side === 'south') return { x, z: z + (line - f.maxZ) }
+  if (side === 'west') return { x: x - (f.minX - line), z }
+  return { x: x + (line - f.maxX), z }
 }
 
 export function normalizeDeg(d: number) {

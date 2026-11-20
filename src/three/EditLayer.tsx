@@ -141,7 +141,7 @@ function EditableItem({ item, ceiling }: { item: Item; ceiling: number }) {
       if (asset.placement === 'wall') {
         const nw = nearestWall(L.room, x, z)
         rot = nw.rotation
-        ;({ x, z } = flushToWall(fp, x, z, L.room, nw.wall))
+        ;({ x, z } = flushToWall(fp, x, z, L.room, nw.face))
       }
       // What stands on a wall shelf moves with it, so it is not something to snap to.
       const carried = new Set([it.id, ...stack.riders(L, it.id)])
@@ -150,7 +150,7 @@ function EditableItem({ item, ceiling }: { item: Item; ceiling: number }) {
       x = sn.x
       z = sn.z
       lastSnap = sn.snapped
-      if (asset.placement === 'wall') ({ x, z } = flushToWall(fp, x, z, L.room, nearestWall(L.room, x, z).wall))
+      if (asset.placement === 'wall') ({ x, z } = flushToWall(fp, x, z, L.room, nearestWall(L.room, x, z).face))
     } else {
       // Everything else lands on the first surface under the pointer (table top, shelf, chest), or the floor.
       const carried = new Set(d.group.flatMap((id) => [id, ...stack.riders(L, id)]))

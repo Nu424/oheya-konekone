@@ -1,10 +1,11 @@
 import { create } from 'zustand'
 import { temporal } from 'zundo'
 import { clampOpening, uid } from '../model/geometry'
+import { planOf, sideLength } from '../model/plan'
 import { parseLayout } from '../model/io'
 import type { Item, Layout, Opening, OpeningType, Room } from '../model/schema'
 import { defaultLayout, TEMPLATES } from '../model/templates'
-import { DoorOpening, WindowOpening, ClosetOpening } from '../model/schema'
+import { DoorOpening, WindowOpening, ClosetOpening, PassageOpening } from '../model/schema'
 
 const STORAGE_KEY = 'oheya-konekone:layout:v1'
 
@@ -51,7 +52,7 @@ function loadInitial(): Layout {
 
 let forceRecord = false
 
-const OPENING_SCHEMAS = { door: DoorOpening, window: WindowOpening, closet: ClosetOpening }
+const OPENING_SCHEMAS = { door: DoorOpening, window: WindowOpening, closet: ClosetOpening, passage: PassageOpening }
 
 export const useDoc = create<DocState & Actions>()(
   temporal(
@@ -70,16 +71,18 @@ export const useDoc = create<DocState & Actions>()(
       addOpening: (type) => {
         const { room } = get().layout
         const id = uid(type)
-        // Pick the wall with the most free space.
+        // Pick the wall with the most free space (of the largest space, when the plan has several).
+        const plan = planOf(room)
+        const main = room.spaces?.length ? plan.spaces.reduce((a, b) => ((b.x1 - b.x0) * (b.z1 - b.z0) > (a.x1 - a.x0) * (a.z1 - a.z0) ? b : a)).id : undefined
         const walls = ['north', 'south', 'west', 'east'] as const
         const free = walls.map((w) => {
-          const len = w === 'north' || w === 'south' ? room.width : room.depth
-          const used = room.openings.filter((o) => o.wall === w).reduce((s, o) => s + o.width, 0)
+          const len = sideLength(room, w, main)
+          const used = room.openings.filter((o) => o.wall === w && o.space === main).reduce((s, o) => s + o.width, 0)
           return { w, len, free: len - used }
         })
         free.sort((a, b) => b.free - a.free)
         const wall = free[0].w
-        const base = OPENING_SCHEMAS[type].parse({ id, type, wall, offset: 0 }) as Opening
+        const base = OPENING_SCHEMAS[type].parse({ id, type, wall, offset: 0, ...(main ? { space: main } : {}) }) as Opening
         const opening = clampOpening(room, { ...base, offset: Math.max(0, (free[0].len - base.width) / 2) })
         set(({ layout }) => ({ layout: { ...layout, room: { ...layout.room, openings: [...layout.room.openings, opening] } } }))
         return id

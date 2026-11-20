@@ -1,7 +1,8 @@
 import { z } from 'zod'
 import { getAsset, itemParamsSchema } from '../assets/registry'
 import { stack } from '../editor/placement'
-import { overlappingOpenings, wallLength } from './geometry'
+import { overlappingOpenings } from './geometry'
+import { onFloor, resolveOpening, sideLength } from './plan'
 import { Layout, type LayoutInput } from './schema'
 
 z.config(z.locales.ja())
@@ -55,6 +56,36 @@ export function parseLayout(raw: unknown): ParseResult {
   }
   const layout = res.data
 
+  // Spaces: unique ids, no overlaps; the room outline is the box around them.
+  const spaces = layout.room.spaces ?? []
+  if (spaces.length) {
+    const sids = new Set<string>()
+    spaces.forEach((sp, i) => {
+      if (sids.has(sp.id)) errors.push({ path: `room.spaces[${i}].id`, message: `区画の id "${sp.id}" が重複しています` })
+      sids.add(sp.id)
+    })
+    for (let i = 0; i < spaces.length; i++)
+      for (let j = i + 1; j < spaces.length; j++) {
+        const [a, b] = [spaces[i].rect, spaces[j].rect]
+        if (a[0] < b[0] + b[2] - 1 && b[0] < a[0] + a[2] - 1 && a[1] < b[1] + b[3] - 1 && b[1] < a[1] + a[3] - 1)
+          errors.push({ path: `room.spaces[${j}].rect`, message: `区画 "${spaces[i].id}" と "${spaces[j].id}" が重なっています。辺で接するように並べてください` })
+      }
+    if (spaces.length > 1)
+      spaces.forEach((sp, i) => {
+        const [x, z, w, d] = sp.rect
+        const touches = spaces.some((o, j) => {
+          if (j === i) return false
+          const [ox, oz, ow, od] = o.rect
+          const sideBySide = (Math.abs(x + w - ox) < 1 || Math.abs(ox + ow - x) < 1) && Math.min(z + d, oz + od) - Math.max(z, oz) > 1
+          const stacked = (Math.abs(z + d - oz) < 1 || Math.abs(oz + od - z) < 1) && Math.min(x + w, ox + ow) - Math.max(x, ox) > 1
+          return sideBySide || stacked
+        })
+        if (!touches) warnings.push({ path: `room.spaces[${i}].rect`, message: `区画 "${sp.id}" がほかの区画と接していません（離れ小島になっています）` })
+      })
+    layout.room.width = Math.max(...spaces.map((sp) => sp.rect[0] + sp.rect[2]))
+    layout.room.depth = Math.max(...spaces.map((sp) => sp.rect[1] + sp.rect[3]))
+  }
+
   // Items: known type + params valid for that asset.
   const ids = new Set<string>()
   layout.items.forEach((item, idx) => {
@@ -75,7 +106,7 @@ export function parseLayout(raw: unknown): ParseResult {
       item.params = pr.data as Record<string, unknown>
     }
     const [x, , z] = item.position
-    if (x < 0 || x > layout.room.width || z < 0 || z > layout.room.depth)
+    if (!errors.length && !onFloor(layout.room, x, z) && asset.placement !== 'wall')
       warnings.push({ path: `${base}.position`, message: `「${item.name ?? asset.label}」の中心が部屋の外にあります` })
   })
 
@@ -98,11 +129,20 @@ export function parseLayout(raw: unknown): ParseResult {
     const base = `room.openings[${idx}]`
     if (oids.has(o.id)) errors.push({ path: `${base}.id`, message: `id "${o.id}" が重複しています` })
     oids.add(o.id)
-    const len = wallLength(layout.room, o.wall)
+    if (o.space && !spaces.some((sp) => sp.id === o.space)) {
+      errors.push({ path: `${base}.space`, message: `区画 "${o.space}" がありません（room.spaces の id を書いてください）` })
+      return
+    }
+    const len = sideLength(layout.room, o.wall, o.space)
     if (o.offset + o.width > len)
       errors.push({ path: base, message: `開口部が壁(長さ${len}mm)からはみ出しています (offset ${o.offset} + width ${o.width})` })
+    else if (!errors.length) {
+      const r = resolveOpening(layout.room, o)
+      if (!r || r.from < r.face.from - 1 || r.to > r.face.to + 1)
+        warnings.push({ path: base, message: `開口部 "${o.id}" が壁の切れ目にかかっています（外壁と内壁、または 2 つの内壁にまたがっています）` })
+    }
     const top = (o.type === 'window' ? o.sill : 0) + o.height
-    if (top > layout.room.height)
+    if (top > layout.room.height && o.type !== 'passage')
       errors.push({ path: base, message: `開口部の上端(${top}mm)が天井高(${layout.room.height}mm)を超えています` })
   })
   for (const [a, b] of overlappingOpenings(layout.room))

@@ -1,6 +1,7 @@
 import { useFrame } from '@react-three/fiber'
 import { useEffect, useMemo, useRef } from 'react'
 import * as THREE from 'three'
+import { outwardOf, planOf, resolvedOpenings, type Face, type Wall } from '../model/plan'
 import type { ClosetOpening, DoorOpening, Opening, Room, WallSide, WindowOpening } from '../model/schema'
 import type { z } from 'zod'
 import { mat } from './materials'
@@ -24,23 +25,23 @@ const GHOST = new THREE.MeshBasicMaterial({ colorWrite: false, depthWrite: false
 
 interface WallFrame {
   side: WallSide
-  /** Interior length of the wall. */
-  length: number
-  /** Converts wall-local (u along wall, v up, w into the wall thickness / outward) to room mm. */
+  /** Converts wall-local (u along the wall in absolute room mm, v up, w into the wall thickness / outward) to room mm. */
   toRoom(u: number, v: number, w: number): THREE.Vector3
   /** Yaw so that local +Z points into the room. */
   yaw: number
   inward: THREE.Vector3
 }
 
-function wallFrames(room: Room): WallFrame[] {
-  const { width: W, depth: D } = room
-  return [
-    { side: 'north', length: W, toRoom: (u, v, w) => new THREE.Vector3(u, v, -w), yaw: 0, inward: new THREE.Vector3(0, 0, 1) },
-    { side: 'south', length: W, toRoom: (u, v, w) => new THREE.Vector3(u, v, D + w), yaw: Math.PI, inward: new THREE.Vector3(0, 0, -1) },
-    { side: 'west', length: D, toRoom: (u, v, w) => new THREE.Vector3(-w, v, u), yaw: Math.PI / 2, inward: new THREE.Vector3(1, 0, 0) },
-    { side: 'east', length: D, toRoom: (u, v, w) => new THREE.Vector3(W + w, v, u), yaw: -Math.PI / 2, inward: new THREE.Vector3(-1, 0, 0) },
-  ]
+const YAW: Record<WallSide, number> = { north: 0, south: Math.PI, west: Math.PI / 2, east: -Math.PI / 2 }
+
+function frameOf(f: Face): WallFrame {
+  const [ox, oz] = outwardOf(f.side)
+  return {
+    side: f.side,
+    toRoom: f.axis === 'x' ? (u, v, w) => new THREE.Vector3(u, v, f.line + oz * w) : (u, v, w) => new THREE.Vector3(f.line + ox * w, v, u),
+    yaw: YAW[f.side],
+    inward: new THREE.Vector3(-ox, 0, -oz),
+  }
 }
 
 /**
@@ -73,12 +74,13 @@ function wallBox(f: WallFrame, u0: number, u1: number, v0: number, v1: number, w
   return mesh
 }
 
-function openingSpan(o: Opening): [number, number] {
-  return o.type === 'window' ? [o.sill, o.sill + o.height] : [0, o.height]
+function openingSpan(o: Opening, H: number): [number, number] {
+  return o.type === 'window' ? [o.sill, o.sill + o.height] : [0, Math.min(H, o.height)]
 }
 
 interface WallBuild {
   frame: WallFrame
+  wall: Wall
   full: THREE.Group
   stub: THREE.Group
   lights: { pos: THREE.Vector3; yaw: number; w: number; h: number }[]
@@ -86,17 +88,33 @@ interface WallBuild {
 
 const STUB = 90
 
-function buildWall(room: Room, f: WallFrame, wallMat: THREE.Material, capMat: THREE.Material): WallBuild {
-  const t = room.wallThickness
+const FLIP_HINGE = { left: 'right', right: 'left' } as const
+const FLIP_SWING = { in: 'out', out: 'in' } as const
+
+/**
+ * The openings in a wall in the wall's own terms: offset is the absolute position along the wall,
+ * and door swing and hinge are seen from the side the wall is built from.
+ */
+function openingsOf(room: Room, wall: Wall): Opening[] {
+  return resolvedOpenings(room)
+    .filter((r) => r.wall.id === wall.id)
+    .map((r) => {
+      const o = { ...r.opening, offset: r.from }
+      if (r.flipped && o.type === 'door') return { ...o, hinge: FLIP_HINGE[o.hinge], swing: FLIP_SWING[o.swing] }
+      return o
+    })
+}
+
+function buildWall(room: Room, wall: Wall, wallMat: THREE.Material, capMat: THREE.Material): WallBuild {
+  const f = frameOf(wall.face)
+  const t = wall.thickness
   const H = room.height
   const full = new THREE.Group()
   const stub = new THREE.Group()
   const lights: WallBuild['lights'] = []
-  const along = f.side === 'north' || f.side === 'south'
-  // North/south walls run past the corners to close them.
-  const start = along ? -t : 0
-  const end = along ? f.length + t : f.length
-  const openings = room.openings.filter((o) => o.wall === f.side).sort((a, b) => a.offset - b.offset)
+  const start = wall.start
+  const end = wall.end
+  const openings = openingsOf(room, wall).sort((a, b) => a.offset - b.offset)
 
   let cursor = start
   const solid = (u0: number, u1: number, v0: number, v1: number) => {
@@ -112,7 +130,7 @@ function buildWall(room: Room, f: WallFrame, wallMat: THREE.Material, capMat: TH
   }
 
   for (const o of openings) {
-    const [b, top] = openingSpan(o)
+    const [b, top] = openingSpan(o, H)
     solid(cursor, o.offset, 0, H)
     solid(o.offset, o.offset + o.width, top, H) // lintel
     solid(o.offset, o.offset + o.width, 0, b) // below window
@@ -127,20 +145,22 @@ function buildWall(room: Room, f: WallFrame, wallMat: THREE.Material, capMat: TH
   }
   solid(cursor, end, 0, H)
 
-
   // Baseboard (skip doors, closets and floor-level windows).
   const bb = room.baseboard
   if (bb.height > 0) {
     const bbMat = mat('matte', bb.color, { roughness: 0.6 })
-    let c = 0
     const gaps = openings.filter((o) => o.type !== 'window' || o.sill < bb.height)
-    for (const o of [...gaps, null]) {
-      const u1 = o ? o.offset : f.length
-      if (u1 - c > 5) full.add(wallBox(f, c, u1, 0, bb.height, -9, 0, bbMat))
-      if (o) c = o.offset + o.width
+    // Interior walls have a room (and a baseboard) on both faces.
+    for (const [w0, w1] of wall.exterior ? [[-9, 0]] : [[-9, 0], [t, t + 9]]) {
+      let c = wall.face.from
+      for (const o of [...gaps, null]) {
+        const u1 = o ? o.offset : wall.face.to
+        if (u1 - c > 5) full.add(wallBox(f, c, u1, 0, bb.height, w0, w1, bbMat))
+        if (o) c = o.offset + o.width
+      }
     }
   }
-  return { frame: f, full, stub, lights }
+  return { frame: f, wall, full, stub, lights }
 }
 
 function place(parent: THREE.Object3D, f: WallFrame, mesh: THREE.Mesh, u: number, v: number, w: number) {
@@ -336,25 +356,38 @@ export interface RoomBuild {
 
 export function buildRoom(room: Room): RoomBuild {
   const { width: W, depth: D, height: H, wallThickness: t } = room
+  const plan = planOf(room)
   const root = new THREE.Group()
 
-  // Floor
-  const ft = floorTextures(room.floor.material, room.floor.color)
-  const floorMat = new THREE.MeshStandardMaterial({
-    map: ft.map,
-    roughnessMap: ft.roughnessMap,
-    roughness: ft.roughness,
-    ...(ft.bumpMap ? { bumpMap: ft.bumpMap, bumpScale: 1.5 } : {}),
-  })
-  const floorGeo = new THREE.PlaneGeometry(W, D)
-  const fuv = floorGeo.attributes.uv as THREE.BufferAttribute
-  for (let i = 0; i < fuv.count; i++) fuv.setXY(i, (fuv.getX(i) * W) / ft.size, (fuv.getY(i) * D) / ft.size)
-  floorGeo.rotateX(-Math.PI / 2)
-  const floor = new THREE.Mesh(floorGeo, floorMat)
-  floor.position.set(W / 2, 0, D / 2)
-  floor.receiveShadow = true
-  floor.name = 'floor'
-  root.add(floor)
+  // Floors, one per space (each may have its own material).
+  const floorMats = new Map<string, THREE.Material>()
+  for (const sp of plan.spaces) {
+    const ft = floorTextures(sp.floor.material, sp.floor.color)
+    const key = `${sp.floor.material}|${sp.floor.color ?? ''}`
+    let floorMat = floorMats.get(key)
+    if (!floorMat) {
+      floorMat = new THREE.MeshStandardMaterial({
+        map: ft.map,
+        roughnessMap: ft.roughnessMap,
+        roughness: ft.roughness,
+        ...(ft.bumpMap ? { bumpMap: ft.bumpMap, bumpScale: 1.5 } : {}),
+      })
+      floorMats.set(key, floorMat)
+    }
+    const fw = sp.x1 - sp.x0
+    const fd = sp.z1 - sp.z0
+    const floorGeo = new THREE.PlaneGeometry(fw, fd)
+    // World-anchored UVs so neighbouring floors of the same material line up.
+    const fuv = floorGeo.attributes.uv as THREE.BufferAttribute
+    for (let i = 0; i < fuv.count; i++) fuv.setXY(i, (sp.x0 + fuv.getX(i) * fw) / ft.size, (D - sp.z1 + fuv.getY(i) * fd) / ft.size)
+    floorGeo.rotateX(-Math.PI / 2)
+    const floor = new THREE.Mesh(floorGeo, floorMat)
+    floor.position.set((sp.x0 + sp.x1) / 2, 0, (sp.z0 + sp.z1) / 2)
+    floor.receiveShadow = true
+    floor.name = 'floor'
+    floor.userData.space = sp.id
+    root.add(floor)
+  }
 
   // Slab under everything for a diorama look.
   const slab = new THREE.Mesh(new THREE.BoxGeometry(W + t * 2 + 40, 160, D + t * 2 + 40), mat('matte', '#d9cfc2', { roughness: 0.95 }))
@@ -368,7 +401,7 @@ export function buildRoom(room: Room): RoomBuild {
   const wallMat = new THREE.MeshStandardMaterial({ color: room.wall.color, roughness: 0.92, bumpMap: wp, bumpScale: 0.35 })
   wp.repeat.set(3, 3)
   const capMat = mat('matte', '#6f6a64', { roughness: 0.9 })
-  const walls = wallFrames(room).map((f) => buildWall(room, f, wallMat, capMat))
+  const walls = plan.walls.map((w) => buildWall(room, w, wallMat, capMat))
   for (const w of walls) root.add(w.full, w.stub)
 
   // Columns
@@ -430,13 +463,17 @@ export function RoomMesh({ room, cutaway = true, plan = false }: { room: Room; c
   const tmp = useMemo(() => new THREE.Vector3(), [])
   useFrame(({ camera }) => {
     const cam = camera.position
-    const inside =
-      cam.x > 0 && cam.x < room.width * S && cam.z > 0 && cam.z < room.depth * S && cam.y < room.height * S
+    const inside = cam.y < room.height * S && planOf(room).spaces.some((sp) => cam.x > sp.x0 * S && cam.x < sp.x1 * S && cam.z > sp.z0 * S && cam.z < sp.z1 * S)
     build.walls.forEach((w, i) => {
-      // Point on the interior face, in metres.
+      // Point on the interior face, in metres; `tmp` becomes the horizontal direction from it to the camera.
       const f = w.frame
-      tmp.copy(f.toRoom(f.length / 2, 0, 0)).multiplyScalar(S)
-      const facing = plan || (cutaway && !inside && tmp.sub(cam).negate().dot(f.inward) < -0.05)
+      tmp.copy(f.toRoom((w.wall.face.from + w.wall.face.to) / 2, 0, 0)).multiplyScalar(S)
+      tmp.sub(cam).negate()
+      tmp.y = 0
+      // Exterior walls drop when the camera is outside them. Interior walls have rooms on both sides:
+      // they drop when seen face-on, and stay up when seen edge-on (they give the plan its depth).
+      const towardCam = tmp.dot(f.inward)
+      const facing = plan || (cutaway && !inside && (w.wall.exterior ? towardCam < -0.05 : Math.abs(towardCam) > 0.35 * tmp.length()))
       if (facing !== state.current.cut[i]) {
         state.current.cut[i] = facing
         setGhost(w.full, facing)

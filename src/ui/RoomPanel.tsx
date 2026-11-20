@@ -8,8 +8,8 @@ import { ColorSwatches, Field, NumberSlider, Segmented } from './controls'
 import { Icon } from './icons'
 
 const WALL_LABEL: Record<WallSide, string> = { north: '北', south: '南', west: '西', east: '東' }
-const OPENING_LABEL: Record<Opening['type'], string> = { door: 'ドア', window: '窓', closet: 'クローゼット' }
-const OPENING_ICON = { door: Icon.door, window: Icon.window, closet: Icon.closet }
+const OPENING_LABEL: Record<Opening['type'], string> = { door: 'ドア', window: '窓', closet: 'クローゼット', passage: '通り抜け' }
+const OPENING_ICON = { door: Icon.door, window: Icon.window, closet: Icon.closet, passage: Icon.door }
 
 /** CSS-only preview of a floor material (cheaper than rendering the real texture). */
 function floorPreview(m: FloorMaterial, color: string): CSSProperties {
@@ -53,8 +53,14 @@ export function RoomPanel() {
           <span>畳</span>
           <span className="sub">{roomArea(room).toFixed(2)} m²</span>
         </div>
-        <NumberSlider label="幅（東西）" value={room.width} min={1800} max={8000} step={50} format={fmtM} onChange={(width) => updateRoom({ width })} />
-        <NumberSlider label="奥行き（南北）" value={room.depth} min={1800} max={8000} step={50} format={fmtM} onChange={(depth) => updateRoom({ depth })} />
+        {room.spaces?.length ? (
+          <p className="plan-note">間取りの区画が {room.spaces.length} つあるよ。広さは区画で決まるから、区画を動かして変えてね（{fmtM(room.width)} × {fmtM(room.depth)}）</p>
+        ) : (
+          <>
+            <NumberSlider label="幅（東西）" value={room.width} min={1800} max={8000} step={50} format={fmtM} onChange={(width) => updateRoom({ width })} />
+            <NumberSlider label="奥行き（南北）" value={room.depth} min={1800} max={8000} step={50} format={fmtM} onChange={(depth) => updateRoom({ depth })} />
+          </>
+        )}
         <NumberSlider label="天井高" value={room.height} min={2100} max={3200} step={10} format={fmtM} hint="一般的なマンションは2400mm前後" onChange={(height) => updateRoom({ height })} />
       </div>
 
@@ -101,7 +107,7 @@ export function RoomPanel() {
           </span>
         </div>
         <div className="add-row">
-          {(['door', 'window', 'closet'] as const).map((t) => {
+          {(room.spaces?.length ? (['door', 'window', 'closet', 'passage'] as const) : (['door', 'window', 'closet'] as const)).map((t) => {
             const I = OPENING_ICON[t]
             return (
               <button
@@ -138,12 +144,11 @@ function OpeningCard({ o, open, warn, onToggle }: { o: Opening; open: boolean; w
   const update = useDoc((s) => s.updateOpening)
   const remove = useDoc((s) => s.removeOpening)
   const I = OPENING_ICON[o.type]
-  const len = wallLength(room, o.wall)
+  const len = wallLength(room, o.wall, o.space)
   const set = (patch: Partial<Opening>) => update(o.id, patch)
-  const summary =
-    o.type === 'window'
-      ? `${WALL_LABEL[o.wall]}の壁 ・ ${o.width}×${o.height} ・ ${o.sill === 0 ? '掃き出し' : `床から${o.sill}`}`
-      : `${WALL_LABEL[o.wall]}の壁 ・ 幅${o.width}`
+  const spaces = room.spaces ?? []
+  const where = `${o.space ? `${spaces.find((sp) => sp.id === o.space)?.name ?? o.space}の` : ''}${WALL_LABEL[o.wall]}の壁`
+  const summary = o.type === 'window' ? `${where} ・ ${o.width}×${o.height} ・ ${o.sill === 0 ? '掃き出し' : `床から${o.sill}`}` : `${where} ・ 幅${o.width}`
 
   return (
     <div className={`card${open ? ' open' : ''}${warn ? ' warn' : ''}`}>
@@ -170,6 +175,17 @@ function OpeningCard({ o, open, warn, onToggle }: { o: Opening; open: boolean; w
       </div>
       {open && (
         <div className="card-body">
+          {spaces.length > 0 && (
+            <Field label="どの区画？">
+              <div className="chips">
+                {spaces.map((sp) => (
+                  <button key={sp.id} className={`chip${o.space === sp.id ? ' on' : ''}`} onClick={() => set({ space: sp.id })}>
+                    {sp.name ?? sp.id}
+                  </button>
+                ))}
+              </div>
+            </Field>
+          )}
           <Field label="どの壁？">
             <div className="compass">
               <span />
@@ -192,7 +208,7 @@ function OpeningCard({ o, open, warn, onToggle }: { o: Opening; open: boolean; w
             onChange={(offset) => set({ offset })}
           />
           <NumberSlider label="幅" value={o.width} min={o.type === 'door' ? 500 : 300} max={Math.min(len, o.type === 'door' ? 1200 : 4000)} onChange={(width) => set({ width })} />
-          <NumberSlider label="高さ" value={o.height} min={o.type === 'window' ? 300 : 1700} max={room.height - 50 - (o.type === 'window' ? o.sill : 0)} onChange={(height) => set({ height })} />
+          <NumberSlider label="高さ" value={o.height} min={o.type === 'window' ? 300 : 1700} max={o.type === 'passage' ? room.height : room.height - 50 - (o.type === 'window' ? o.sill : 0)} onChange={(height) => set({ height })} />
           {o.type === 'window' && (
             <>
               <NumberSlider label="床からの高さ" value={o.sill} min={0} max={room.height - 350} hint="0にすると掃き出し窓（ベランダに出られる窓）" onChange={(sill) => set({ sill })} />

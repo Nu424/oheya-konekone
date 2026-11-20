@@ -1,5 +1,6 @@
 import type { Layout } from '../model/schema'
 import { getAsset } from '../assets/registry'
+import { outwardOf, planOf, resolvedOpenings, usableRects, type Face } from '../model/plan'
 
 /** Tiny 2D floor plan used on template cards and in dialogs. */
 export function FloorPlan({ layout, padding = 400 }: { layout: Layout; padding?: number }) {
@@ -8,24 +9,23 @@ export function FloorPlan({ layout, padding = 400 }: { layout: Layout; padding?:
   const W = room.width
   const D = room.depth
   const vb = `${-t - padding} ${-t - padding} ${W + 2 * (t + padding)} ${D + 2 * (t + padding)}`
-  const seg = (o: Layout['room']['openings'][number]) => {
-    const a = o.offset
-    const b = o.offset + o.width
-    switch (o.wall) {
-      case 'north':
-        return { x: a, y: -t, w: b - a, h: t }
-      case 'south':
-        return { x: a, y: D, w: b - a, h: t }
-      case 'west':
-        return { x: -t, y: a, w: t, h: b - a }
-      case 'east':
-        return { x: W, y: a, w: t, h: b - a }
-    }
+  const plan = planOf(room)
+  // A wall (or a stretch of one) as a rectangle in plan coordinates.
+  const band = (f: Face, from: number, to: number, thickness: number) => {
+    const [ox, oz] = outwardOf(f.side)
+    const far = f.line + (f.axis === 'x' ? oz : ox) * thickness
+    const [c0, c1] = [Math.min(f.line, far), Math.max(f.line, far)]
+    return f.axis === 'x' ? { x: from, y: c0, w: to - from, h: c1 - c0 } : { x: c0, y: from, w: c1 - c0, h: to - from }
   }
   return (
     <svg viewBox={vb} preserveAspectRatio="xMidYMid meet">
-      <rect x={-t} y={-t} width={W + 2 * t} height={D + 2 * t} fill="#6f6a64" rx={20} />
-      <rect x={0} y={0} width={W} height={D} fill="#ead8bf" />
+      {plan.walls.map((w) => {
+        const r = band(w.face, w.start, w.end, w.thickness)
+        return <rect key={w.id} x={r.x} y={r.y} width={r.w} height={r.h} fill="#6f6a64" />
+      })}
+      {usableRects(room).map((r) => (
+        <rect key={r.space} x={r.minX} y={r.minZ} width={r.maxX - r.minX} height={r.maxZ - r.minZ} fill="#ead8bf" />
+      ))}
       {layout.items.map((it) => {
         const a = getAsset(it.type)
         if (!a) return null
@@ -49,8 +49,8 @@ export function FloorPlan({ layout, padding = 400 }: { layout: Layout; padding?:
       {room.columns.map((c) => (
         <rect key={c.id} x={c.x - c.width / 2} y={c.z - c.depth / 2} width={c.width} height={c.depth} fill="#6f6a64" />
       ))}
-      {room.openings.map((o) => {
-        const r = seg(o)
+      {resolvedOpenings(room).map(({ opening: o, wall, from, to }) => {
+        const r = band(wall.face, from, to, wall.thickness)
         const fill = o.type === 'window' ? '#bcd6ea' : o.type === 'door' ? '#fffbf6' : '#e9d9c4'
         return <rect key={o.id} x={r.x} y={r.y} width={r.w} height={r.h} fill={fill} stroke="#6f6a64" strokeWidth={10} />
       })}
