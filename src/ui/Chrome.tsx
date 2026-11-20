@@ -9,6 +9,8 @@ import { copySelection, cutSelection, pasteText, trackPointer } from '../editor/
 import { PHOTO_SAMPLES } from '../three/PhotoMode'
 import { Segmented } from './controls'
 import { Icon } from './icons'
+import { WalkBar } from './WalkBar'
+import { lastUnlock } from '../store/walk'
 
 function Logo() {
   return (
@@ -153,6 +155,12 @@ function fmtHour(h: number) {
 
 export function Hud() {
   const view = useUi((s) => s.view)
+  if (view === 'walk') return <WalkBar />
+  return <MainHud />
+}
+
+function MainHud() {
+  const view = useUi((s) => s.view)
   const setView = useUi((s) => s.setView)
   const hour = useUi((s) => s.hour)
   const setHour = useUi((s) => s.setHour)
@@ -160,6 +168,7 @@ export function Hud() {
   const flow = useUi((s) => s.flow)
   const setFlow = useUi((s) => s.setFlow)
   const overlaps = useUi((s) => s.overlaps)
+  const wallsLow = useUi((s) => s.wallsLow)
   const layout = useDoc((s) => s.layout)
   const overlapCount = useMemo(() => collisions(layout).size, [layout])
   return (
@@ -189,6 +198,14 @@ export function Hud() {
       >
         <Icon.overlap /> <span className="label">重なり</span>
         {overlapCount > 0 && <span className="overlap-count">{overlapCount}</span>}
+      </button>
+      <button
+        className={`icon-btn walls-btn${wallsLow ? ' on' : ''}`}
+        onClick={() => useUi.getState().setWallsLow(!wallsLow)}
+        title={wallsLow ? '壁を立てる (H)' : '壁を低くして中を見る (H)'}
+        aria-pressed={wallsLow}
+      >
+        <Icon.wall /> <span className="label">壁を低く</span>
       </button>
       <button className="icon-btn" onClick={() => useUi.getState().setPhoto(true)} title="撮影モード（パストレーシングで写真みたいに）(P)">
         <Icon.camera /> <span className="label">撮影</span>
@@ -299,12 +316,14 @@ export function useShortcuts() {
         if (e.key.toLowerCase() === 'j') ui.setJsonOpen(true)
         if (e.key.toLowerCase() === 'f') ui.setFlow(!ui.flow)
         if (e.key.toLowerCase() === 'o') ui.setOverlaps(!ui.overlaps)
+        if (e.key.toLowerCase() === 'h') ui.setWallsLow(!ui.wallsLow)
         if (e.key.toLowerCase() === 'p') ui.setPhoto(!ui.photo)
         if (e.key === '?') ui.setHelpOpen(true)
         if (e.key === 'Escape') {
           if (ui.photo) ui.setPhoto(false)
           else if (ui.selection.length) ui.select(null)
-          else if (ui.view === 'walk') ui.setView('orbit')
+          // The Esc that releases the captured mouse should not also end the walk.
+          else if (ui.view === 'walk' && !document.pointerLockElement && performance.now() - lastUnlock > 400) ui.setView('orbit')
         }
         if (sel) {
           if (e.key === 'Delete' || e.key === 'Backspace') {

@@ -3,6 +3,7 @@ import { useUi } from './store/useStore'
 import { Viewport } from './three/Viewport'
 import { PerfPanel } from './perf/PerfPanel'
 import { DropZone, FlowPanel, Hud, PhotoBar, Toast, TopBar, useShortcuts } from './ui/Chrome'
+import { WalkOverlay } from './ui/WalkBar'
 import { AiDialog, HelpDialog, JsonDialog, TemplateDialog } from './ui/dialogs'
 import { RoomPanel } from './ui/RoomPanel'
 import { Catalog, DRAG_MIME } from './ui/Catalog'
@@ -60,12 +61,12 @@ export default function App() {
       <Inspector />
       <FlowPanel />
       <Hud />
-      <div className={`hint glass${hasSelection ? ' hidden' : ''}`}>
+      <div className={`hint glass${hasSelection || view === 'walk' ? ' hidden' : ''}`}>
         {view === 'walk' ? (
           <>
-            <kbd>ドラッグ</kbd> 見回す ・ <kbd>WASD</kbd> 歩く ・ <kbd>床をクリック</kbd> そこへ移動
+            <kbd>クリック</kbd> マウスで見回す ・ <kbd>WASD</kbd> 歩く ・ <kbd>Shift</kbd> 急ぐ
             <br />
-            <kbd>Esc</kbd> 3Dビューにもどる
+            <kbd>Esc</kbd> マウスを離す ・ もう一度で 3D にもどる
           </>
         ) : (
           <>
@@ -75,6 +76,7 @@ export default function App() {
           </>
         )}
       </div>
+      {view === 'walk' && <WalkOverlay />}
       <PhotoBar />
       <PerfPanel />
       <Toast />

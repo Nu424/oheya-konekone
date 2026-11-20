@@ -67,6 +67,8 @@ export const Icon = {
   ),
   sparkle: make(<path d="M12 3c.6 4.2 2.8 6.4 7 7-4.2.6-6.4 2.8-7 7-.6-4.2-2.8-6.4-7-7 4.2-.6 6.4-2.8 7-7ZM19 15c.3 2 1 2.7 3 3-2 .3-2.7 1-3 3-.3-2-1-2.7-3-3 2-.3 2.7-1 3-3Z" />),
   home: make(<path d="M4 11 12 4l8 7v8a1 1 0 0 1-1 1h-4v-6H9v6H5a1 1 0 0 1-1-1v-8Z" />),
+  wall: make(<path d="M3 20h18M4 20V9h16v11M4 14h16M9 9v5M15 14v6M12 4l-8 5h16z" />),
+  expand: make(<path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5" />),
   plan: make(<path d="M3 4h18v16H3zM13 4v9H3M13 13h8M9 13v7" />),
   door: make(
     <>

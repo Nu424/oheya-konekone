@@ -214,6 +214,8 @@ interface UiState {
   flow: boolean
   /** Red outlines around every overlapping item (the selected / dragged ones always show theirs). */
   overlaps: boolean
+  /** Walls cut down to a low stub so the rooms can be seen into (every view but walking; the top view always). */
+  wallsLow: boolean
   /** Path-traced photo mode and its progress. */
   photo: boolean
   photoSamples: number
@@ -228,6 +230,7 @@ interface UiState {
   setHour(h: number): void
   setFlow(v: boolean): void
   setOverlaps(v: boolean): void
+  setWallsLow(v: boolean): void
   setPhoto(v: boolean): void
   setPhotoSamples(n: number): void
   setPanel(p: UiState['panel']): void
@@ -261,6 +264,7 @@ export const useUi = create<UiState>()((set) => ({
   hour: 14,
   flow: false,
   overlaps: readPref('overlaps', true),
+  wallsLow: readPref('wallsLow', true),
   photo: false,
   photoSamples: 0,
   // Start with the panel closed on phones so the room is visible.
@@ -285,6 +289,10 @@ export const useUi = create<UiState>()((set) => ({
   setSnap: (snap) => set({ snap }),
   setHour: (hour) => set({ hour }),
   setFlow: (flow) => set({ flow }),
+  setWallsLow: (wallsLow) => {
+    writePref('wallsLow', wallsLow)
+    set({ wallsLow })
+  },
   setOverlaps: (overlaps) => {
     writePref('overlaps', overlaps)
     set({ overlaps })

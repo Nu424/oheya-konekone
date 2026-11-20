@@ -447,8 +447,11 @@ export function disposeObject(obj: THREE.Object3D) {
   })
 }
 
-/** Room geometry with the dollhouse cutaway: walls facing the camera drop to a low stub. */
-export function RoomMesh({ room, cutaway = true, plan = false }: { room: Room; cutaway?: boolean; plan?: boolean }) {
+/**
+ * Room geometry. With `lowered` (and `cutaway`, i.e. not walking) every wall drops to a low stub so the
+ * rooms can be seen into; the top view (`plan`) always lowers them. The ceiling hides while the camera is outside.
+ */
+export function RoomMesh({ room, cutaway = true, plan = false, lowered = true }: { room: Room; cutaway?: boolean; plan?: boolean; lowered?: boolean }) {
   const build = useMemo(() => buildRoom(room), [room])
   const state = useRef<{ cut: boolean[]; ceiling: boolean }>({ cut: [], ceiling: false })
 
@@ -460,24 +463,15 @@ export function RoomMesh({ room, cutaway = true, plan = false }: { room: Room; c
     }
   }, [build])
 
-  const tmp = useMemo(() => new THREE.Vector3(), [])
   useFrame(({ camera }) => {
     const cam = camera.position
     const inside = cam.y < room.height * S && planOf(room).spaces.some((sp) => cam.x > sp.x0 * S && cam.x < sp.x1 * S && cam.z > sp.z0 * S && cam.z < sp.z1 * S)
+    const low = plan || (cutaway && lowered)
     build.walls.forEach((w, i) => {
-      // Point on the interior face, in metres; `tmp` becomes the horizontal direction from it to the camera.
-      const f = w.frame
-      tmp.copy(f.toRoom((w.wall.face.from + w.wall.face.to) / 2, 0, 0)).multiplyScalar(S)
-      tmp.sub(cam).negate()
-      tmp.y = 0
-      // Exterior walls drop when the camera is outside them. Interior walls have rooms on both sides:
-      // they drop when seen face-on, and stay up when seen edge-on (they give the plan its depth).
-      const towardCam = tmp.dot(f.inward)
-      const facing = plan || (cutaway && !inside && (w.wall.exterior ? towardCam < -0.05 : Math.abs(towardCam) > 0.35 * tmp.length()))
-      if (facing !== state.current.cut[i]) {
-        state.current.cut[i] = facing
-        setGhost(w.full, facing)
-        w.stub.visible = facing
+      if (low !== state.current.cut[i]) {
+        state.current.cut[i] = low
+        setGhost(w.full, low)
+        w.stub.visible = low
       }
     })
     const hideCeiling = cutaway && !inside
