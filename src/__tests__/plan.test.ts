@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { analyzeFlow, doorSwing } from '../editor/flow'
+import { collisions } from '../editor/placement'
 import { footprint, nearestWall, snapPosition } from '../editor/space'
 import { makeLayout, parseLayout } from '../model/io'
 import { planOf, resolveOpening, usableRects } from '../model/plan'
@@ -85,6 +86,15 @@ describe('plan', () => {
     expect(snapPosition(fp, 3400, 800, L.room, [], { free: true }).x).toBe(3250)
     expect(nearestWall(L.room, 3500, 800)).toMatchObject({ wall: 'east', rotation: 270 })
     expect(nearestWall(L.room, 3700, 800).face.space).toBe('bath')
+  })
+
+  it('counts furniture pushed into an interior wall as overlapping, but not one standing in a doorway', () => {
+    const shelf = (z: number) => [{ id: 's', type: 'shelf', position: [3500, 0, z] as [number, number, number], rotation: 270, params: { width: 400, depth: 300 } }]
+    expect([...collisions(twoRooms([], shelf(800)))]).toEqual(['s'])
+    const door = { id: 'd', type: 'door' as const, space: 'bath', wall: 'west' as const, offset: 400, width: 750 }
+    const box = { id: 'b', type: 'cabinet', position: [3600, 0, 780] as [number, number, number], rotation: 0, params: { width: 300, depth: 300, height: 400 } }
+    expect([...collisions(twoRooms([door], [box]))]).toEqual([])
+    expect([...collisions(twoRooms([], [box]))]).toEqual(['b'])
   })
 
   it('reports overlapping spaces and unknown spaces', () => {

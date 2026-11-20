@@ -279,3 +279,37 @@ export function nearestFace(room: Room, x: number, z: number, behind = 150): { f
 export function planArea(room: Room) {
   return spacesOf(room).reduce((a, s) => a + (s.x1 - s.x0) * (s.z1 - s.z0), 0) / 1_000_000
 }
+
+export interface PlanRect {
+  minX: number
+  minZ: number
+  maxX: number
+  maxZ: number
+}
+
+/**
+ * The walls as rectangles in plan (mm). Interior walls have their doorways and passages cut out
+ * (`gaps` lists those openings); exterior walls stay whole (an entrance door leads nowhere in the plan).
+ */
+export function wallRects(room: Room): { walls: PlanRect[]; gaps: PlanRect[] } {
+  const plan = planOf(room)
+  const resolved = resolvedOpenings(room)
+  const walls: PlanRect[] = []
+  const gaps: PlanRect[] = []
+  for (const w of plan.walls) {
+    const f = w.face
+    const [ox, oz] = outwardOf(f.side)
+    const far = f.line + (f.axis === 'x' ? oz : ox) * w.thickness
+    const [c0, c1] = [Math.min(f.line, far), Math.max(f.line, far)]
+    const rect = (a: number, b: number): PlanRect => (f.axis === 'x' ? { minX: a, maxX: b, minZ: c0, maxZ: c1 } : { minX: c0, maxX: c1, minZ: a, maxZ: b })
+    const doorways = w.exterior ? [] : resolved.filter((r) => r.wall.id === w.id && (r.opening.type === 'door' || r.opening.type === 'passage')).sort((a, b) => a.from - b.from)
+    let cur = w.start
+    for (const d of doorways) {
+      if (d.from > cur) walls.push(rect(cur, d.from))
+      gaps.push(rect(d.from, d.to))
+      cur = Math.max(cur, d.to)
+    }
+    if (w.end > cur) walls.push(rect(cur, w.end))
+  }
+  return { walls, gaps }
+}

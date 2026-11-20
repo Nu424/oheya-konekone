@@ -2,8 +2,8 @@ import { getAsset, resolveItemParams } from '../assets/registry'
 import type { Surface } from '../assets/types'
 import type { Item, Layout } from '../model/schema'
 import { itemFootprint } from '../three/ItemObject'
-import { BACK_TO_WALL, outwardOf, planOf, resolvedOpenings, usableRects, type Face } from '../model/plan'
-import { flushToWall, footprint, overlaps3D, partsOf, type Footprint2D, type LocalBox } from './space'
+import { BACK_TO_WALL, outwardOf, planOf, resolvedOpenings, usableRects, wallRects, type Face } from '../model/plan'
+import { flushToWall, footprint, overlaps2D, overlaps3D, partsOf, type Footprint2D, type LocalBox } from './space'
 import { createStacking, roundY, surfaceBounds, type PlacedSurface, type Solid } from './stacking'
 
 const FALLBACK: LocalBox = { min: { x: -100, y: 0, z: -100 }, max: { x: 100, y: 100, z: 100 } }
@@ -80,6 +80,9 @@ export function isPassive(type: string) {
   return !(a?.blocks ?? a?.placement !== 'ceiling')
 }
 
+/** How far (mm) an item may poke into a wall before it counts as overlapping it. */
+const WALL_GIVE = 30
+
 /** Seats that are meant to be tucked under tables and desks. */
 export const SEATS = new Set(['officeChair', 'diningChair', 'floorChair', 'foldingChair'])
 const TABLES = new Set(['desk', 'officeDesk', 'diningTable', 'lowTable', 'kotatsu'])
@@ -108,6 +111,8 @@ export function collisions(layout: Layout): Set<string> {
   const sup = stack.supports(layout)
   const list = layout.items.filter((i) => !isPassive(i.type)).map((i) => ({ i, f: itemFootprint2D(i, layout), hollow: isHollow(i) }))
   const cols = layout.room.columns.map((c) => footprint({ min: { x: -c.width / 2, y: 0, z: -c.depth / 2 }, max: { x: c.width / 2, y: layout.room.height, z: c.depth / 2 } }, c.x, 0, c.z, 0))
+  // Walls of the plan (interior walls without their doorways) block too, past a little give for leaves and cushions.
+  const walls = wallRects(layout.room).walls.map((w) => footprint({ min: { x: w.minX, y: 0, z: w.minZ }, max: { x: w.maxX, y: layout.room.height, z: w.maxZ } }, 0, 0, 0, 0))
   for (let a = 0; a < list.length; a++) {
     for (let b = a + 1; b < list.length; b++) {
       const A = list[a]
@@ -120,6 +125,8 @@ export function collisions(layout: Layout): Set<string> {
       out.add(B.i.id)
     }
     for (const c of cols) if (overlaps3D(list[a].f, c)) out.add(list[a].i.id)
+    // Wall-hung items are on a wall by definition.
+    if (getAsset(list[a].i.type)?.placement !== 'wall') for (const w of walls) if (partsOf(list[a].f).some((p) => p.minY < layout.room.height && overlaps2D(p, w, WALL_GIVE))) out.add(list[a].i.id)
   }
   return out
 }

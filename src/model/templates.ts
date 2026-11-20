@@ -44,7 +44,7 @@ export const TEMPLATES: RoomTemplate[] = [
       },
       items: [
         { id: 'curtain', type: 'curtain', position: [1350, 15, 70], rotation: 0, params: { width: 1900, height: 2030 } },
-        { id: 'bed', type: 'bed', position: [530, 0, 1130], rotation: 0, params: { size: 'single', headboard: 'shelf' } },
+        { id: 'bed', type: 'bed', position: [530, 0, 1225], rotation: 0, params: { size: 'single', headboard: 'shelf' } },
         { id: 'aircon', type: 'aircon', position: [125, 1980, 1500], rotation: 90, params: {} },
         { id: 'rug', type: 'rug', position: [1720, 0, 1650], rotation: 90, params: { width: 1400, depth: 1000, pattern: 'border' } },
         { id: 'table', type: 'lowTable', position: [1700, 0, 1650], rotation: 90, params: { width: 750, depth: 450, shape: 'oval' } },

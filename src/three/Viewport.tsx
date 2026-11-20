@@ -20,6 +20,7 @@ import { registerScreenToFloor } from '../editor/commands'
 import { PERF_PANEL } from '../perf/store'
 import { PerfProbe } from '../perf/PerfProbe'
 import { MotionQuality } from './render/MotionQuality'
+import { PLAN_DRAG, PlanHandles } from './PlanHandles'
 import { ShadowOnDemand } from './render/ShadowOnDemand'
 
 const S = 0.001
@@ -384,6 +385,8 @@ function Rig({ room, camera, size }: { room: Room; camera: THREE.Camera; size: {
   useEffect(() => {
     const c = ref.current
     if (!c) return
+    // Dragging a wall of the plan changes the room's size: keep the camera where it is.
+    if (useUi.getState().dragging === PLAN_DRAG) return
     const { pos, target } = cameraPose(room, view, size.width / size.height)
     c.setLookAt(pos.x, pos.y, pos.z, target.x, target.y, target.z, animate.current)
     animate.current = true
@@ -407,6 +410,7 @@ function Rig({ room, camera, size }: { room: Room; camera: THREE.Camera; size: {
     const c = ref.current
     if (!c) return
     const panelPx = panelOpen && size.width > 760 ? 342 : 0
+    if (useUi.getState().dragging === PLAN_DRAG) return
     if (ortho) {
       const m = 1.2 // metres of margin around the room
       const zoom = Math.min((size.width - panelPx - 80) / (room.width * S + m), (size.height - 160) / (room.depth * S + m))
@@ -443,6 +447,7 @@ export function Viewport() {
   const hour = useUi((s) => s.hour)
   const flow = useUi((s) => s.flow)
   const photo = useUi((s) => s.photo)
+  const panel = useUi((s) => s.panel)
   const items = useDoc((s) => s.layout.items)
   const lamps = useMemo(() => collectLamps(items, room), [items, room])
   // The ceiling is cut away in every view except walking around inside the room.
@@ -469,6 +474,7 @@ export function Viewport() {
       </Suspense>
       <CameraRig room={room} />
       {view === 'top' && <PlanDims room={room} />}
+      {view === 'top' && panel === 'room' && !!room.spaces?.length && <PlanHandles />}
       <FrameProbe />
       <FloorPicker />
       <RubberBand />

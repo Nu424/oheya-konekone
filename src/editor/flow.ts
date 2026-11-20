@@ -1,7 +1,7 @@
 import { getAsset } from '../assets/registry'
 import type { Layout, Opening } from '../model/schema'
 import { isPassive, itemFootprint2D, SEATS, stack } from './placement'
-import { outwardOf, planOf, resolveOpening, resolvedOpenings, usableRects, type Face, type ResolvedOpening } from '../model/plan'
+import { outwardOf, planOf, resolveOpening, resolvedOpenings, usableRects, wallRects as planWallRects, type Face, type ResolvedOpening } from '../model/plan'
 import { footprint, overlaps2D, partsOf, type Footprint2D } from './space'
 
 /**
@@ -192,23 +192,7 @@ export function analyzeFlow(layout: Layout): FlowResult {
   // Walls as rectangles: exterior walls whole, interior walls with their doorways cut out.
   const plan = planOf(room)
   const resolved = resolvedOpenings(room)
-  const wallRects: { minX: number; minZ: number; maxX: number; maxZ: number }[] = []
-  const gaps: typeof wallRects = []
-  for (const w of plan.walls) {
-    const f = w.face
-    const [ox, oz] = outwardOf(f.side)
-    const far = f.line + (f.axis === 'x' ? oz : ox) * w.thickness
-    const [c0, c1] = [Math.min(f.line, far), Math.max(f.line, far)]
-    const rect = (a: number, b: number) => (f.axis === 'x' ? { minX: a, maxX: b, minZ: c0, maxZ: c1 } : { minX: c0, maxX: c1, minZ: a, maxZ: b })
-    const doorways = w.exterior ? [] : resolved.filter((r) => r.wall.id === w.id && (r.opening.type === 'door' || r.opening.type === 'passage')).sort((a, b) => a.from - b.from)
-    let cur = w.start
-    for (const d of doorways) {
-      if (d.from > cur) wallRects.push(rect(cur, d.from))
-      gaps.push(rect(d.from, d.to))
-      cur = Math.max(cur, d.to)
-    }
-    if (w.end > cur) wallRects.push(rect(cur, w.end))
-  }
+  const { walls: wallRects, gaps } = planWallRects(room)
   // Floor outside every space (and inside interior walls) is not floor, except in doorways.
   const floors = usableRects(room)
   const within = (x: number, z: number, r: { minX: number; minZ: number; maxX: number; maxZ: number }) => x >= r.minX && x <= r.maxX && z >= r.minZ && z <= r.maxZ

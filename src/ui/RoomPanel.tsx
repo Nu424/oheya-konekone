@@ -6,6 +6,7 @@ import type { FloorMaterial, Opening, WallSide } from '../model/schema'
 import { useDoc, useUi } from '../store/useStore'
 import { ColorSwatches, Field, NumberSlider, Segmented } from './controls'
 import { Icon } from './icons'
+import { PlanPanel } from './PlanPanel'
 
 const WALL_LABEL: Record<WallSide, string> = { north: '北', south: '南', west: '西', east: '東' }
 const OPENING_LABEL: Record<Opening['type'], string> = { door: 'ドア', window: '窓', closet: 'クローゼット', passage: '通り抜け' }
@@ -63,6 +64,8 @@ export function RoomPanel() {
         )}
         <NumberSlider label="天井高" value={room.height} min={2100} max={3200} step={10} format={fmtM} hint="一般的なマンションは2400mm前後" onChange={(height) => updateRoom({ height })} />
       </div>
+
+      <PlanPanel />
 
       <div className="section">
         <div className="section-head">

@@ -959,3 +959,7 @@ input[type='range']:focus-visible::-webkit-slider-thumb { box-shadow: 0 0 0 4px 
 
 /* Room panel: note shown instead of the size sliders when the plan has spaces. */
 .plan-note { margin: 6px 0 10px; font-size: 12px; line-height: 1.6; color: var(--ink-2, #6b6259); }
+.plan-start { width: 100%; justify-content: center; }
+.plan-floor { margin: 4px 0 10px; }
+.plan-floor-label { display: block; font-size: 12px; font-weight: 700; margin-bottom: 6px; }
+.plan-floor .chip { font-size: 11px; padding: 7px 2px; white-space: nowrap; }
