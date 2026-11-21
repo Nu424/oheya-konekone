@@ -63,7 +63,7 @@ node scripts/perf-check.mjs   # 描画の軽量化の回帰チェック（dev �
 - **マテリアル配列を持つメッシュを作らない**（撮影モードのパストレーサーで以降の全マテリアルがずれる）。色違いの面は別メッシュにする。
 - **ブラウザ外でも組み立てられるように**：テクスチャ生成は `textures.ts` の `HEADLESS` ガードを通す。`document` を直接触る処理をアセットに書かない（テストと `scripts/` が node で寸法を測っている）。
 - **アイテムの編集は `itemCommands`（`src/editor/commands.ts`）経由**。上に載っている物がついてくる・落ちる・高さを追う処理がここに入っている。`updateItem` で位置を直接書き換えると、載っている物が置いていかれる。ドラッグのような連続操作は `beginGesture()` / `endGesture()` で 1 回の undo にまとめる。
-- **JSON の仕様を変えたら** `src/ai/prompt.ts` の RULES、`docs/AI_GUIDE.md`（再生成）、README を合わせて更新する。
+- **JSON の仕様を変えたら** `src/ai/prompt.ts` の RULES、`docs/AI_GUIDE.md`（再生成）、README を合わせて更新する。種類やパラメータを消す・まとめるときは、`src/model/io.ts` の `migrate` に古い JSON の変換を書く（保存済みのレイアウトと AI が書いた古い形が、そのまま読めるように）。
 - **テンプレートを足したら** `src/__tests__/templates.test.ts` が自動で重なりと動線を検査する。通るように配置を直す。
 - **操作やショートカットを変えたら** `src/ui/shortcuts.ts`（`?` で開く操作一覧）と README の操作表も直す。
 - UI の文言は日本語で、やわらかい口調（「〜したよ」）。コードのコメントは英語。
@@ -73,5 +73,6 @@ node scripts/perf-check.mjs   # 描画の軽量化の回帰チェック（dev �
 - 描画は `frameloop="demand"`。`useFrame` で動かし続けるもの（アニメ・キー移動）は自分で `invalidate()` する。
 - ヘッドレス Chromium（SwiftShader）は遅い。スクショの `waitMs` は 3〜6 秒、複数並列で撮ると ready が間に合わない。撮影モードは 1 分で数サンプルしか進まない。
 - 床に半透明で色を重ねると日なたで色が飛ぶ（HDR）。オーバーレイは `MultiplyBlending` で乗算する。
+- `useEffect` で一度だけ登録するリスナー（マウス・キー）は、変わる値を ref から読む（閉じ込めた古い値を使い続ける。歩くモードの身長の前例）。
 - 3D の線は `src/three/Line.tsx` を使う（drei の `<Line>` は点が動くたびにシェーダーを作り直して、ドラッグが引っかかる）。
 - CSS のクラス名が衝突しやすい（`.compass` の前例あり）。新しいクラスは用途がわかる接頭辞を付ける。
