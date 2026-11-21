@@ -43,7 +43,7 @@ node scripts/perf-check.mjs   # 描画の軽量化の回帰チェック（dev �
 |---|---|
 | `src/model/` | レイアウト JSON の zod スキーマ（`schema.ts`）、検証と入出力（`io.ts`）、テンプレート |
 | `src/assets/` | パラメトリック家具。`params.ts`（パラメータ DSL）、`kit.ts`（形の道具：`panel`・`merged` など）、`parts.ts`（取っ手・扉・引き出し・キャスターなどの部品）、`storageKit.ts`（棚・収納の組み立て）、`items/*.ts`（各アセット）、`registry.ts`（一覧） |
-| `src/three/` | 描画。部屋（`RoomMesh`）、照明（`Lighting`）、ポストエフェクト、テクスチャ・マテリアル、編集レイヤー、動線オーバーレイ、撮影モード、サムネイル。`render/` は軽さの調整（影の描き直し・動いている間の縮小・画質の定数） |
+| `src/three/` | 描画。部屋（`RoomMesh`。どの壁を低くするかは `wallDisplay.ts`）、歩くモード（`WalkRig`）、照明（`Lighting`）、ポストエフェクト、テクスチャ・マテリアル、編集レイヤー、動線オーバーレイ、撮影モード、サムネイル。`render/` は軽さの調整（影の描き直し・動いている間の縮小・画質の定数） |
 | `src/perf/` | `?perf` の動作診断（記録・レポート・パネル） |
 | `src/editor/` | 描画に依存しない編集ロジック。2D の当たり判定と吸い付き（`space.ts`）、積み重ね（`stacking.ts`）、配置（`placement.ts`）、編集操作（`commands.ts` の `itemCommands`）、コピペ（`clipboard.ts`）、動線解析（`flow.ts`） |
 | `src/store/` | Zustand。`useDoc`（レイアウト本体、zundo で undo）と `useUi`（選択 `string[]`・視点・時間帯など） |
