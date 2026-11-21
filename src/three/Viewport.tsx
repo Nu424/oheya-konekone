@@ -373,7 +373,7 @@ export function Viewport() {
     >
       <Suspense fallback={null}>
         <Lighting room={room} hour={hour} lamps={lamps} />
-        <RoomMesh room={room} plan={view === 'top'} cutaway={cutaway} lowered={walls} />
+        <RoomMesh room={room} plan={view === 'top'} cutaway={cutaway} walls={walls} />
         <EditLayer cutaway={cutaway} />
         {flow && <FlowOverlay />}
         {photo ? <PhotoMode /> : <Effects />}

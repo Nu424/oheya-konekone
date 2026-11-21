@@ -2,6 +2,7 @@ import { useFrame } from '@react-three/fiber'
 import { useEffect, useMemo, useRef } from 'react'
 import * as THREE from 'three'
 import { outwardOf, planOf, resolvedOpenings, type Face, type Wall } from '../model/plan'
+import { followsCamera, wallLowered, type WallsMode } from './wallDisplay'
 import type { ClosetOpening, DoorOpening, Opening, Room, WallSide, WindowOpening } from '../model/schema'
 import type { z } from 'zod'
 import { mat } from './materials'
@@ -512,10 +513,10 @@ export function disposeObject(obj: THREE.Object3D) {
 }
 
 /**
- * Room geometry. With `lowered` (and `cutaway`, i.e. not walking) the interior walls, or all walls, drop to
- * a low stub so the rooms can be seen into; the top view (`plan`) always lowers them all. The ceiling hides while the camera is outside.
+ * Room geometry. Outside the walk mode (`cutaway`), walls drop to a low stub as `walls` says
+ * (src/three/wallDisplay.ts); the top view (`plan`) lowers them all. The ceiling hides while the camera is outside.
  */
-export function RoomMesh({ room, cutaway = true, plan = false, lowered = 'inner' }: { room: Room; cutaway?: boolean; plan?: boolean; lowered?: 'up' | 'inner' | 'low' }) {
+export function RoomMesh({ room, cutaway = true, plan = false, walls = 'far' }: { room: Room; cutaway?: boolean; plan?: boolean; walls?: WallsMode }) {
   const build = useMemo(() => buildRoom(room), [room])
   const state = useRef<{ cut: boolean[]; ceiling: boolean }>({ cut: [], ceiling: false })
 
@@ -527,11 +528,22 @@ export function RoomMesh({ room, cutaway = true, plan = false, lowered = 'inner'
     }
   }, [build])
 
+  const toCam = useMemo(() => new THREE.Vector3(), [])
   useFrame(({ camera }) => {
     const cam = camera.position
     const inside = cam.y < room.height * S && planOf(room).spaces.some((sp) => cam.x > sp.x0 * S && cam.x < sp.x1 * S && cam.z > sp.z0 * S && cam.z < sp.z1 * S)
+    const byCamera = followsCamera(walls)
     build.walls.forEach((w, i) => {
-      const low = plan || (cutaway && (lowered === 'low' || (lowered === 'inner' && !w.wall.exterior)))
+      let low = plan
+      if (!low && cutaway) {
+        // The camera is beyond this wall's outer side (more than 5 cm past its inner face).
+        let outside = false
+        if (byCamera && w.wall.exterior) {
+          toCam.copy(w.frame.toRoom((w.wall.face.from + w.wall.face.to) / 2, 0, 0)).multiplyScalar(S).sub(cam).negate()
+          outside = toCam.dot(w.frame.inward) < -0.05
+        }
+        low = wallLowered(walls, w.wall.exterior, outside)
+      }
       if (low !== state.current.cut[i]) {
         state.current.cut[i] = low
         setGhost(w.full, low)

@@ -2,6 +2,7 @@ import { create } from 'zustand'
 import { temporal } from 'zundo'
 import { clampOpening, uid } from '../model/geometry'
 import { planOf, sideLength } from '../model/plan'
+import { WALLS_ORDER, type WallsMode } from '../three/wallDisplay'
 import { parseLayout } from '../model/io'
 import type { Item, Layout, Opening, OpeningType, Room } from '../model/schema'
 import { defaultLayout, TEMPLATES } from '../model/templates'
@@ -214,10 +215,7 @@ interface UiState {
   flow: boolean
   /** Red outlines around every overlapping item (the selected / dragged ones always show theirs). */
   overlaps: boolean
-  /**
-   * Which walls drop to a low stub so the rooms can be seen into: none, the interior ones (the outline
-   * stays up), or all. Every view but walking; the top view always lowers all of them.
-   */
+  /** Which walls drop to a low stub so the rooms can be seen into (src/three/wallDisplay.ts). */
   walls: WallsMode
   /** Path-traced photo mode and its progress. */
   photo: boolean
@@ -242,16 +240,12 @@ interface UiState {
   notify(text: string, tone?: 'info' | 'error'): void
 }
 
-export type WallsMode = 'up' | 'inner' | 'low'
-/** The walls button steps through these. */
-export const WALLS_NEXT: Record<WallsMode, WallsMode> = { inner: 'low', low: 'up', up: 'inner' }
-
 function readWalls(): WallsMode {
   try {
-    const v = localStorage.getItem('oheya-konekone:pref:walls')
-    return v === 'up' || v === 'low' || v === 'inner' ? v : 'inner'
+    const v = localStorage.getItem('oheya-konekone:pref:walls') as WallsMode | null
+    return v && WALLS_ORDER.includes(v) ? v : 'far'
   } catch {
-    return 'inner'
+    return 'far'
   }
 }
 
