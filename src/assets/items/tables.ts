@@ -4,6 +4,44 @@ import { cyl, deg, extrude, group, loft, panelOn, rbox, roundedRect } from '../k
 import { p } from '../params'
 import { defineAsset } from '../types'
 
+/**
+ * A kotatsu futon draped over a table whose board sits at `under` (mm): it drapes from just under the
+ * board and flares out onto the floor. Any table with the `kotatsu` option gets one (docs: tables).
+ */
+function kotatsuFuton(W: number, D: number, under: number, color: string, round: boolean) {
+  const g = group()
+  const fab = mat('fabric', color, { side: THREE.DoubleSide })
+  const skirt = 380
+  const topY = under - 4
+  g.add(
+    loft(
+      (t) => {
+        const e = Math.pow(t, 2.2)
+        const hw = W / 2 + 40 + skirt * e + Math.sin(t * Math.PI) * 25
+        const hd = D / 2 + 40 + skirt * e + Math.sin(t * Math.PI) * 25
+        return { hw, hd, r: round ? Math.min(hw, hd) - 1 : 60 + 220 * e, y: topY - (topY - 8) * Math.pow(t, 0.85), wave: 0.025 * e }
+      },
+      fab,
+      { rings: 18 },
+    ),
+  )
+  // Flat top under the board, and the hem lying on the floor.
+  g.add(round ? cyl(W / 2 + 40, W / 2 + 40, 14, fab, [0, topY - 7, 0], { segments: 48 }) : panelOn(W + 80, 14, D + 80, fab, 0, topY - 14, 0))
+  g.add(round ? cyl(W / 2 + 35 + skirt, W / 2 + 35 + skirt, 20, fab, [0, 10, 0], { segments: 64 }) : rbox(W + 40 + skirt * 2 + 30, 20, D + 40 + skirt * 2 + 30, 10, fab, [0, 10, 0]))
+  return g
+}
+
+/** The kotatsu option shared by the low table, the dining table and the desk. */
+export const kotatsuParams = {
+  kotatsu: p.bool('こたつにする', false, { group: 'こたつ', hint: 'こたつ布団をかける（ヒーターは天板の下）' }),
+  futonColor: p.color('こたつ布団', '#9a7b6a', { swatches: SWATCHES.fabric, group: 'こたつ' }),
+}
+
+export function withKotatsu(g: THREE.Group, o: { kotatsu: boolean; futonColor: string; W: number; D: number; under: number; round?: boolean }) {
+  if (o.kotatsu) g.add(kotatsuFuton(o.W, o.D, o.under, o.futonColor, !!o.round))
+  return g
+}
+
 /** Table top: rectangle (rounded corners), circle or oval. Bottom of the top sits at y. */
 function tableTop(shape: string, w: number, d: number, t: number, y: number, m: THREE.Material) {
   if (shape === 'round' || shape === 'oval') {
@@ -30,15 +68,17 @@ export const lowTable = defineAsset({
     shelf: p.bool('下段の棚', false),
     topColor: p.color('天板', '#d2ad7c', { swatches: SWATCHES.wood }),
     legColor: p.color('脚', '#d2ad7c', { swatches: [...SWATCHES.wood, ...SWATCHES.metal] }),
+    ...kotatsuParams,
   },
   presets: [
+    { name: 'こたつ', params: { width: 800, depth: 600, height: 380, legs: 'box', kotatsu: true, topColor: '#8f5f3d', legColor: '#8f5f3d' } },
     { name: '丸テーブル', params: { shape: 'round', width: 750, legs: 'folding', topColor: '#f1ece4', legColor: '#f1ece4' } },
     { name: 'サイドテーブル', params: { shape: 'round', width: 400, height: 550, legs: 'wood', topColor: '#6b4a34', legColor: '#6b4a34' } },
     { name: 'ナイトテーブル（四角）', params: { width: 400, depth: 350, height: 500, legs: 'wood', shelf: true, topColor: '#d2ad7c', legColor: '#d2ad7c' } },
     { name: '北欧風', params: { shape: 'oval', width: 1000, depth: 550, topColor: '#e4cfa8', legColor: '#e4cfa8' } },
     { name: 'インダストリアル', params: { legs: 'hairpin', topColor: '#6b4a34', legColor: '#2b2b2b' } },
   ],
-  build({ shape, width, depth, height, legs, shelf, topColor, legColor }) {
+  build({ shape, width, depth, height, legs, shelf, topColor, legColor, kotatsu, futonColor }) {
     const W = width
     const D = shape === 'round' ? width : depth
     const t = 25
@@ -68,64 +108,10 @@ export const lowTable = defineAsset({
       }
     }
     if (shelf) g.add(tableTop(shape, W * 0.86, D * 0.8, 15, lh * 0.25, top))
-    return g
+    return withKotatsu(g, { kotatsu, futonColor, W, D, under: lh, round: shape !== 'rect' })
   },
 })
 
-export const kotatsu = defineAsset({
-  type: 'kotatsu',
-  label: 'こたつ',
-  category: 'table',
-  description: 'こたつ布団付きのこたつ。布団なし（夏モード）にもできる',
-  placement: 'floor',
-  // The board, not the futon that flares out around it.
-  surfaces: ({ width: W, depth: D, futon }) => [futon ? { y: 395, minX: -W / 2 - 20, maxX: W / 2 + 20, minZ: -D / 2 - 20, maxZ: D / 2 + 20, label: '天板' } : { y: 380, minX: -W / 2, maxX: W / 2, minZ: -D / 2, maxZ: D / 2, label: '天板' }],
-  params: {
-    width: p.mm('幅', 600, 1200, 800),
-    depth: p.mm('奥行き', 600, 900, 600),
-    futon: p.bool('こたつ布団', true),
-    futonColor: p.color('布団の色', '#9a7b6a', { swatches: SWATCHES.fabric }),
-    topColor: p.color('天板', '#8f5f3d', { swatches: SWATCHES.wood }),
-  },
-  build({ width: W, depth: D, futon, futonColor, topColor }) {
-    const h = 380
-    const top = mat('wood', topColor)
-    const g = group()
-    if (futon) {
-      const fab = mat('fabric', futonColor, { side: THREE.DoubleSide })
-      // Futon drapes from just over the table edge and flares out onto the floor.
-      const skirt = 380
-      const topY = h - 25
-      g.add(
-        loft(
-          (t) => {
-            const e = Math.pow(t, 2.2)
-            return {
-              hw: W / 2 + 40 + skirt * e + Math.sin(t * Math.PI) * 25,
-              hd: D / 2 + 40 + skirt * e + Math.sin(t * Math.PI) * 25,
-              r: 60 + 220 * e,
-              y: topY - (topY - 8) * Math.pow(t, 0.85),
-              wave: 0.025 * e,
-            }
-          },
-          fab,
-          { rings: 18 },
-        ),
-      )
-      // Flat top under the board
-      g.add(panelOn(W + 80, 14, D + 80, fab, 0, topY - 10, 0))
-      // Hem lying on the floor
-      g.add(rbox(W + 40 + skirt * 2 + 30, 20, D + 40 + skirt * 2 + 30, 10, fab, [0, 10, 0]))
-      g.add(panelOn(W + 40, 25, D + 40, top, 0, h - 10, 0))
-    } else {
-      g.add(panelOn(W, 30, D, top, 0, h - 30, 0))
-      g.add(panelOn(W - 60, 70, D - 60, top, 0, h - 100, 0))
-      for (const sx of [-1, 1]) for (const sz of [-1, 1]) g.add(panelOn(50, h - 30, 50, top, sx * (W / 2 - 40), 0, sz * (D / 2 - 40)))
-      g.add(panelOn(260, 50, 260, mat('metal', '#3a3b3e'), 0, h - 150, 0)) // heater unit
-    }
-    return g
-  },
-})
 
 export const diningTable = defineAsset({
   type: 'diningTable',
@@ -141,12 +127,14 @@ export const diningTable = defineAsset({
     legs: p.select('脚', { four: '4本脚', center: '1本脚', trestle: 'コの字' }, 'four'),
     topColor: p.color('天板', '#b8875a', { swatches: SWATCHES.wood }),
     legColor: p.color('脚', '#b8875a', { swatches: [...SWATCHES.wood, ...SWATCHES.metal] }),
+    ...kotatsuParams,
   },
   presets: [
+    { name: 'ダイニングこたつ', params: { width: 1050, depth: 750, height: 650, kotatsu: true, futonColor: '#6b6157' } },
     { name: 'カフェテーブル', params: { shape: 'round', width: 650, legs: 'center', topColor: '#f1ece4', legColor: '#2b2b2b' } },
     { name: '2人用', params: { width: 800, depth: 650 } },
   ],
-  build({ shape, width, depth, height, legs, topColor, legColor }) {
+  build({ shape, width, depth, height, legs, topColor, legColor, kotatsu, futonColor }) {
     const W = width
     const D = shape === 'round' ? width : depth
     const t = 30
@@ -169,6 +157,6 @@ export const diningTable = defineAsset({
       g.add(panelOn(W - 150, 70, 20, lm, 0, lh - 70, D / 2 - 55))
       g.add(panelOn(W - 150, 70, 20, lm, 0, lh - 70, -D / 2 + 55))
     }
-    return g
+    return withKotatsu(g, { kotatsu, futonColor, W, D, under: lh, round: shape === 'round' })
   },
 })

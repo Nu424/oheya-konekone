@@ -51,9 +51,13 @@ export function WalkRig({ room, camera }: { room: Room; camera: THREE.Perspectiv
   const sens = useRef(sensitivity)
   sens.current = sensitivity
 
+  // `apply` is also called from listeners set up once (mouse look), so it reads the eye height from a ref:
+  // a closure would keep the height from when walking started.
+  const eyeRef = useRef(eye)
+  eyeRef.current = eye
   const apply = () => {
     const p = pose.current
-    camera.position.set(p.x * S, (floorAt(useDoc.getState().layout.room, p.x, p.z) + eye) * S, p.z * S)
+    camera.position.set(p.x * S, (floorAt(useDoc.getState().layout.room, p.x, p.z) + eyeRef.current) * S, p.z * S)
     camera.rotation.set(p.pitch, p.yaw, 0, 'YXZ')
     camera.updateMatrixWorld()
     invalidate()

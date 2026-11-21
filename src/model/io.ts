@@ -50,6 +50,7 @@ export function parseLayoutText(text: string): ParseResult {
  * Bring older layouts up to date in place (they keep loading as they were saved):
  * - bathtub `shower` (2026-11): the tap and shower are now their own wall item, `faucetShower`,
  *   on the wall behind the tub.
+ * - `kotatsu` (2026-11): a low table with the kotatsu option.
  */
 function migrate(layout: Layout) {
   const added: Layout['items'] = []
@@ -73,6 +74,21 @@ function migrate(layout: Layout) {
     })
   }
   layout.items.push(...added)
+  // kotatsu (2026-11): now an option of the low table (and the dining table and desk).
+  for (const it of layout.items) {
+    if (it.type !== 'kotatsu') continue
+    const q = it.params
+    it.type = 'lowTable'
+    it.params = {
+      ...(q.width !== undefined ? { width: q.width } : { width: 800 }),
+      ...(q.depth !== undefined ? { depth: q.depth } : { depth: 600 }),
+      height: 380,
+      legs: 'box',
+      kotatsu: q.futon ?? true,
+      ...(q.futonColor !== undefined ? { futonColor: q.futonColor } : {}),
+      ...(q.topColor !== undefined ? { topColor: q.topColor, legColor: q.topColor } : { topColor: '#8f5f3d', legColor: '#8f5f3d' }),
+    }
+  }
 }
 
 export function parseLayout(raw: unknown): ParseResult {

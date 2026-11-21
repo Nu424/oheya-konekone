@@ -87,3 +87,12 @@ describe('migrations', () => {
     expect(Math.abs(f.position[2] + localBox(f).min.z)).toBeLessThan(1)
   })
 })
+
+describe('kotatsu migration', () => {
+  it('turns an old kotatsu into a low table with the kotatsu option', () => {
+    const r = parseLayout({ room: {}, items: [{ id: 'k', type: 'kotatsu', position: [1500, 0, 1200], rotation: 0, params: { width: 900, futon: false, topColor: '#6b4a34' } }] })
+    expect(r.ok).toBe(true)
+    if (!r.ok) return
+    expect(r.layout.items[0]).toMatchObject({ type: 'lowTable', params: { width: 900, height: 380, kotatsu: false, topColor: '#6b4a34' } })
+  })
+})

@@ -2,6 +2,7 @@ import { mat, SWATCHES } from '../../three/materials'
 import { cyl, group, panelOn } from '../kit'
 import { p } from '../params'
 import { defineAsset } from '../types'
+import { kotatsuParams, withKotatsu } from './tables'
 
 export const desk = defineAsset({
   type: 'desk',
@@ -17,13 +18,15 @@ export const desk = defineAsset({
     topColor: p.color('天板', '#c8a27a', { swatches: SWATCHES.wood }),
     legColor: p.color('脚', '#2f2f31', { swatches: SWATCHES.metal }),
     drawer: p.bool('引き出し', false),
+    ...kotatsuParams,
   },
   presets: [
     { name: 'コンパクト', params: { width: 800, depth: 450 } },
     { name: '在宅ワーク', params: { width: 1400, depth: 700, topColor: '#d2ad7c' } },
+    { name: 'デスクこたつ', params: { width: 900, depth: 500, height: 680, legStyle: 'round', topColor: '#b8875a', legColor: '#b8875a', kotatsu: true, futonColor: '#8c8a86' } },
     { name: 'スタンディング', params: { width: 1200, depth: 650, height: 1050, legStyle: 'steel' } },
   ],
-  build({ width: w, depth: d, height: h, legStyle, topColor, legColor, drawer }) {
+  build({ width: w, depth: d, height: h, legStyle, topColor, legColor, drawer, kotatsu, futonColor }) {
     const top = mat('wood', topColor)
     const t = 25
     const g = group(panelOn(w, t, d, top, 0, h - t, 0, { grain: 'x' }))
@@ -50,6 +53,6 @@ export const desk = defineAsset({
       g.add(panelOn(dw, 90, d - 60, dm, 0, h - t - 90, 0))
       g.add(panelOn(120, 12, 14, mat('metal', '#a7aaae'), 0, h - t - 50, d / 2 - 28))
     }
-    return g
+    return withKotatsu(g, { kotatsu, futonColor, W: w, D: d, under: h - t })
   },
 })

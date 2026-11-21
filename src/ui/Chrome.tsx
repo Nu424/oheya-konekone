@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useStore } from 'zustand'
 import { downloadText, parseLayoutText, serializeLayout } from '../model/io'
-import { redo, undo, useDoc, useUi } from '../store/useStore'
+import { redo, undo, useDoc, useUi, WALLS_NEXT, type WallsMode } from '../store/useStore'
 import { itemCommands } from '../three/EditLayer'
 import { getFlow } from '../editor/flow'
 import { collisions } from '../editor/placement'
@@ -153,6 +153,9 @@ function fmtHour(h: number) {
   return `${hh}:${String(mm).padStart(2, '0')}`
 }
 
+/** Short labels for the walls button. */
+const WALLS_LABEL: Record<WallsMode, string> = { inner: '壁：外だけ', low: '壁：低く', up: '壁：全部' }
+
 export function Hud() {
   const view = useUi((s) => s.view)
   if (view === 'walk') return <WalkBar />
@@ -168,7 +171,7 @@ function MainHud() {
   const flow = useUi((s) => s.flow)
   const setFlow = useUi((s) => s.setFlow)
   const overlaps = useUi((s) => s.overlaps)
-  const wallsLow = useUi((s) => s.wallsLow)
+  const walls = useUi((s) => s.walls)
   const layout = useDoc((s) => s.layout)
   const overlapCount = useMemo(() => collisions(layout).size, [layout])
   return (
@@ -200,12 +203,11 @@ function MainHud() {
         {overlapCount > 0 && <span className="overlap-count">{overlapCount}</span>}
       </button>
       <button
-        className={`icon-btn walls-btn${wallsLow ? ' on' : ''}`}
-        onClick={() => useUi.getState().setWallsLow(!wallsLow)}
-        title={wallsLow ? '壁を立てる (H)' : '壁を低くして中を見る (H)'}
-        aria-pressed={wallsLow}
+        className={`icon-btn walls-btn${walls !== 'up' ? ' on' : ''}`}
+        onClick={() => useUi.getState().setWalls(WALLS_NEXT[walls])}
+        title={`壁の表示 (H)：いまは「${WALLS_LABEL[walls]}」。押すと「${WALLS_LABEL[WALLS_NEXT[walls]]}」`}
       >
-        <Icon.wall /> <span className="label">壁を低く</span>
+        <Icon.wall /> <span className="label">{WALLS_LABEL[walls]}</span>
       </button>
       <button className="icon-btn" onClick={() => useUi.getState().setPhoto(true)} title="撮影モード（パストレーシングで写真みたいに）(P)">
         <Icon.camera /> <span className="label">撮影</span>
@@ -316,7 +318,7 @@ export function useShortcuts() {
         if (e.key.toLowerCase() === 'j') ui.setJsonOpen(true)
         if (e.key.toLowerCase() === 'f') ui.setFlow(!ui.flow)
         if (e.key.toLowerCase() === 'o') ui.setOverlaps(!ui.overlaps)
-        if (e.key.toLowerCase() === 'h') ui.setWallsLow(!ui.wallsLow)
+        if (e.key.toLowerCase() === 'h') ui.setWalls(WALLS_NEXT[ui.walls])
         if (e.key.toLowerCase() === 'p') ui.setPhoto(!ui.photo)
         if (e.key === '?') ui.setHelpOpen(true)
         if (e.key === 'Escape') {

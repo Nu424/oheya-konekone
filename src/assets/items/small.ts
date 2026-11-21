@@ -606,7 +606,10 @@ export const basket = defineAsset({
         const col = CLOTH[Math.floor(rr() * CLOTH.length)]
         const L = 800 + rr() * 100
         u.add(lathe([[0, 0], [6, 30], [26, L * 0.35], [22, L * 0.8], [6, L * 0.9], [0, L * 0.9]], mat('fabric', col), [0, 0, 0], { segments: 14 }))
-        u.add(cyl(4, 4, L * 0.1 + 40, mat('chrome', '#cfd2d6'), [0, L * 0.9 + 20, 0], { segments: 8 }))
+        // Shaft from inside the furled canopy up into the handle, so the two meet.
+        const shaft0 = L * 0.85
+        const shaft1 = L + 50
+        u.add(cyl(4, 4, shaft1 - shaft0, mat('chrome', '#cfd2d6'), [0, (shaft0 + shaft1) / 2, 0], { segments: 8 }))
         u.add(tube([[0, L + 40, 0], [0, L + 90, 0], [0, L + 120, 30], [0, L + 95, 55]], 9, mat('plastic', i % 2 ? '#2b2b2e' : '#6b4a34', { roughness: 0.4 }), { segments: 14, tension: 0.5 }))
         u.position.set((rr() - 0.5) * inner.w * 0.6, t, (rr() - 0.5) * inner.d * 0.6)
         u.rotation.set((rr() - 0.5) * 0.2, rr() * Math.PI * 2, (rr() - 0.5) * 0.2)

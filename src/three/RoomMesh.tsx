@@ -512,10 +512,10 @@ export function disposeObject(obj: THREE.Object3D) {
 }
 
 /**
- * Room geometry. With `lowered` (and `cutaway`, i.e. not walking) every wall drops to a low stub so the
- * rooms can be seen into; the top view (`plan`) always lowers them. The ceiling hides while the camera is outside.
+ * Room geometry. With `lowered` (and `cutaway`, i.e. not walking) the interior walls, or all walls, drop to
+ * a low stub so the rooms can be seen into; the top view (`plan`) always lowers them all. The ceiling hides while the camera is outside.
  */
-export function RoomMesh({ room, cutaway = true, plan = false, lowered = true }: { room: Room; cutaway?: boolean; plan?: boolean; lowered?: boolean }) {
+export function RoomMesh({ room, cutaway = true, plan = false, lowered = 'inner' }: { room: Room; cutaway?: boolean; plan?: boolean; lowered?: 'up' | 'inner' | 'low' }) {
   const build = useMemo(() => buildRoom(room), [room])
   const state = useRef<{ cut: boolean[]; ceiling: boolean }>({ cut: [], ceiling: false })
 
@@ -530,8 +530,8 @@ export function RoomMesh({ room, cutaway = true, plan = false, lowered = true }:
   useFrame(({ camera }) => {
     const cam = camera.position
     const inside = cam.y < room.height * S && planOf(room).spaces.some((sp) => cam.x > sp.x0 * S && cam.x < sp.x1 * S && cam.z > sp.z0 * S && cam.z < sp.z1 * S)
-    const low = plan || (cutaway && lowered)
     build.walls.forEach((w, i) => {
+      const low = plan || (cutaway && (lowered === 'low' || (lowered === 'inner' && !w.wall.exterior)))
       if (low !== state.current.cut[i]) {
         state.current.cut[i] = low
         setGhost(w.full, low)

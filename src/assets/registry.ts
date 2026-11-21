@@ -13,7 +13,7 @@ import { ceilingLight, deskLamp, floorLamp, pendantLight } from './items/lights'
 import { beanbag, diningChair, floorChair, officeChair, sofa, stool } from './items/seating'
 import { cabinet, ceilingDryer, hangerRack, metalRack, shelf, tvStand, wallStorage } from './items/storage'
 import { wallArt } from './items/wall'
-import { diningTable, kotatsu, lowTable } from './items/tables'
+import { diningTable, lowTable } from './items/tables'
 import { defaultParams, describeParam, paramsSchema, resolveParams, type ParamSpecs } from './params'
 import type { AssetDef } from './types'
 
@@ -28,7 +28,6 @@ const ALL: AssetDef<any>[] = [
   stool,
   cushion,
   lowTable,
-  kotatsu,
   diningTable,
   diningChair,
   desk,

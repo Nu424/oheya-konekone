@@ -155,16 +155,9 @@ JSONはアプリの「JSON」ダイアログに貼り付けるか、ファイル
 - shelf: boolean (既定 false) — 下段の棚
 - topColor: "#rrggbb" (既定 #d2ad7c) — 天板
 - legColor: "#rrggbb" (既定 #d2ad7c) — 脚
-- プリセット例: 丸テーブル {"shape":"round","width":750,"legs":"folding","topColor":"#f1ece4","legColor":"#f1ece4"} / サイドテーブル {"shape":"round","width":400,"height":550,"legs":"hairpin","topColor":"#6b4a34","legColor":"#2b2b2b"} / ナイトテーブル（四角） {"width":400,"depth":350,"height":500,"legs":"wood","shelf":true,"topColor":"#d2ad7c","legColor":"#d2ad7c"} / 北欧風 {"shape":"oval","width":1000,"depth":550,"topColor":"#e4cfa8","legColor":"#e4cfa8"} / インダストリアル {"legs":"hairpin","topColor":"#6b4a34","legColor":"#2b2b2b"}
-
-### kotatsu — こたつ（テーブル / placement: floor）
-こたつ布団付きのこたつ。布団なし（夏モード）にもできる
-- 載せられる面（既定の寸法のとき）: 天板 高さ 395（840×640）
-- width: number 600〜1200mm (既定 800、600〜1800 まで指定可) — 幅
-- depth: number 600〜900mm (既定 600、600〜1350 まで指定可) — 奥行き
-- futon: boolean (既定 true) — こたつ布団
-- futonColor: "#rrggbb" (既定 #9a7b6a) — 布団の色
-- topColor: "#rrggbb" (既定 #8f5f3d) — 天板
+- kotatsu: boolean (既定 false) — こたつにする
+- futonColor: "#rrggbb" (既定 #9a7b6a) — こたつ布団
+- プリセット例: こたつ {"width":800,"depth":600,"height":380,"legs":"box","kotatsu":true,"topColor":"#8f5f3d","legColor":"#8f5f3d"} / 丸テーブル {"shape":"round","width":750,"legs":"folding","topColor":"#f1ece4","legColor":"#f1ece4"} / サイドテーブル {"shape":"round","width":400,"height":550,"legs":"wood","topColor":"#6b4a34","legColor":"#6b4a34"} / ナイトテーブル（四角） {"width":400,"depth":350,"height":500,"legs":"wood","shelf":true,"topColor":"#d2ad7c","legColor":"#d2ad7c"} / 北欧風 {"shape":"oval","width":1000,"depth":550,"topColor":"#e4cfa8","legColor":"#e4cfa8"} / インダストリアル {"legs":"hairpin","topColor":"#6b4a34","legColor":"#2b2b2b"}
 
 ### diningTable — ダイニングテーブル（テーブル / placement: floor）
 椅子で使うテーブル。カフェテーブルからダイニングまで
@@ -176,7 +169,9 @@ JSONはアプリの「JSON」ダイアログに貼り付けるか、ファイル
 - legs: "four"(4本脚) | "center"(1本脚) | "trestle"(コの字) (既定 "four") — 脚
 - topColor: "#rrggbb" (既定 #b8875a) — 天板
 - legColor: "#rrggbb" (既定 #b8875a) — 脚
-- プリセット例: カフェテーブル {"shape":"round","width":650,"legs":"center","topColor":"#f1ece4","legColor":"#2b2b2b"} / 2人用 {"width":800,"depth":650}
+- kotatsu: boolean (既定 false) — こたつにする
+- futonColor: "#rrggbb" (既定 #9a7b6a) — こたつ布団
+- プリセット例: ダイニングこたつ {"width":1050,"depth":750,"height":650,"kotatsu":true,"futonColor":"#6b6157"} / カフェテーブル {"shape":"round","width":650,"legs":"center","topColor":"#f1ece4","legColor":"#2b2b2b"} / 2人用 {"width":800,"depth":650}
 
 ### diningChair — チェア（テーブル / placement: floor）
 ダイニングチェアやスツール。座る人が正面(+Z)を向く
@@ -196,7 +191,9 @@ JSONはアプリの「JSON」ダイアログに貼り付けるか、ファイル
 - topColor: "#rrggbb" (既定 #c8a27a) — 天板
 - legColor: "#rrggbb" (既定 #2f2f31) — 脚
 - drawer: boolean (既定 false) — 引き出し
-- プリセット例: コンパクト {"width":800,"depth":450} / 在宅ワーク {"width":1400,"depth":700,"topColor":"#d2ad7c"} / スタンディング {"width":1200,"depth":650,"height":1050,"legStyle":"steel"}
+- kotatsu: boolean (既定 false) — こたつにする
+- futonColor: "#rrggbb" (既定 #9a7b6a) — こたつ布団
+- プリセット例: コンパクト {"width":800,"depth":450} / 在宅ワーク {"width":1400,"depth":700,"topColor":"#d2ad7c"} / デスクこたつ {"width":900,"depth":500,"height":680,"legStyle":"round","topColor":"#b8875a","legColor":"#b8875a","kotatsu":true,"futonColor":"#8c8a86"} / スタンディング {"width":1200,"depth":650,"height":1050,"legStyle":"steel"}
 
 ### officeChair — オフィスチェア（デスク・PC / placement: floor）
 キャスター付きのデスクチェア。座る人が正面(+Z)を向く
@@ -926,7 +923,9 @@ PC の本体。タワー型・小型・ミニ PC。床にも机の上にも置�
         "legs": "wood",
         "shelf": false,
         "topColor": "#d2ad7c",
-        "legColor": "#d2ad7c"
+        "legColor": "#d2ad7c",
+        "kotatsu": false,
+        "futonColor": "#9a7b6a"
       }
     },
     {
@@ -1010,7 +1009,9 @@ PC の本体。タワー型・小型・ミニ PC。床にも机の上にも置�
         "legStyle": "steel",
         "topColor": "#c8a27a",
         "legColor": "#2f2f31",
-        "drawer": false
+        "drawer": false,
+        "kotatsu": false,
+        "futonColor": "#9a7b6a"
       }
     },
     {

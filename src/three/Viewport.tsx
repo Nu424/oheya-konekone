@@ -353,7 +353,7 @@ export function Viewport() {
   const flow = useUi((s) => s.flow)
   const photo = useUi((s) => s.photo)
   const panel = useUi((s) => s.panel)
-  const wallsLow = useUi((s) => s.wallsLow)
+  const walls = useUi((s) => s.walls)
   const items = useDoc((s) => s.layout.items)
   const lamps = useMemo(() => collectLamps(items, room), [items, room])
   // The ceiling is cut away in every view except walking around inside the room.
@@ -373,7 +373,7 @@ export function Viewport() {
     >
       <Suspense fallback={null}>
         <Lighting room={room} hour={hour} lamps={lamps} />
-        <RoomMesh room={room} plan={view === 'top'} cutaway={cutaway} lowered={wallsLow} />
+        <RoomMesh room={room} plan={view === 'top'} cutaway={cutaway} lowered={walls} />
         <EditLayer cutaway={cutaway} />
         {flow && <FlowOverlay />}
         {photo ? <PhotoMode /> : <Effects />}

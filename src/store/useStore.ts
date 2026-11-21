@@ -214,8 +214,11 @@ interface UiState {
   flow: boolean
   /** Red outlines around every overlapping item (the selected / dragged ones always show theirs). */
   overlaps: boolean
-  /** Walls cut down to a low stub so the rooms can be seen into (every view but walking; the top view always). */
-  wallsLow: boolean
+  /**
+   * Which walls drop to a low stub so the rooms can be seen into: none, the interior ones (the outline
+   * stays up), or all. Every view but walking; the top view always lowers all of them.
+   */
+  walls: WallsMode
   /** Path-traced photo mode and its progress. */
   photo: boolean
   photoSamples: number
@@ -230,13 +233,26 @@ interface UiState {
   setHour(h: number): void
   setFlow(v: boolean): void
   setOverlaps(v: boolean): void
-  setWallsLow(v: boolean): void
+  setWalls(v: WallsMode): void
   setPhoto(v: boolean): void
   setPhotoSamples(n: number): void
   setPanel(p: UiState['panel']): void
   setJsonOpen(v: boolean): void
   setHelpOpen(v: boolean): void
   notify(text: string, tone?: 'info' | 'error'): void
+}
+
+export type WallsMode = 'up' | 'inner' | 'low'
+/** The walls button steps through these. */
+export const WALLS_NEXT: Record<WallsMode, WallsMode> = { inner: 'low', low: 'up', up: 'inner' }
+
+function readWalls(): WallsMode {
+  try {
+    const v = localStorage.getItem('oheya-konekone:pref:walls')
+    return v === 'up' || v === 'low' || v === 'inner' ? v : 'inner'
+  } catch {
+    return 'inner'
+  }
 }
 
 /** Per-viewer display preferences (best effort: storage may be unavailable). */
@@ -264,7 +280,7 @@ export const useUi = create<UiState>()((set) => ({
   hour: 14,
   flow: false,
   overlaps: readPref('overlaps', true),
-  wallsLow: readPref('wallsLow', true),
+  walls: readWalls(),
   photo: false,
   photoSamples: 0,
   // Start with the panel closed on phones so the room is visible.
@@ -289,9 +305,13 @@ export const useUi = create<UiState>()((set) => ({
   setSnap: (snap) => set({ snap }),
   setHour: (hour) => set({ hour }),
   setFlow: (flow) => set({ flow }),
-  setWallsLow: (wallsLow) => {
-    writePref('wallsLow', wallsLow)
-    set({ wallsLow })
+  setWalls: (walls) => {
+    try {
+      localStorage.setItem('oheya-konekone:pref:walls', walls)
+    } catch {
+      /* ignore */
+    }
+    set({ walls })
   },
   setOverlaps: (overlaps) => {
     writePref('overlaps', overlaps)
